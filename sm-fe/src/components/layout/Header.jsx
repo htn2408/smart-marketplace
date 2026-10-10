@@ -173,7 +173,7 @@ export default function Header({ activePath, onNavigate }) {
 
                   <div className="py-1">
                     <Link
-                      to={ROUTES.PROFILE}
+                      to={ROUTES.USER_PROFILE}
                       onClick={() => setIsUserMenuOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors"
                     >

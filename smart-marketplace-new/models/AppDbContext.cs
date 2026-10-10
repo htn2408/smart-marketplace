@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SkillCategory> SkillCategories => Set<SkillCategory>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<WorkerSkill> WorkerSkills => Set<WorkerSkill>();
+    public DbSet<WorkerDistrict> WorkerDistricts => Set<WorkerDistrict>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<TaskImage> TaskImages => Set<TaskImage>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
@@ -86,6 +87,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(ws => ws.Skill)
                 .WithMany(s => s.Workers)
                 .HasForeignKey(ws => ws.SkillId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ---- worker_districts ----
+        modelBuilder.Entity<WorkerDistrict>(e =>
+        {
+            e.HasIndex(wd => new { wd.WorkerProfileId, wd.DistrictCode }).IsUnique();
+            e.HasIndex(wd => wd.DistrictCode);
+            e.HasIndex(wd => wd.ProvinceCode);
+
+            e.HasOne(wd => wd.WorkerProfile)
+                .WithMany(w => w.ServiceDistricts)
+                .HasForeignKey(wd => wd.WorkerProfileId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

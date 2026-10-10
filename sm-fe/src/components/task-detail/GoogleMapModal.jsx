@@ -143,10 +143,10 @@ function GoogleMapModalContent({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface-container-lowest w-full max-w-3xl rounded-2xl shadow-2xl border border-surface-variant/40 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface-container-lowest w-full max-w-3xl rounded-2xl shadow-2xl border border-surface-variant/40 overflow-hidden flex flex-col h-[88vh] max-h-[750px]">
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-surface-variant/30 flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 border-b border-surface-variant/30 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Icon name="map" size={20} />
@@ -172,7 +172,7 @@ function GoogleMapModalContent({
         {/* Search Bar on Modal with Autocomplete Dropdown */}
         <div
           ref={searchContainerRef}
-          className="p-3 sm:p-4 bg-surface-container-low border-b border-surface-variant/30 relative z-20"
+          className="p-3 sm:p-4 bg-surface-container-low border-b border-surface-variant/30 relative z-20 shrink-0"
         >
           <form onSubmit={handleManualSearch} className="flex items-center gap-2">
             <div className="relative flex-1 flex items-center">
@@ -265,25 +265,26 @@ function GoogleMapModalContent({
         </div>
 
         {/* Interactive Leaflet Map Canvas with Google Tiles */}
-        <div className="relative flex-1 min-h-[360px] sm:min-h-[420px] w-full bg-surface-container">
+        <div className="relative flex-1 min-h-0 w-full bg-surface-container overflow-hidden">
           <MapPicker
             lat={modalCoords.lat}
             lng={modalCoords.lng}
             onLocationSelect={handleLocationPicked}
             onAddressResolved={handleAddressResolved}
-            className="w-full h-full min-h-[360px] sm:min-h-[420px] rounded-none border-none shadow-none"
+            className="w-full h-full rounded-none border-none shadow-none"
           />
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="p-4 sm:p-5 border-t border-surface-variant/30 flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest">
-          <div className="text-xs text-on-surface-variant truncate w-full sm:w-auto flex-1">
-            <span className="font-semibold text-on-surface">Vị trí đã chọn: </span>
-            <span className="text-primary font-medium">
+        <div className="p-3 sm:p-4 border-t border-surface-variant/30 flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest shrink-0 z-20">
+          <div className="text-xs text-on-surface-variant truncate w-full sm:w-auto flex-1 flex items-center gap-1.5">
+            <Icon name="pin_drop" size={18} className="text-primary shrink-0" />
+            <span className="font-semibold text-on-surface shrink-0">Vị trí đã chọn: </span>
+            <span className="text-primary font-medium truncate">
               {selectedAddressLabel || searchQuery || 'Chưa xác định'}
             </span>
           </div>
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
             <Button
               type="button"
               variant="outline"
@@ -299,7 +300,7 @@ function GoogleMapModalContent({
               size="sm"
               icon="check"
               onClick={handleConfirm}
-              className="px-5 font-bold"
+              className="px-5 font-bold shadow-md"
             >
               Xác nhận vị trí này
             </Button>

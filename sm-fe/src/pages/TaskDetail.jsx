@@ -15,6 +15,7 @@ import {
 import { geocodeAddress } from '../services/mapService'
 import GoogleMapModal from '../components/task-detail/GoogleMapModal'
 import MapPicker from '../components/task-detail/MapPicker'
+import { useAuth } from '../hooks/useAuth'
 
 /**
  * TaskMate TaskDetail (Đăng việc & Đề xuất thù lao) - Standardized JSX Component
@@ -74,6 +75,8 @@ export default function TaskDetail({ onNavigate }) {
   const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false)
   const addressContainerRef = useRef(null)
 
+  const { user } = useAuth()
+
   // Bước 1: Khởi tạo State và tải danh sách Tỉnh/Thành
   useEffect(() => {
     const loadProvinces = async () => {
@@ -84,6 +87,18 @@ export default function TaskDetail({ onNavigate }) {
     }
     loadProvinces()
   }, [])
+
+  // Tự động điền địa chỉ mặc định của người dùng từ CSDL nếu đã có
+  useEffect(() => {
+    if (user?.address && !specificAddress) {
+      setSpecificAddress(user.address)
+      if (user.latitude && user.longitude) {
+        const uCoords = { lat: Number(user.latitude), lng: Number(user.longitude) }
+        setCoords(uCoords)
+        setIsGeocodedDetail(true)
+      }
+    }
+  }, [user])
 
   // Bước 2: Logic chọn Tỉnh → Tải Quận/Huyện (Cascading 1)
   const handleProvinceChange = async (e) => {
@@ -700,12 +715,32 @@ export default function TaskDetail({ onNavigate }) {
                     >
                       Số nhà, tên đường, toà nhà / căn hộ
                     </label>
-                    {isGeocodedDetail && (
-                      <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
-                        <Icon name="check_circle" size={13} />
-                        Đã ghim chi tiết
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {user?.address && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSpecificAddress(user.address)
+                            if (user.latitude && user.longitude) {
+                              setCoords({ lat: Number(user.latitude), lng: Number(user.longitude) })
+                              setIsGeocodedDetail(true)
+                            }
+                            triggerGeocodeSpecificAddress(user.address)
+                          }}
+                          className="text-[11px] font-semibold text-primary bg-primary-fixed/30 hover:bg-primary-fixed/50 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Sử dụng địa chỉ đã lưu trong hồ sơ cá nhân"
+                        >
+                          <Icon name="bookmark" size={13} />
+                          Dùng địa chỉ đã lưu của bạn
+                        </button>
+                      )}
+                      {isGeocodedDetail && (
+                        <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
+                          <Icon name="check_circle" size={13} />
+                          Đã ghim chi tiết
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="relative flex items-center gap-2">
                     <div className="relative flex-1">

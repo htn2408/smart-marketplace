@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import Icon from '../components/common/Icon'
@@ -11,11 +12,22 @@ import { fetchServiceCategories } from '../services/servicesService'
  * Dynamically fetches categories & jobs from ASP.NET Core Backend (MySQL)
  */
 export default function Services({ onNavigate }) {
+  const location = useLocation()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState('all')
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState(
+    location.state?.categoryId || location.state?.selectedCategory || 'all'
+  )
+
+  useEffect(() => {
+    if (location.state?.categoryId) {
+      setActiveCategoryFilter(location.state.categoryId)
+    } else if (location.state?.selectedCategory) {
+      setActiveCategoryFilter(location.state.selectedCategory)
+    }
+  }, [location.state])
 
   useEffect(() => {
     let isMounted = true

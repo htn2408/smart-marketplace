@@ -135,3 +135,65 @@ export async function fetchCurrentUserApi(token) {
 
   return await response.json()
 }
+
+/**
+ * Update user personal information (name, phone, address, coordinates)
+ * @param {string} token
+ * @param {{ name?: string, phoneNumber?: string, address?: string, latitude?: number, longitude?: number }} payload
+ */
+export async function updateProfileApi(token, payload) {
+  if (!token) throw new Error('Không có token xác thực.')
+
+  const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message =
+      data.error ||
+      data.message ||
+      data.title ||
+      (data.errors && Object.values(data.errors).flat().join(' ')) ||
+      'Cập nhật thông tin thất bại.'
+    throw new Error(message)
+  }
+
+  return data
+}
+
+/**
+ * Change user password
+ * @param {string} token
+ * @param {{ oldPassword: string, newPassword: string }} payload
+ */
+export async function changePasswordApi(token, payload) {
+  if (!token) throw new Error('Không có token xác thực.')
+
+  const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message =
+      data.error ||
+      data.message ||
+      data.title ||
+      (data.errors && Object.values(data.errors).flat().join(' ')) ||
+      'Đổi mật khẩu thất bại.'
+    throw new Error(message)
+  }
+
+  return data
+}

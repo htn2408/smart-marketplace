@@ -94,3 +94,4 @@ C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new\obj\Debug\net10.0\refint\s
 C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new\obj\Debug\net10.0\smart-marketplace-new.pdb
 C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new\obj\Debug\net10.0\smart-marketplace-new.genruntimeconfig.cache
 C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new\obj\Debug\net10.0\ref\smart-marketplace-new.dll
+C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new\obj\Debug\net10.0\smart-marketplace-new.sourcelink.json

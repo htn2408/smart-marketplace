@@ -7,5 +7,6 @@ export const ROUTES = {
   SEARCH: '/search',
   TASK_DETAIL: '/task-detail',
   PROFILE: '/profile',
+  USER_PROFILE: '/user-profile',
   LOGIN: '/login',
 }

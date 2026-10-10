@@ -13,7 +13,9 @@ function App() {
     const p = location.pathname
     if (p === '/' || p === '/home') return 'home'
     if (p.startsWith('/task-detail') || p.startsWith('/tasks')) return 'task-detail'
-    if (p.startsWith('/search') || p.startsWith('/services')) return 'search'
+    if (p.startsWith('/services')) return 'services'
+    if (p.startsWith('/search')) return 'search'
+    if (p.startsWith('/user-profile')) return 'user-profile'
     if (p.startsWith('/profile')) return 'profile'
     if (p.startsWith('/login')) return 'login'
     return ''
@@ -44,6 +46,17 @@ function App() {
           </button>
           <button
             type="button"
+            onClick={() => navigate(ROUTES.SERVICES)}
+            className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
+              activeTab === 'services'
+                ? 'bg-primary text-white shadow-sm'
+                : 'hover:bg-white/10 text-gray-300'
+            }`}
+          >
+            /services
+          </button>
+          <button
+            type="button"
             onClick={() => navigate(ROUTES.TASK_DETAIL)}
             className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
               activeTab === 'task-detail'
@@ -66,6 +79,17 @@ function App() {
           </button>
           <button
             type="button"
+            onClick={() => navigate(ROUTES.USER_PROFILE)}
+            className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
+              activeTab === 'user-profile'
+                ? 'bg-primary text-white shadow-sm'
+                : 'hover:bg-white/10 text-gray-300'
+            }`}
+          >
+            /user-profile
+          </button>
+          <button
+            type="button"
             onClick={() => navigate(ROUTES.PROFILE)}
             className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
               activeTab === 'profile'
@@ -73,7 +97,7 @@ function App() {
                 : 'hover:bg-white/10 text-gray-300'
             }`}
           >
-            /profile
+            /profile (Tasker)
           </button>
           <button
             type="button"

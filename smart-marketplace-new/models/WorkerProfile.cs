@@ -15,16 +15,6 @@ public class WorkerProfile
     [Column("user_id", TypeName = "varchar(36)")]
     public string UserId { get; set; } = null!;
 
-    [Required]
-    [MaxLength(100)]
-    [Column("city")]
-    public string City { get; set; } = null!;
-
-    [Required]
-    [MaxLength(100)]
-    [Column("district")]
-    public string District { get; set; } = null!;
-
     [Column("rating", TypeName = "decimal(3,2)")]
     public decimal Rating { get; set; } = 5.00m;
 
@@ -33,6 +23,7 @@ public class WorkerProfile
 
     public User User { get; set; } = null!;
     public ICollection<WorkerSkill> Skills { get; set; } = new List<WorkerSkill>();
+    public ICollection<WorkerDistrict> ServiceDistricts { get; set; } = new List<WorkerDistrict>();
 
     [InverseProperty("WorkerProfile")]
     public ICollection<TaskItem> TasksAccepted { get; set; } = new List<TaskItem>();

@@ -3,16 +3,17 @@ import Icon from '../common/Icon'
 /**
  * Service Area & Coverage Map component for Tasker Profile
  */
-export default function ServiceArea() {
-  const districts = [
-    { name: 'TP. Thủ Đức (Quận 2, Quận 9 cũ)', active: true },
-    { name: 'Quận Bình Thạnh', active: false },
-    { name: 'Quận 1', active: false },
-    { name: 'Quận 3', active: false },
-    { name: 'Quận Phú Nhuận', active: false },
-    { name: 'Quận 7 (Khu Phú Mỹ Hưng)', active: false },
-    { name: 'Quận 10 & Quận 4', active: false },
-  ]
+export default function ServiceArea({
+  districts = [
+    { name: 'Quận 1', active: true },
+    { name: 'Quận 3', active: true },
+    { name: 'Quận Bình Thạnh', active: true },
+    { name: 'TP. Thủ Đức', active: true },
+    { name: 'Quận Phú Nhuận', active: true },
+    { name: 'Quận 7', active: true },
+  ],
+  description = 'Sẵn sàng nhận việc và di chuyển nhanh chóng trong các quận/huyện đã đăng ký hoạt động.',
+}) {
 
   return (
     <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm flex flex-col gap-6 border border-surface-variant/30">
@@ -23,8 +24,7 @@ export default function ServiceArea() {
             <span>Khu vực hoạt động &amp; Phạm vi phục vụ</span>
           </h2>
           <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-            Cư trú tại Phường An Phú, TP. Thủ Đức. Sẵn sàng di chuyển nhanh
-            chóng trong bán kính 15km
+            {description}
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-primary font-label-sm text-label-sm font-semibold">

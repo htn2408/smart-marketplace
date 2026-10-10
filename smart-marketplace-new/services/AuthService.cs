@@ -87,6 +87,55 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
         return ToResponse(user);
     }
 
+    public async Task<UserResponse> UpdateProfileAsync(string userId, UpdateProfileRequest request, CancellationToken ct = default)
+    {
+        var user = await users.FindByIdAsync(userId, ct)
+            ?? throw new InvalidCredentialsException("Người dùng không tồn tại.");
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            user.Name = request.Name.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber) && request.PhoneNumber != user.PhoneNumber)
+        {
+            if (await users.ExistsByPhoneAsync(request.PhoneNumber, ct))
+                throw new DuplicateResourceException("Số điện thoại này đã được sử dụng.");
+            user.PhoneNumber = request.PhoneNumber.Trim();
+        }
+
+        if (request.Address != null)
+        {
+            user.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+        }
+
+        if (request.Latitude.HasValue) user.Latitude = request.Latitude;
+        if (request.Longitude.HasValue) user.Longitude = request.Longitude;
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await users.SaveAsync(ct);
+
+        return ToResponse(user);
+    }
+
+    public async Task ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await users.FindByIdAsync(userId, ct)
+            ?? throw new InvalidCredentialsException("Người dùng không tồn tại.");
+
+        var isOldPasswordMatch = await Task.Run(() =>
+            BCrypt.Net.BCrypt.Verify(request.OldPassword, user.Password), ct);
+
+        if (!isOldPasswordMatch)
+        {
+            throw new BusinessValidationException("Mật khẩu cũ không chính xác.");
+        }
+
+        user.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await users.SaveAsync(ct);
+    }
+
     private static UserResponse ToResponse(User user) => new()
     {
         Id = user.Id,
@@ -94,6 +143,9 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
         Name = user.Name,
         PhoneNumber = user.PhoneNumber,
         Role = user.Role.ToString(),
+        Address = user.Address,
+        Latitude = user.Latitude,
+        Longitude = user.Longitude,
         CreatedAt = user.CreatedAt,
     };
 }

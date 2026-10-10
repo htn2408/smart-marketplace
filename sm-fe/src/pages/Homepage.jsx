@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import Icon from '../components/common/Icon'
@@ -8,6 +8,7 @@ import HeroSearch from '../components/home/HeroSearch'
 import ServiceCard from '../components/home/ServiceCard'
 import FaqAccordion from '../components/home/FaqAccordion'
 import TaskerCard from '../components/tasker/TaskerCard'
+import { fetchServiceCategories } from '../services/servicesService'
 import {
   POPULAR_SERVICES,
   HOME_TASKERS,
@@ -19,6 +20,103 @@ import {
  */
 export default function Homepage({ onNavigate }) {
   const [activeCategory, setActiveCategory] = useState('all')
+  const [categories, setCategories] = useState([])
+
+  useEffect(() => {
+    let isMounted = true
+    const controller = new AbortController()
+
+    async function loadCategories() {
+      try {
+        const data = await fetchServiceCategories({ signal: controller.signal })
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setCategories(data)
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('[Homepage] Không thể tải danh mục dịch vụ từ Backend:', err)
+        }
+      }
+    }
+
+    loadCategories()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [])
+
+  // Map danh mục từ DB thành danh sách dịch vụ hiển thị ở mục Tham khảo giá (lấy đúng 6 danh mục để cân đối layout 2x3)
+  const popularServicesList = useMemo(() => {
+    if (!categories || categories.length === 0) {
+      return POPULAR_SERVICES.slice(0, 6)
+    }
+
+    // Thứ tự ưu tiên hiển thị các danh mục phổ biến nhất
+    const priorityOrder = [
+      'lắp ráp',
+      'vệ sinh',
+      'khoan tường & lắp đặt',
+      'sửa chữa nhà',
+      'vận chuyển',
+      'sân vườn',
+      'giao hàng',
+    ]
+
+    const sorted = [...categories].sort((a, b) => {
+      const idxA = priorityOrder.findIndex((p) =>
+        a.name.toLowerCase().includes(p)
+      )
+      const idxB = priorityOrder.findIndex((p) =>
+        b.name.toLowerCase().includes(p)
+      )
+      const rankA = idxA === -1 ? 99 : idxA
+      const rankB = idxB === -1 ? 99 : idxB
+      return rankA - rankB
+    })
+
+    return sorted.slice(0, 6).map((cat, index) => {
+      const bgColors = ['primary', 'secondary', 'tonal']
+      const iconBgColor = bgColors[index % bgColors.length]
+
+      let icon = 'handyman'
+      const slug = cat.slug || ''
+      const lower = cat.name.toLowerCase()
+      if (slug === 'furniture-assembly' || lower.includes('lắp ráp')) icon = 'chair'
+      else if (slug === 'cleaning' || lower.includes('vệ sinh')) icon = 'cleaning_services'
+      else if (slug === 'moving' || lower.includes('vận chuyển')) icon = 'local_shipping'
+      else if (slug === 'mounting' || lower.includes('khoan') || lower.includes('lắp đặt')) icon = 'tv'
+      else if (slug === 'handyman' || lower.includes('sửa chữa')) icon = 'handyman'
+      else if (slug === 'yardwork' || lower.includes('sân vườn') || lower.includes('vườn')) icon = 'yard'
+      else if (slug === 'delivery' || lower.includes('giao hàng')) icon = 'delivery_dining'
+
+      let priceText = '~250.000₫ - 400.000₫'
+      if (cat.jobs && cat.jobs.length > 0) {
+        const prices = cat.jobs
+          .map((j) => j.suggestedPrice)
+          .filter((p) => typeof p === 'number' && p > 0)
+        if (prices.length > 0) {
+          const min = Math.min(...prices)
+          const max = Math.max(...prices)
+          if (min === max) {
+            priceText = `~${min.toLocaleString('vi-VN')}₫`
+          } else {
+            priceText = `~${min.toLocaleString('vi-VN')}₫ - ${max.toLocaleString('vi-VN')}₫`
+          }
+        }
+      }
+
+      return {
+        id: cat.id,
+        icon,
+        iconBgColor,
+        title: cat.name,
+        description: cat.subtitle || `Dịch vụ ${cat.name.toLowerCase()} chuyên nghiệp, thợ uy tín tại nhà.`,
+        priceText,
+      }
+    })
+  }, [categories])
 
   const filterTabs = [
     { id: 'all', label: 'Tất cả' },
@@ -217,10 +315,10 @@ export default function Homepage({ onNavigate }) {
               </div>
               <a
                 className="font-label-md text-label-md text-primary font-bold hover:underline flex items-center gap-1 group"
-                href="#services"
+                href="/services"
                 onClick={(e) => {
                   e.preventDefault()
-                  if (onNavigate) onNavigate('search')
+                  if (onNavigate) onNavigate('services')
                 }}
               >
                 <span>Xem tất cả 45+ dịch vụ</span>
@@ -232,17 +330,19 @@ export default function Homepage({ onNavigate }) {
               </a>
             </div>
 
-            {/* Categories 6-Card Grid */}
+            {/* Categories Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {POPULAR_SERVICES.map((service, index) => (
+              {popularServicesList.map((service, index) => (
                 <ServiceCard
-                  key={index}
+                  key={service.id || index}
                   icon={service.icon}
                   iconBgColor={service.iconBgColor}
                   title={service.title}
                   description={service.description}
                   priceText={service.priceText}
-                  onClick={() => onNavigate && onNavigate('search')}
+                  onClick={() =>
+                    onNavigate && onNavigate('services', { categoryId: service.id })
+                  }
                 />
               ))}
             </div>

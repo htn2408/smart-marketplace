@@ -3,6 +3,7 @@ import Homepage from '../pages/Homepage'
 import Services from '../pages/Services'
 import SearchTasker from '../pages/SearchTasker'
 import TaskerProfile from '../pages/TaskerProfile'
+import UserProfile from '../pages/UserProfile'
 import TaskDetail from '../pages/TaskDetail'
 import Login from '../pages/Login'
 import NotFound from '../pages/NotFound'
@@ -25,7 +26,9 @@ export default function AppRoutes() {
       search: ROUTES.SEARCH,
       'become-tasker': ROUTES.SEARCH,
       'task-detail': ROUTES.TASK_DETAIL,
-      profile: ROUTES.PROFILE,
+      profile: ROUTES.USER_PROFILE,
+      'user-profile': ROUTES.USER_PROFILE,
+      'tasker-profile': ROUTES.PROFILE,
     }
     const target = pageRouteMap[page] || page
     navigate(target, { state })
@@ -66,6 +69,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <TaskerProfile onNavigate={handleNavigate} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.USER_PROFILE}
+        element={
+          <ProtectedRoute>
+            <UserProfile onNavigate={handleNavigate} />
           </ProtectedRoute>
         }
       />

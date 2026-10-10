@@ -39,4 +39,32 @@ public class AuthController(IAuthService auth) : ControllerBase
 
         return Ok(await auth.GetProfileAsync(id, ct));
     }
+
+    [HttpPut("profile")]
+    [Authorize]
+    public async Task<ActionResult<UserResponse>> UpdateProfile(UpdateProfileRequest request, CancellationToken ct)
+    {
+        var id = User.FindFirst("id")?.Value;
+        if (id is null)
+        {
+            return Unauthorized(new { error = "Token không hợp lệ." });
+        }
+
+        var result = await auth.UpdateProfileAsync(id, request, ct);
+        return Ok(result);
+    }
+
+    [HttpPut("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken ct)
+    {
+        var id = User.FindFirst("id")?.Value;
+        if (id is null)
+        {
+            return Unauthorized(new { error = "Token không hợp lệ." });
+        }
+
+        await auth.ChangePasswordAsync(id, request, ct);
+        return Ok(new { message = "Đổi mật khẩu thành công." });
+    }
 }
