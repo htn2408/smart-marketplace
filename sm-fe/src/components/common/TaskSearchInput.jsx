@@ -27,9 +27,15 @@ export default function TaskSearchInput({
 
   const containerRef = useRef(null)
   const inputRef = useRef(null)
+  const justSelectedRef = useRef(false)
 
   // Debounced API call for suggestions
   useEffect(() => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false
+      return
+    }
+
     const trimmed = (value || '').trim()
     if (!trimmed) {
       return
@@ -73,10 +79,12 @@ export default function TaskSearchInput({
   }, [])
 
   const handleSelectSuggestion = (item) => {
+    justSelectedRef.current = true
+    setIsDropdownOpen(false)
+    setSuggestions([])
+    setHighlightedIndex(-1)
     onChange?.(item.title)
     onSelectTask?.(item)
-    setIsDropdownOpen(false)
-    inputRef.current?.focus()
   }
 
   const handleKeyDown = (e) => {

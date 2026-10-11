@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("smart-marketplace-new")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+00aa53c4173d788742a8dc38eb17cd13e0a5fabb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d784ab44f06d38dfb09713508fd478fe604f15ca")]
 [assembly: System.Reflection.AssemblyProductAttribute("smart-marketplace-new")]
 [assembly: System.Reflection.AssemblyTitleAttribute("smart-marketplace-new")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

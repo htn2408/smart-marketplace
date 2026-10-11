@@ -8,7 +8,7 @@ import {
   fetchWards,
   searchAddressSuggestions,
 } from '../../services/addressService'
-import { geocodeAddress } from '../../services/mapService'
+import { geocodeAddress, reverseGeocode } from '../../services/mapService'
 
 /**
  * AddressSelector Component
@@ -36,14 +36,17 @@ export default function AddressSelector({
   const [province, setProvince] = useState('')
   const [district, setDistrict] = useState('')
   const [ward, setWard] = useState('')
-  const [specificAddress, setSpecificAddress] = useState('')
+  const [specificAddress, setSpecificAddress] = useState(initialAddress || '')
 
-  const [coords, setCoords] = useState({ lat: initialLat, lng: initialLng })
+  const [coords, setCoords] = useState({
+    lat: initialLat || 21.0285,
+    lng: initialLng || 105.8542,
+  })
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [addressSuggestions, setAddressSuggestions] = useState([])
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false)
-  const [isGeocodedDetail, setIsGeocodedDetail] = useState(false)
+  const [isGeocodedDetail, setIsGeocodedDetail] = useState(Boolean(initialAddress && initialLat && initialLng))
 
   const addressContainerRef = useRef(null)
 
@@ -61,16 +64,6 @@ export default function AddressSelector({
       isMounted = false
     }
   }, [])
-
-  // 2. Parse initialAddress nếu có
-  useEffect(() => {
-    if (initialAddress && !specificAddress && !province) {
-      setSpecificAddress(initialAddress)
-    }
-    if (initialLat && initialLng) {
-      setCoords({ lat: initialLat, lng: initialLng })
-    }
-  }, [initialAddress, initialLat, initialLng])
 
   // Helper tính full address và thông báo ra ngoài
   const emitChange = (p = province, d = district, w = ward, s = specificAddress, c = coords) => {

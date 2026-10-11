@@ -1,20 +1,17 @@
 import Icon from '../common/Icon'
+import DistrictMultiSelector from '../common/DistrictMultiSelector'
 
 /**
  * Service Area & Coverage Map component for Tasker Profile
+ * Reuses shared DistrictMultiSelector (Province + District without Ward).
  */
 export default function ServiceArea({
-  districts = [
-    { name: 'Quận 1', active: true },
-    { name: 'Quận 3', active: true },
-    { name: 'Quận Bình Thạnh', active: true },
-    { name: 'TP. Thủ Đức', active: true },
-    { name: 'Quận Phú Nhuận', active: true },
-    { name: 'Quận 7', active: true },
-  ],
+  districts = [],
   description = 'Sẵn sàng nhận việc và di chuyển nhanh chóng trong các quận/huyện đã đăng ký hoạt động.',
+  editable = false,
+  onAddDistrict,
+  onRemoveDistrict,
 }) {
-
   return (
     <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm flex flex-col gap-6 border border-surface-variant/30">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -33,24 +30,13 @@ export default function ServiceArea({
         </div>
       </div>
 
-      {/* District Pill Chips */}
-      <div className="flex flex-wrap gap-2">
-        {districts.map((item, idx) => (
-          <span
-            key={idx}
-            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full font-label-sm text-label-sm ${
-              item.active
-                ? 'bg-primary-fixed/40 text-on-primary-fixed-variant font-semibold'
-                : 'bg-surface-container-high text-on-surface font-medium'
-            }`}
-          >
-            {item.active && (
-              <Icon name="near_me" size={16} className="text-primary" />
-            )}
-            {item.name}
-          </span>
-        ))}
-      </div>
+      {/* Shared Province & District Picker (without Ward) */}
+      <DistrictMultiSelector
+        districts={districts}
+        readOnly={!editable}
+        onAddDistrict={onAddDistrict}
+        onRemoveDistrict={onRemoveDistrict}
+      />
     </div>
   )
 }

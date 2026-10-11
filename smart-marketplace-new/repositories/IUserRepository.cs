@@ -12,6 +12,12 @@ public interface IUserRepository
     Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default);
     Task<bool> ExistsByPhoneAsync(string phoneNumber, CancellationToken ct = default);
     Task AddAsync(User user, CancellationToken ct = default);
+    Task UpdateWorkerProfileAsync(
+        string userId,
+        string? description,
+        List<string>? skillIds,
+        List<WorkerDistrict>? districts,
+        CancellationToken ct = default);
 
     // Lưu thay đổi xuống DB. Service gọi để chủ động bắt DbUpdateException (race duplicate).
     Task<int> SaveAsync(CancellationToken ct = default);

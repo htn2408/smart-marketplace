@@ -58,6 +58,8 @@ export default function TaskDetail({ onNavigate }) {
   // ==============================================================
   // State for Section 4: Cascading Address (Tỉnh -> Huyện -> Xã) & Google Maps Modal
   // ==============================================================
+  const { user } = useAuth()
+
   const [provincesList, setProvincesList] = useState([])
   const [districtsList, setDistrictsList] = useState([])
   const [wardsList, setWardsList] = useState([])
@@ -65,17 +67,21 @@ export default function TaskDetail({ onNavigate }) {
   const [province, setProvince] = useState('')
   const [district, setDistrict] = useState('')
   const [ward, setWard] = useState('')
-  const [specificAddress, setSpecificAddress] = useState('')
+  const [specificAddress, setSpecificAddress] = useState(() => user?.address || '')
 
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [mapSearchQuery, setMapSearchQuery] = useState('')
-  const [coords, setCoords] = useState({ lat: 21.0285, lng: 105.8542 })
+  const [coords, setCoords] = useState(() => ({
+    lat: user?.latitude ? Number(user.latitude) : 21.0285,
+    lng: user?.longitude ? Number(user.longitude) : 105.8542,
+  }))
   const [addressSuggestions, setAddressSuggestions] = useState([])
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false)
+  const [isGeocodedDetail, setIsGeocodedDetail] = useState(() =>
+    Boolean(user?.address && user?.latitude && user?.longitude)
+  )
   const addressContainerRef = useRef(null)
-
-  const { user } = useAuth()
 
   // Bước 1: Khởi tạo State và tải danh sách Tỉnh/Thành
   useEffect(() => {
@@ -87,18 +93,6 @@ export default function TaskDetail({ onNavigate }) {
     }
     loadProvinces()
   }, [])
-
-  // Tự động điền địa chỉ mặc định của người dùng từ CSDL nếu đã có
-  useEffect(() => {
-    if (user?.address && !specificAddress) {
-      setSpecificAddress(user.address)
-      if (user.latitude && user.longitude) {
-        const uCoords = { lat: Number(user.latitude), lng: Number(user.longitude) }
-        setCoords(uCoords)
-        setIsGeocodedDetail(true)
-      }
-    }
-  }, [user])
 
   // Bước 2: Logic chọn Tỉnh → Tải Quận/Huyện (Cascading 1)
   const handleProvinceChange = async (e) => {
@@ -200,9 +194,6 @@ export default function TaskDetail({ onNavigate }) {
     }
   }, [specificAddress, coords.lat, coords.lng])
 
-  const [isGeocodedDetail, setIsGeocodedDetail] = useState(false)
-  const [geocodedLabel, setGeocodedLabel] = useState('')
-
   // Đóng dropdown gợi ý khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -255,7 +246,6 @@ export default function TaskDetail({ onNavigate }) {
           if (match.lat && match.lng) {
             setCoords({ lat: match.lat, lng: match.lng })
             setIsGeocodedDetail(true)
-            setGeocodedLabel(match.displayName || match.title)
           }
         }
       } catch (err) {
@@ -272,7 +262,6 @@ export default function TaskDetail({ onNavigate }) {
     if (item.lat && item.lng) {
       setCoords({ lat: item.lat, lng: item.lng })
       setIsGeocodedDetail(true)
-      setGeocodedLabel(item.displayName || item.title)
     }
     setIsAddressDropdownOpen(false)
   }
@@ -290,10 +279,8 @@ export default function TaskDetail({ onNavigate }) {
     }
   }
 
-  const handleMapAddressResolved = (resolved) => {
-    if (resolved && resolved.displayName) {
-      setGeocodedLabel(resolved.displayName)
-    }
+  const handleMapAddressResolved = () => {
+    // Address resolved on map pin drop
   }
 
   // Bước 5: Logic tương tác với Google Maps
@@ -306,7 +293,6 @@ export default function TaskDetail({ onNavigate }) {
     if (newCoords && newCoords.lat && newCoords.lng) {
       setCoords(newCoords)
       setIsGeocodedDetail(true)
-      setGeocodedLabel(confirmedQuery)
     }
     if (confirmedQuery) {
       setSpecificAddress(confirmedQuery)

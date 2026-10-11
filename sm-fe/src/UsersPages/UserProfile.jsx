@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import Icon from '../components/common/Icon'
@@ -14,13 +14,13 @@ export default function UserProfile({ onNavigate }) {
   const { user, token, updateUser } = useAuth()
 
   // Form thông tin cá nhân
-  const [name, setName] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [addressData, setAddressData] = useState({
-    address: '',
-    latitude: null,
-    longitude: null,
-  })
+  const [name, setName] = useState(() => user?.name || '')
+  const [phoneNumber, setPhoneNumber] = useState(() => user?.phoneNumber || '')
+  const [addressData, setAddressData] = useState(() => ({
+    address: user?.address || '',
+    latitude: user?.latitude || null,
+    longitude: user?.longitude || null,
+  }))
 
   // Form đổi mật khẩu
   const [oldPassword, setOldPassword] = useState('')
@@ -37,19 +37,6 @@ export default function UserProfile({ onNavigate }) {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordSuccess, setPasswordSuccess] = useState('')
   const [passwordError, setPasswordError] = useState('')
-
-  // Sync state từ current user
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '')
-      setPhoneNumber(user.phoneNumber || '')
-      setAddressData({
-        address: user.address || '',
-        latitude: user.latitude || null,
-        longitude: user.longitude || null,
-      })
-    }
-  }, [user])
 
   // Xử lý cập nhật thông tin cá nhân & địa chỉ
   const handleUpdateProfile = async (e) => {

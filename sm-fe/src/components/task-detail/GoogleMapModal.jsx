@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import Icon from '../common/Icon'
 import Button from '../common/Button'
 import MapPicker from './MapPicker'
-import { geocodeAddress, reverseGeocode } from '../../services/mapService'
+import { geocodeAddress } from '../../services/mapService'
 
 /**
  * Interactive Map Modal for Precise Address Selection
@@ -47,8 +47,6 @@ function GoogleMapModalContent({
   useEffect(() => {
     const trimmed = searchQuery.trim()
     if (trimmed.length < 2) {
-      setSuggestions([])
-      setShowDropdown(false)
       return
     }
 
@@ -76,7 +74,7 @@ function GoogleMapModalContent({
       clearTimeout(timer)
       controller.abort()
     }
-  }, [searchQuery, modalCoords.lat, modalCoords.lng])
+  }, [searchQuery, modalCoords])
 
   // Close dropdown when clicked outside
   useEffect(() => {

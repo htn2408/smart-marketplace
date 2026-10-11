@@ -1,12 +1,13 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import Homepage from '../pages/Homepage'
-import Services from '../pages/Services'
-import SearchTasker from '../pages/SearchTasker'
-import TaskerProfile from '../pages/TaskerProfile'
-import UserProfile from '../pages/UserProfile'
-import TaskDetail from '../pages/TaskDetail'
-import Login from '../pages/Login'
-import NotFound from '../pages/NotFound'
+import Homepage from '../UsersPages/Homepage'
+import Services from '../UsersPages/Services'
+import SearchTasker from '../UsersPages/SearchTasker'
+import TaskerProfile from '../UsersPages/TaskerProfile'
+import UserProfile from '../UsersPages/UserProfile'
+import TaskDetail from '../UsersPages/TaskDetail'
+import Login from '../UsersPages/Login'
+import NotFound from '../UsersPages/NotFound'
+import TaskersDashboard from '../TaskersPages/TaskersDashboard'
 import ProtectedRoute from '../components/common/ProtectedRoute'
 import { ROUTES } from './paths'
 
@@ -24,7 +25,8 @@ export default function AppRoutes() {
       login: ROUTES.LOGIN,
       services: ROUTES.SERVICES,
       search: ROUTES.SEARCH,
-      'become-tasker': ROUTES.SEARCH,
+      'become-tasker': ROUTES.TASKER_DASHBOARD,
+      'tasker-dashboard': ROUTES.TASKER_DASHBOARD,
       'task-detail': ROUTES.TASK_DETAIL,
       profile: ROUTES.USER_PROFILE,
       'user-profile': ROUTES.USER_PROFILE,
@@ -77,6 +79,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <UserProfile onNavigate={handleNavigate} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.TASKER_DASHBOARD}
+        element={
+          <ProtectedRoute>
+            <TaskersDashboard onNavigate={handleNavigate} />
           </ProtectedRoute>
         }
       />

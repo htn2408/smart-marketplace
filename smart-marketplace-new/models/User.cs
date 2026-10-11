@@ -29,9 +29,6 @@ public class User
     [Column("phone_number")]
     public string? PhoneNumber { get; set; }
 
-    [Column("role")]
-    public Role Role { get; set; } = Role.CLIENT;
-
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -55,9 +52,11 @@ public class User
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    // Quan hệ 1-n: Một User có thể giữ nhiều Role (CLIENT, TASKER, ADMIN) trong bảng user_roles
+    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+
     // Quan hệ 1-1:
-    // Nếu user là WORKER thì sẽ có thêm profile này
-    // CLIENT thì không có
+    // Nếu user có role TASKER thì sẽ có thêm profile này
     public WorkerProfile? WorkerProfile { get; set; }
 
     // Khách đăng task

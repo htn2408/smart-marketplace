@@ -18,16 +18,8 @@ export default function Services({ onNavigate }) {
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategoryFilter, setActiveCategoryFilter] = useState(
-    location.state?.categoryId || location.state?.selectedCategory || 'all'
+    () => location.state?.categoryId || location.state?.selectedCategory || 'all'
   )
-
-  useEffect(() => {
-    if (location.state?.categoryId) {
-      setActiveCategoryFilter(location.state.categoryId)
-    } else if (location.state?.selectedCategory) {
-      setActiveCategoryFilter(location.state.selectedCategory)
-    }
-  }, [location.state])
 
   useEffect(() => {
     let isMounted = true

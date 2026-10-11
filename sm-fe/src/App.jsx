@@ -16,6 +16,7 @@ function App() {
     if (p.startsWith('/services')) return 'services'
     if (p.startsWith('/search')) return 'search'
     if (p.startsWith('/user-profile')) return 'user-profile'
+    if (p.startsWith('/tasker-dashboard')) return 'tasker-dashboard'
     if (p.startsWith('/profile')) return 'profile'
     if (p.startsWith('/login')) return 'login'
     return ''
@@ -87,6 +88,17 @@ function App() {
             }`}
           >
             /user-profile
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.TASKER_DASHBOARD)}
+            className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
+              activeTab === 'tasker-dashboard'
+                ? 'bg-primary text-white shadow-sm'
+                : 'hover:bg-white/10 text-gray-300'
+            }`}
+          >
+            /tasker-dashboard
           </button>
           <button
             type="button"

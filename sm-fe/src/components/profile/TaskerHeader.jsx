@@ -1,16 +1,19 @@
 import Icon from '../common/Icon'
 import Button from '../common/Button'
 import Badge from '../common/Badge'
+import { DEFAULT_AVATAR } from '../../assets/constants'
 
 /**
  * Tasker Identity Header Card on Tasker Profile
  */
 export default function TaskerHeader({
-  name = 'Nguyễn Anh Tuấn',
+  name = 'Chưa cập nhật tên',
   avatar,
-  profession = 'Chuyên gia Lắp ráp Nội thất & Kỹ thuật Nhà ở Tiện ích',
-  completedTasks = 540,
+  profession = 'Đối tác Tasker trên TaskMate',
+  completedTasks = 0,
+  rating = 5.0,
   onMessage,
+  isOwnerView = false,
 }) {
   return (
     <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
@@ -21,7 +24,7 @@ export default function TaskerHeader({
             <img
               alt={`Chân dung ${name}`}
               className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-md ring-4 ring-primary/10"
-              src={avatar}
+              src={avatar || DEFAULT_AVATAR}
             />
             {/* Online Green Status Indicator */}
             <span
@@ -45,7 +48,7 @@ export default function TaskerHeader({
               <Badge
                 variant="primary"
                 icon="verified"
-                title="TaskMate đã thẩm định giấy tờ tuỳ thân và hồ sơ tư pháp số 2"
+                title="TaskMate đã thẩm định giấy tờ tuỳ thân và hồ sơ tư pháp"
               >
                 Đã xác thực danh tính
               </Badge>
@@ -57,7 +60,7 @@ export default function TaskerHeader({
             </p>
 
             {/* Core Stats Lockup */}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-4 pt-1">
               <div className="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
                 <Icon name="task_alt" size={18} className="text-primary" />
                 <span>
@@ -67,22 +70,33 @@ export default function TaskerHeader({
                   việc hoàn thành
                 </span>
               </div>
+              <div className="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+                <Icon name="star" size={18} className="text-amber-500" />
+                <span>
+                  <strong className="font-semibold text-on-surface">
+                    {Number(rating || 5.0).toFixed(2)}
+                  </strong>{' '}
+                  điểm đánh giá
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="flex sm:flex-col items-center gap-2.5 w-full sm:w-auto shrink-0">
-          <Button
-            variant="tonal"
-            size="md"
-            icon="chat"
-            className="w-full sm:w-36 text-primary"
-            onClick={onMessage}
-          >
-            Gửi tin nhắn
-          </Button>
-        </div>
+        {!isOwnerView && onMessage && (
+          <div className="flex sm:flex-col items-center gap-2.5 w-full sm:w-auto shrink-0">
+            <Button
+              variant="tonal"
+              size="md"
+              icon="chat"
+              className="w-full sm:w-36 text-primary"
+              onClick={onMessage}
+            >
+              Gửi tin nhắn
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

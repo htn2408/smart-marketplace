@@ -6,9 +6,7 @@ using smart_marketplace_new.repositories;
 
 namespace smart_marketplace_new.services;
 
-// Business logic của auth — port 1:1 từ AuthController trước đây,
-// giữ nguyên các fix: login theo email, chống timing attack,
-// race duplicate → DuplicateResourceException (409 ở exception handler).
+// Business logic của auth — hỗ trợ đa role qua bảng user_roles (JOIN từ UserRepository).
 public class AuthService(IUserRepository users, IJwtTokenService tokenService) : IAuthService
 {
     // Hash dummy để so khi email không tồn tại — thời gian phản hồi như bcrypt thật,
@@ -33,7 +31,10 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
             Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Name = request.Name.Trim(),
             PhoneNumber = request.PhoneNumber,
-            Role = Role.CLIENT,
+            UserRoles = new List<UserRole>
+            {
+                new() { Role = Role.CLIENT }
+            }
         };
 
         await users.AddAsync(user, ct);
@@ -66,15 +67,19 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
             throw new InvalidCredentialsException("Email hoặc mật khẩu không đúng.");
         }
 
+        var roleNames = GetRoleNames(user);
+        var primaryRole = GetPrimaryRole(roleNames);
+
         return new LoginResponse
         {
-            Token = tokenService.CreateToken(user.Id, user.Role.ToString()),
+            Token = tokenService.CreateToken(user.Id, roleNames),
             User = new LoginResponse.UserInfo
             {
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
-                Role = user.Role.ToString(),
+                Role = primaryRole,
+                Roles = roleNames,
             },
         };
     }
@@ -118,6 +123,24 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
         return ToResponse(user);
     }
 
+    public async Task<UserResponse> UpdateWorkerProfileAsync(string userId, UpdateWorkerProfileRequest request, CancellationToken ct = default)
+    {
+        var districts = request.ServiceDistricts?.Select(d => new WorkerDistrict
+        {
+            ProvinceCode = d.ProvinceCode,
+            ProvinceName = d.ProvinceName,
+            DistrictCode = d.DistrictCode,
+            DistrictName = d.DistrictName,
+        }).ToList();
+
+        await users.UpdateWorkerProfileAsync(userId, request.Description, request.SkillIds, districts, ct);
+
+        var updatedUser = await users.FindByIdAsync(userId, ct)
+            ?? throw new InvalidCredentialsException("Người dùng không tồn tại.");
+
+        return ToResponse(updatedUser);
+    }
+
     public async Task ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct = default)
     {
         var user = await users.FindByIdAsync(userId, ct)
@@ -136,16 +159,71 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
         await users.SaveAsync(ct);
     }
 
-    private static UserResponse ToResponse(User user) => new()
+    private static List<string> GetRoleNames(User user)
     {
-        Id = user.Id,
-        Email = user.Email,
-        Name = user.Name,
-        PhoneNumber = user.PhoneNumber,
-        Role = user.Role.ToString(),
-        Address = user.Address,
-        Latitude = user.Latitude,
-        Longitude = user.Longitude,
-        CreatedAt = user.CreatedAt,
-    };
+        var roles = user.UserRoles
+            .Select(ur => ur.Role.ToString())
+            .Distinct()
+            .ToList();
+
+        if (roles.Count == 0)
+        {
+            roles.Add(Role.CLIENT.ToString());
+        }
+
+        return roles;
+    }
+
+    private static string GetPrimaryRole(List<string> roles)
+    {
+        if (roles.Contains(Role.ADMIN.ToString())) return Role.ADMIN.ToString();
+        if (roles.Contains(Role.TASKER.ToString())) return Role.TASKER.ToString();
+        return Role.CLIENT.ToString();
+    }
+
+    private static UserResponse ToResponse(User user)
+    {
+        var roleNames = GetRoleNames(user);
+        return new UserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            Name = user.Name,
+            PhoneNumber = user.PhoneNumber,
+            Role = GetPrimaryRole(roleNames),
+            Roles = roleNames,
+            Address = user.Address,
+            Latitude = user.Latitude,
+            Longitude = user.Longitude,
+            CreatedAt = user.CreatedAt,
+            WorkerProfile = user.WorkerProfile is null
+                ? null
+                : new UserResponse.WorkerProfileDto
+                {
+                    Id = user.WorkerProfile.Id,
+                    Description = user.WorkerProfile.Description,
+                    Rating = user.WorkerProfile.Rating,
+                    CompletedTasks = user.WorkerProfile.CompletedTasks,
+                    Skills = user.WorkerProfile.Skills
+                        .Where(ws => ws.Skill is not null)
+                        .Select(ws => new UserResponse.WorkerSkillDto
+                        {
+                            SkillId = ws.SkillId,
+                            SkillName = ws.Skill.Name,
+                            CategoryName = ws.Skill.Category?.Name,
+                        })
+                        .ToList(),
+                    ServiceDistricts = user.WorkerProfile.ServiceDistricts
+                        .Select(wd => new UserResponse.WorkerDistrictDto
+                        {
+                            Id = wd.Id,
+                            ProvinceCode = wd.ProvinceCode,
+                            ProvinceName = wd.ProvinceName,
+                            DistrictCode = wd.DistrictCode,
+                            DistrictName = wd.DistrictName,
+                        })
+                        .ToList(),
+                },
+        };
+    }
 }

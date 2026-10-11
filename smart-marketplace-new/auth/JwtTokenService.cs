@@ -5,22 +5,25 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace smart_marketplace_new.auth;
 
-// Service cấp JWT — dùng cho luồng đăng nhập (payload { id, role }
-// giống hệt req.user mà authenticate.js gắn vào request).
+// Service cấp JWT — hỗ trợ nhiều role cho 1 người dùng (từ bảng user_roles).
 public interface IJwtTokenService
 {
-    string CreateToken(string userId, string role);
+    string CreateToken(string userId, IEnumerable<string> roles);
 }
 
 public class JwtTokenService(JwtSettings settings) : IJwtTokenService
 {
-    public string CreateToken(string userId, string role)
+    public string CreateToken(string userId, IEnumerable<string> roles)
     {
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim("id", userId),
-            new Claim("role", role),
+            new("id", userId),
         };
+
+        foreach (var role in roles.Distinct())
+        {
+            claims.Add(new Claim("role", role));
+        }
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.Key)),

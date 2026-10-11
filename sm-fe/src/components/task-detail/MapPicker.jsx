@@ -47,7 +47,7 @@ export default function MapPicker({
 
   // Handle position update & trigger reverse geocoding
   const handleUpdatePosition = useCallback(
-    (newLat, newLng, fromGPS = false) => {
+    (newLat, newLng) => {
       lastCoordsRef.current = { lat: newLat, lng: newLng }
 
       if (markerRef.current) {
@@ -76,7 +76,7 @@ export default function MapPicker({
               onAddressResolved(rev)
             }
           }
-        } catch (e) {
+        } catch {
           // Keep coordinates hint
         }
       }, 400)

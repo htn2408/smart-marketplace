@@ -54,6 +54,20 @@ public class AuthController(IAuthService auth) : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("worker-profile")]
+    [Authorize]
+    public async Task<ActionResult<UserResponse>> UpdateWorkerProfile(UpdateWorkerProfileRequest request, CancellationToken ct)
+    {
+        var id = User.FindFirst("id")?.Value;
+        if (id is null)
+        {
+            return Unauthorized(new { error = "Token không hợp lệ." });
+        }
+
+        var result = await auth.UpdateWorkerProfileAsync(id, request, ct);
+        return Ok(result);
+    }
+
     [HttpPut("change-password")]
     [Authorize]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken ct)

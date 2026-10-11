@@ -7,6 +7,7 @@ namespace smart_marketplace_new.models;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<WorkerProfile> WorkerProfiles => Set<WorkerProfile>();
     public DbSet<SkillCategory> SkillCategories => Set<SkillCategory>();
     public DbSet<Skill> Skills => Set<Skill>();
@@ -24,9 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(u => u.Email).IsUnique();
             e.HasIndex(u => u.PhoneNumber).IsUnique();
 
-            // role lưu dạng chuỗi khớp cột ENUM('CLIENT','WORKER') của MySQL,
             // balance mặc định 1.000.000 VNĐ phía DB
-            e.Property(u => u.Role).HasConversion<string>().HasDefaultValue(Role.CLIENT);
             e.Property(u => u.Balance).HasDefaultValue(1000000.00m);
             e.Property(u => u.HeldBalance).HasDefaultValue(0.00m);
 
@@ -34,6 +33,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasMany(u => u.TasksPosted)
                 .WithOne(t => t.Client)
                 .HasForeignKey(t => t.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ---- user_roles (PK tổng hợp: user_id + role) ----
+        modelBuilder.Entity<UserRole>(e =>
+        {
+            e.HasKey(ur => new { ur.UserId, ur.Role });
+
+            // role lưu dạng chuỗi khớp cột ENUM('CLIENT','TASKER','ADMIN') của MySQL
+            e.Property(ur => ur.Role).HasConversion<string>();
+
+            e.HasOne(ur => ur.User)
+                .WithMany(u => u.UserRoles)
+                .HasForeignKey(ur => ur.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

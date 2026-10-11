@@ -8,5 +8,6 @@ export const ROUTES = {
   TASK_DETAIL: '/task-detail',
   PROFILE: '/profile',
   USER_PROFILE: '/user-profile',
+  TASKER_DASHBOARD: '/tasker-dashboard',
   LOGIN: '/login',
 }

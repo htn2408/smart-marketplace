@@ -110,14 +110,31 @@ export default function Header({ activePath, onNavigate }) {
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex rounded-full text-primary"
-            onClick={(e) => handleLinkClick(e, 'become-tasker', ROUTES.SEARCH)}
-          >
-            Trở thành Tasker
-          </Button>
+          {(() => {
+            const isTasker =
+              user?.roles?.includes('TASKER') ||
+              user?.roles?.includes('WORKER') ||
+              user?.role === 'TASKER' ||
+              user?.role === 'WORKER'
+
+            return (
+              <Button
+                variant="outline"
+                size="sm"
+                icon={isTasker ? 'swap_horiz' : undefined}
+                className="hidden sm:inline-flex rounded-full text-primary"
+                onClick={(e) =>
+                  handleLinkClick(
+                    e,
+                    isTasker ? 'tasker-dashboard' : 'become-tasker',
+                    isTasker ? ROUTES.TASKER_DASHBOARD : ROUTES.SEARCH
+                  )
+                }
+              >
+                {isTasker ? 'Chế độ Tasker' : 'Trở thành Tasker'}
+              </Button>
+            )
+          })()}
 
           {/* Authentication State Display */}
           {!isAuthenticated ? (
@@ -167,7 +184,12 @@ export default function Header({ activePath, onNavigate }) {
                       {user?.email}
                     </p>
                     <span className="inline-block mt-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-primary-fixed/30 text-primary">
-                      {user?.role === 'WORKER' ? 'Thợ Tasker' : 'Khách hàng'}
+                      {user?.roles?.includes('TASKER') ||
+                      user?.roles?.includes('WORKER') ||
+                      user?.role === 'TASKER' ||
+                      user?.role === 'WORKER'
+                        ? 'Khách hàng • Tasker'
+                        : 'Khách hàng'}
                     </span>
                   </div>
 

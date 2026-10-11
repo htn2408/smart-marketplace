@@ -197,3 +197,35 @@ export async function changePasswordApi(token, payload) {
 
   return data
 }
+
+/**
+ * Update Tasker CV / WorkerProfile (description, skillIds, serviceDistricts)
+ * @param {string} token
+ * @param {{ description?: string, skillIds?: string[], serviceDistricts?: Array<{ provinceCode: string, provinceName: string, districtCode: string, districtName: string }> }} payload
+ */
+export async function updateWorkerProfileApi(token, payload) {
+  if (!token) throw new Error('Không có token xác thực.')
+
+  const response = await fetch(`${API_BASE_URL}/auth/worker-profile`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message =
+      data.error ||
+      data.message ||
+      data.title ||
+      (data.errors && Object.values(data.errors).flat().join(' ')) ||
+      'Cập nhật hồ sơ Tasker thất bại.'
+    throw new Error(message)
+  }
+
+  return data
+}
+

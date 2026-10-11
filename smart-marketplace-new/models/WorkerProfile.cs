@@ -15,6 +15,9 @@ public class WorkerProfile
     [Column("user_id", TypeName = "varchar(36)")]
     public string UserId { get; set; } = null!;
 
+    [Column("description", TypeName = "text")]
+    public string? Description { get; set; }
+
     [Column("rating", TypeName = "decimal(3,2)")]
     public decimal Rating { get; set; } = 5.00m;
 

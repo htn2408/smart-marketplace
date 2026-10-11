@@ -1,7 +1,7 @@
 namespace smart_marketplace_new.dto;
 
 // POST /api/auth/login — 200
-// Token có payload { id, role } — giống hệt bản Node để frontend dùng lại không đổi.
+// Token có payload { id, role: [...] } hỗ trợ đa vai trò từ bảng user_roles.
 public class LoginResponse
 {
     public string Token { get; set; } = null!;
@@ -14,5 +14,6 @@ public class LoginResponse
         public string Name { get; set; } = null!;
         public string Email { get; set; } = null!;
         public string Role { get; set; } = null!;
+        public List<string> Roles { get; set; } = new();
     }
 }
