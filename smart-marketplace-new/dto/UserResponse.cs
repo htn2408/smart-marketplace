@@ -20,6 +20,7 @@ public class UserResponse
     {
         public string Id { get; set; } = null!;
         public string? Description { get; set; }
+        public string Status { get; set; } = "ONLINE";
         public decimal Rating { get; set; }
         public int CompletedTasks { get; set; }
         public List<WorkerSkillDto> Skills { get; set; } = new();

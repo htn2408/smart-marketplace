@@ -34,4 +34,16 @@ public class TaskController(ITaskService tasks) : ControllerBase
         var result = await tasks.CreateAsync(clientId, request, ct);
         return StatusCode(StatusCodes.Status201Created, result);
     }
+
+    // Lọc & chấm điểm Tasker theo taskId (Hard filter: ONLINE + Skill + worker_districts + không trùng lịch;
+    // Score: Rating 60% + CompletedTasks 40%)
+    [HttpPost("filter")]
+    [HttpPost("/api/filter")]
+    [AllowAnonymous]
+    public async Task<ActionResult<FilterTaskersResponse>> FilterTaskers(
+        [FromBody] FilterTaskersRequest request, CancellationToken ct = default)
+    {
+        var result = await tasks.FilterAndScoreWorkersAsync(request.TaskId, ct);
+        return Ok(result);
+    }
 }

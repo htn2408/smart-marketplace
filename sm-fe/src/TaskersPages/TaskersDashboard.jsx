@@ -3,28 +3,42 @@ import TaskerLayout from '../components/layout/TaskerLayout'
 import Icon from '../components/common/Icon'
 import Button from '../components/common/Button'
 import Badge from '../components/common/Badge'
-import DistrictMultiSelector from '../components/common/DistrictMultiSelector'
 import { useAuth } from '../hooks/useAuth'
 import { updateWorkerProfileApi } from '../services/authService'
 import { TASKER_DASHBOARD_MOCK } from '../constants/mockData'
 
 /**
  * TaskersDashboard Page - Bảng điều khiển Thợ (Verdant Trust Theme)
- * Sử dụng chung khung TaskerLayout (Sidebar + Topbar có nút Chế độ Client) và DistrictMultiSelector.
+ * Sử dụng chung khung TaskerLayout (Sidebar + Topbar có nút Chế độ Client).
  */
 export default function TaskersDashboard({ onNavigate }) {
   const { user, token, updateUser } = useAuth()
 
   const [activeMenu, setActiveMenu] = useState('overview')
-  const [isOnline, setIsOnline] = useState(true)
+  const [togglingStatus, setTogglingStatus] = useState(false)
   const [isOffersExpanded, setIsOffersExpanded] = useState(false)
 
   // Danh sách công việc từ constant mock
   const [availableTasks, setAvailableTasks] = useState(TASKER_DASHBOARD_MOCK.availableTasks)
-  const [acceptedTasks, setAcceptedTasks] = useState(TASKER_DASHBOARD_MOCK.acceptedTasks)
+  const [, setAcceptedTasks] = useState(TASKER_DASHBOARD_MOCK.acceptedTasks)
 
   const wp = user?.workerProfile || null
+  const isOnline = (wp?.status || 'ONLINE') === 'ONLINE'
   const serviceDistricts = wp?.serviceDistricts || []
+
+  const handleToggleOnline = async () => {
+    if (!token || togglingStatus) return
+    const nextStatus = isOnline ? 'OFFLINE' : 'ONLINE'
+    try {
+      setTogglingStatus(true)
+      const updatedUser = await updateWorkerProfileApi(token, { status: nextStatus })
+      updateUser(updatedUser)
+    } catch (err) {
+      alert(err.message || 'Không thể cập nhật trạng thái nhận việc.')
+    } finally {
+      setTogglingStatus(false)
+    }
+  }
 
   const handleSelectSidebarMenu = (menuId) => {
     if (menuId === 'profile_services') {
@@ -32,29 +46,6 @@ export default function TaskersDashboard({ onNavigate }) {
       return
     }
     setActiveMenu(menuId)
-  }
-
-  const persistDistricts = async (nextDistricts) => {
-    if (!token) return
-    try {
-      const updated = await updateWorkerProfileApi(token, {
-        description: wp?.description ?? '',
-        skillIds: (wp?.skills || []).map((s) => s.skillId),
-        serviceDistricts: nextDistricts,
-      })
-      updateUser(updated)
-    } catch (err) {
-      alert(err.message || 'Không thể lưu khu vực hoạt động.')
-    }
-  }
-
-  const handleAddDistrict = async (newDist) => {
-    if (serviceDistricts.some((d) => d.districtCode === newDist.districtCode)) return
-    await persistDistricts([...serviceDistricts, newDist])
-  }
-
-  const handleRemoveDistrict = async (districtCode) => {
-    await persistDistricts(serviceDistricts.filter((d) => d.districtCode !== districtCode))
   }
 
   const handleAcceptTask = (task) => {
@@ -98,7 +89,7 @@ export default function TaskersDashboard({ onNavigate }) {
       activeMenu={activeMenu}
       onSelectMenu={handleSelectSidebarMenu}
       isOnline={isOnline}
-      onToggleOnline={() => setIsOnline(!isOnline)}
+      onToggleOnline={handleToggleOnline}
       onNavigate={onNavigate}
       title="Bảng điều khiển Thợ"
     >
@@ -156,10 +147,11 @@ export default function TaskersDashboard({ onNavigate }) {
             </div>
             <button
               type="button"
-              onClick={() => setIsOnline(!isOnline)}
+              disabled={togglingStatus}
+              onClick={handleToggleOnline}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
                 isOnline ? 'bg-primary' : 'bg-outline-variant'
-              }`}
+              } ${togglingStatus ? 'opacity-60' : ''}`}
             >
               <span
                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -582,49 +574,6 @@ export default function TaskersDashboard({ onNavigate }) {
             ))}
           </div>
         </div>
-      </section>
-
-      {/* Multi-District Coverage Section (Reuses shared DistrictMultiSelector) */}
-      <section className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 space-y-5">
-        <div>
-          <h3 className="font-headline-sm text-base font-extrabold text-on-surface flex items-center gap-2">
-            <Icon name="map" size={20} className="text-primary" />
-            <span>Khu vực nhận việc của bạn ({serviceDistricts.length} Quận/Huyện)</span>
-          </h3>
-          <p className="text-xs text-on-surface-variant mt-0.5">
-            Đăng ký nhiều Quận/Huyện hoạt động để hệ thống tự động gợi ý các công việc gần bạn nhất.
-          </p>
-        </div>
-
-        <DistrictMultiSelector
-          districts={serviceDistricts}
-          onAddDistrict={handleAddDistrict}
-          onRemoveDistrict={handleRemoveDistrict}
-        />
-
-        {acceptedTasks.length > 0 && (
-          <div className="pt-3 border-t border-surface-variant/30">
-            <p className="text-xs font-bold text-on-surface-variant mb-2">
-              Danh sách việc đã nhận ({acceptedTasks.length}):
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {acceptedTasks.map((t) => (
-                <span
-                  key={t.id}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-xs font-semibold text-on-surface border border-surface-variant/40"
-                >
-                  <Icon
-                    name={t.status === 'COMPLETED' ? 'verified' : 'pending_actions'}
-                    size={14}
-                    className="text-primary"
-                  />
-                  <span>{t.title}</span>
-                  <span className="text-primary font-bold">({formatVND(t.offeredPrice)})</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </section>
     </TaskerLayout>
   )

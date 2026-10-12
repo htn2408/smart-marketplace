@@ -39,6 +39,7 @@ public class UserRepository(AppDbContext db) : IUserRepository
     public async Task UpdateWorkerProfileAsync(
         string userId,
         string? description,
+        string? status,
         List<string>? skillIds,
         List<WorkerDistrict>? districts,
         CancellationToken ct = default)
@@ -48,6 +49,10 @@ public class UserRepository(AppDbContext db) : IUserRepository
             .Include(wp => wp.ServiceDistricts)
             .FirstOrDefaultAsync(wp => wp.UserId == userId, ct);
 
+        var normalizedStatus = !string.IsNullOrWhiteSpace(status)
+            ? status.Trim().ToUpperInvariant()
+            : null;
+
         if (profile is null)
         {
             profile = new WorkerProfile
@@ -55,14 +60,23 @@ public class UserRepository(AppDbContext db) : IUserRepository
                 Id = Guid.NewGuid().ToString(),
                 UserId = userId,
                 Description = description?.Trim(),
+                Status = normalizedStatus ?? "ONLINE",
                 Rating = 5.00m,
                 CompletedTasks = 0,
             };
             await db.WorkerProfiles.AddAsync(profile, ct);
         }
-        else if (description is not null)
+        else
         {
-            profile.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+            if (description is not null)
+            {
+                profile.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+            }
+
+            if (normalizedStatus is not null)
+            {
+                profile.Status = normalizedStatus;
+            }
         }
 
         // Đảm bảo user có quyền TASKER trong user_roles

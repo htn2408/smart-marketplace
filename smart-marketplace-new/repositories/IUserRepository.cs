@@ -15,6 +15,7 @@ public interface IUserRepository
     Task UpdateWorkerProfileAsync(
         string userId,
         string? description,
+        string? status,
         List<string>? skillIds,
         List<WorkerDistrict>? districts,
         CancellationToken ct = default);

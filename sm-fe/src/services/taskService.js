@@ -109,3 +109,38 @@ export async function fetchTaskSuggestions(query, { signal, limit = 6 } = {}) {
         },
       ]
 }
+
+/**
+ * Filter & score candidate Taskers for a PENDING task via Backend POST /api/tasks/filter
+ * Hard Filter: ONLINE + requiredSkillId + worker_districts + no schedule conflict
+ * Score: Rating (60%) + CompletedTasks (40%)
+ * @param {string} taskId
+ * @returns {Promise<{ task: object, totalCandidates: number, results: Array<object> }>}
+ */
+export async function filterTaskersByTaskId(taskId) {
+  if (!taskId) {
+    throw new Error('taskId là bắt buộc.')
+  }
+
+  const response = await fetch(`${API_BASE_URL}/tasks/filter`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ taskId }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message =
+      data.error ||
+      data.message ||
+      data.title ||
+      'Không thể lọc danh sách Tasker phù hợp.'
+    throw new Error(message)
+  }
+
+  return data
+}
+

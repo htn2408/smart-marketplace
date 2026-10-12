@@ -133,7 +133,7 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
             DistrictName = d.DistrictName,
         }).ToList();
 
-        await users.UpdateWorkerProfileAsync(userId, request.Description, request.SkillIds, districts, ct);
+        await users.UpdateWorkerProfileAsync(userId, request.Description, request.Status, request.SkillIds, districts, ct);
 
         var updatedUser = await users.FindByIdAsync(userId, ct)
             ?? throw new InvalidCredentialsException("Người dùng không tồn tại.");
@@ -202,6 +202,7 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
                 {
                     Id = user.WorkerProfile.Id,
                     Description = user.WorkerProfile.Description,
+                    Status = user.WorkerProfile.Status,
                     Rating = user.WorkerProfile.Rating,
                     CompletedTasks = user.WorkerProfile.CompletedTasks,
                     Skills = user.WorkerProfile.Skills

@@ -66,6 +66,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(t => t.WorkerProfileId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            e.Property(w => w.Status).HasDefaultValue("ONLINE");
             e.Property(w => w.Rating).HasDefaultValue(5.00m);
             e.Property(w => w.CompletedTasks).HasDefaultValue(0);
         });

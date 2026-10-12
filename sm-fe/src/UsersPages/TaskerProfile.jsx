@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import TaskerLayout from '../components/layout/TaskerLayout'
 import Icon from '../components/common/Icon'
+import Button from '../components/common/Button'
 import TaskerHeader from '../components/profile/TaskerHeader'
 import AboutTasker from '../components/profile/AboutTasker'
 import ServicesRates from '../components/profile/ServicesRates'
@@ -18,25 +19,46 @@ import { DEFAULT_AVATAR } from '../assets/constants'
 /**
  * TaskMate TaskerProfile - Standardized JSX Component
  * Hỗ trợ 2 chế độ:
- * 1. Khách hàng xem hồ sơ Tasker: Dùng Header/Footer của Client, có đầy đủ BookingSidebar và ReviewsList.
- * 2. Tasker tự xem và cập nhật CV của mình (khi ấn từ tab "Hồ sơ & Dịch vụ"):
+ * 1. Khách hàng xem hồ sơ Tasker (/profile/:id): Dùng Header/Footer của Client, có đầy đủ BookingSidebar và ReviewsList.
+ * 2. Tasker tự xem và cập nhật CV của mình (/profile hoặc khi ấn từ tab "Hồ sơ & Dịch vụ"):
  *    Dùng chung TaskerLayout (Sidebar + Topbar của Tasker), ẩn BookingSidebar & ReviewsList,
- *    cho phép cập nhật Giới thiệu bản thân, Lĩnh vực chuyên môn (search & pick) và Khu vực hoạt động (Tỉnh/Quận).
+ *    cho phép chỉnh sửa Giới thiệu bản thân, Lĩnh vực chuyên môn (search & pick) và Khu vực hoạt động (Tỉnh/Quận)
+ *    và lưu trực tiếp vào MySQL qua PUT /api/auth/worker-profile.
  */
 export default function TaskerProfile({ onNavigate }) {
   const location = useLocation()
+  const { id: paramTaskerId } = useParams()
   const { user, token, updateUser } = useAuth()
 
-  const isOwnerCVView = Boolean(location.state?.isOwnerView)
-  const [isOnline, setIsOnline] = useState(true)
+  const isUserTasker =
+    user?.roles?.includes('TASKER') ||
+    user?.roles?.includes('WORKER') ||
+    user?.role === 'TASKER' ||
+    user?.role === 'WORKER'
+
+  // Mặc định nếu vào /profile (không phải /profile/:id của thợ khác) và user là Tasker hoặc đi từ Dashboard sang -> bật chế độ CV Owner
+  const isOwnerCVView =
+    location.state?.isOwnerView !== undefined
+      ? Boolean(location.state.isOwnerView)
+      : !paramTaskerId && Boolean(isUserTasker)
+
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [saveError, setSaveError] = useState('')
 
   const wp = user?.workerProfile || null
   const displayName = user?.name || 'Nguyễn Anh Tuấn'
-  const description = wp?.description || ''
-  const skills = wp?.skills || []
-  const districts = wp?.serviceDistricts || []
+
+  // State cục bộ (nếu người dùng đã chỉnh sửa trực tiếp trên trang, ưu tiên state cục bộ; nếu chưa thì đọc từ user.workerProfile)
+  const [draftDescription, setDraftDescription] = useState(null)
+  const [draftSkills, setDraftSkills] = useState(null)
+  const [draftDistricts, setDraftDistricts] = useState(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  const description = draftDescription !== null ? draftDescription : wp?.description || ''
+  const skills = draftSkills !== null ? draftSkills : wp?.skills || []
+  const districts = draftDistricts !== null ? draftDistricts : wp?.serviceDistricts || []
+
   const completedTasks = wp?.completedTasks ?? 0
   const rating = wp?.rating ?? 5.0
 
@@ -46,15 +68,24 @@ export default function TaskerProfile({ onNavigate }) {
       : 'Chưa cập nhật lĩnh vực chuyên môn chính'
 
   const showFeedback = (msg) => {
+    setSaveError('')
     setSaveMessage(msg)
-    setTimeout(() => setSaveMessage(''), 3500)
+    setTimeout(() => setSaveMessage(''), 4000)
   }
 
-  // Lưu thay đổi hồ sơ Tasker xuống Backend MySQL
-  const persistWorkerProfile = async (nextDescription, nextSkills, nextDistricts) => {
-    if (!token) return
+  // Hàm gọi API lưu toàn bộ thay đổi xuống MySQL (bảng worker_profiles, worker_skills, worker_districts)
+  const persistWorkerProfile = async (
+    nextDescription = description,
+    nextSkills = skills,
+    nextDistricts = districts
+  ) => {
+    if (!token) {
+      setSaveError('Vui lòng đăng nhập để lưu hồ sơ.')
+      return
+    }
     try {
       setSaving(true)
+      setSaveError('')
       const payload = {
         description: nextDescription,
         skillIds: nextSkills.map((s) => s.skillId),
@@ -67,37 +98,47 @@ export default function TaskerProfile({ onNavigate }) {
       }
       const updatedUser = await updateWorkerProfileApi(token, payload)
       updateUser(updatedUser)
-      showFeedback('Đã lưu cập nhật Hồ sơ & Dịch vụ thành công!')
+      setHasUnsavedChanges(false)
+      showFeedback('Đã lưu cập nhật Hồ sơ & Dịch vụ vào cơ sở dữ liệu thành công!')
     } catch (err) {
-      alert(err.message || 'Không thể lưu cập nhật hồ sơ.')
+      setSaveError(err.message || 'Không thể lưu cập nhật hồ sơ.')
     } finally {
       setSaving(false)
     }
   }
 
   const handleSaveDescription = async (newDesc) => {
+    setDraftDescription(newDesc)
     await persistWorkerProfile(newDesc, skills, districts)
   }
 
   const handleAddSkill = async (newSkill) => {
     if (skills.some((s) => s.skillId === newSkill.skillId)) return
     const nextSkills = [...skills, newSkill]
+    setDraftSkills(nextSkills)
+    setHasUnsavedChanges(true)
     await persistWorkerProfile(description, nextSkills, districts)
   }
 
   const handleRemoveSkill = async (skillId) => {
     const nextSkills = skills.filter((s) => s.skillId !== skillId)
+    setDraftSkills(nextSkills)
+    setHasUnsavedChanges(true)
     await persistWorkerProfile(description, nextSkills, districts)
   }
 
   const handleAddDistrict = async (newDist) => {
     if (districts.some((d) => d.districtCode === newDist.districtCode)) return
     const nextDistricts = [...districts, newDist]
+    setDraftDistricts(nextDistricts)
+    setHasUnsavedChanges(true)
     await persistWorkerProfile(description, skills, nextDistricts)
   }
 
   const handleRemoveDistrict = async (districtCode) => {
     const nextDistricts = districts.filter((d) => d.districtCode !== districtCode)
+    setDraftDistricts(nextDistricts)
+    setHasUnsavedChanges(true)
     await persistWorkerProfile(description, skills, nextDistricts)
   }
 
@@ -108,10 +149,51 @@ export default function TaskerProfile({ onNavigate }) {
   // Nội dung các khối CV dùng chung cho cả 2 chế độ
   const cvSections = (
     <div className="flex flex-col gap-6">
+      {/* Thanh công cụ Lưu hồ sơ vào DB cho Tasker */}
+      {isOwnerCVView && (
+        <div className="bg-surface-container-lowest rounded-2xl p-4 sm:px-6 shadow-sm border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
+              <Icon name="badge" size={22} />
+            </div>
+            <div>
+              <h2 className="font-headline-sm text-sm sm:text-base font-extrabold text-on-surface">
+                Quản lý Hồ sơ năng lực &amp; Dịch vụ (CV Tasker)
+              </h2>
+              <p className="text-xs text-on-surface-variant">
+                Mọi thay đổi về Giới thiệu, Chuyên môn và Khu vực hoạt động được đồng bộ trực tiếp vào CSDL.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            variant="primary"
+            size="sm"
+            icon={saving ? 'sync' : 'save'}
+            disabled={saving}
+            onClick={() => persistWorkerProfile(description, skills, districts)}
+            className="rounded-xl text-xs font-bold shrink-0 self-end sm:self-center"
+          >
+            {saving
+              ? 'Đang lưu vào DB...'
+              : hasUnsavedChanges
+              ? 'Lưu thay đổi ngay'
+              : 'Lưu cập nhật Hồ sơ'}
+          </Button>
+        </div>
+      )}
+
       {saveMessage && (
         <div className="p-4 rounded-2xl bg-primary-fixed/40 border border-primary/30 text-primary flex items-center gap-2.5 text-sm font-bold">
           <Icon name="check_circle" size={20} />
           <span>{saveMessage}</span>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-2.5 text-sm font-bold">
+          <Icon name="error" size={20} />
+          <span>{saveError}</span>
         </div>
       )}
 
@@ -161,8 +243,6 @@ export default function TaskerProfile({ onNavigate }) {
     return (
       <TaskerLayout
         activeMenu="profile_services"
-        isOnline={isOnline}
-        onToggleOnline={() => setIsOnline(!isOnline)}
         onNavigate={onNavigate}
         title="Hồ sơ & Dịch vụ của tôi"
       >

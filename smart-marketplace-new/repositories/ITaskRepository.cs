@@ -6,6 +6,12 @@ public interface ITaskRepository
 {
     Task<Skill?> FindSkillByIdAsync(string skillId, CancellationToken ct = default);
     Task<User?> FindUserByIdAsync(string userId, CancellationToken ct = default);
+    Task<TaskItem?> FindTaskWithDetailsByIdAsync(string taskId, CancellationToken ct = default);
+    Task<List<WorkerProfile>> GetCandidateWorkersAsync(
+        string requiredSkillId,
+        string taskCity,
+        string taskDistrict,
+        CancellationToken ct = default);
     Task AddAsync(TaskItem task, CancellationToken ct = default);
     Task<int> SaveAsync(CancellationToken ct = default);
     Task<List<Skill>> GetSkillSuggestionsAsync(string? query, int limit, CancellationToken ct = default);

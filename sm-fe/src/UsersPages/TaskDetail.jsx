@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
@@ -6,16 +6,10 @@ import Icon from '../components/common/Icon'
 import Button from '../components/common/Button'
 import Badge from '../components/common/Badge'
 import TaskSearchInput from '../components/common/TaskSearchInput'
-import {
-  fetchProvinces,
-  fetchDistricts,
-  fetchWards,
-  searchAddressSuggestions,
-} from '../services/addressService'
-import { geocodeAddress } from '../services/mapService'
-import GoogleMapModal from '../components/task-detail/GoogleMapModal'
-import MapPicker from '../components/task-detail/MapPicker'
+import AddressSelector from '../components/common/AddressSelector'
+import { parseVietnameseAddress } from '../services/addressService'
 import { useAuth } from '../hooks/useAuth'
+import { validateTaskDetailForm } from '../utils/validation'
 
 /**
  * TaskMate TaskDetail (Đăng việc & Đề xuất thù lao) - Standardized JSX Component
@@ -23,14 +17,32 @@ import { useAuth } from '../hooks/useAuth'
 export default function TaskDetail({ onNavigate }) {
   const location = useLocation()
   const preselected = location.state?.selectedTask
+  const taskDraft = location.state?.taskDraft
+
+  // Validation errors state
+  const [errors, setErrors] = useState({})
+
+  const clearFieldError = useCallback((...fieldNames) => {
+    setErrors((prev) => {
+      let hasChange = false
+      const next = { ...prev }
+      fieldNames.forEach((field) => {
+        if (next[field]) {
+          delete next[field]
+          hasChange = true
+        }
+      })
+      return hasChange ? next : prev
+    })
+  }, [])
 
   // State for Section 1: Task Category (auto-filled if user selected from Home, otherwise empty)
   const [taskCategory, setTaskCategory] = useState(
-    preselected?.title || ''
+    taskDraft?.title || preselected?.title || ''
   )
 
   // State for Section 2: Description (empty by default)
-  const [description, setDescription] = useState('')
+  const [description, setDescription] = useState(taskDraft?.description || '')
 
   // State for Section 3: Images
   const [uploadedImages, setUploadedImages] = useState([
@@ -56,251 +68,50 @@ export default function TaskDetail({ onNavigate }) {
   }
 
   // ==============================================================
-  // State for Section 4: Cascading Address (Tỉnh -> Huyện -> Xã) & Google Maps Modal
+  // State for Section 4: Address (Managed by shared <AddressSelector />)
   // ==============================================================
   const { user } = useAuth()
 
-  const [provincesList, setProvincesList] = useState([])
-  const [districtsList, setDistrictsList] = useState([])
-  const [wardsList, setWardsList] = useState([])
+  const initialAddressString =
+    taskDraft?.fullAddress ||
+    (taskDraft?.province
+      ? [taskDraft.specificAddress, taskDraft.ward, taskDraft.district, taskDraft.province]
+          .filter(Boolean)
+          .join(', ')
+      : taskDraft?.specificAddress || user?.address || '')
 
-  const [province, setProvince] = useState('')
-  const [district, setDistrict] = useState('')
-  const [ward, setWard] = useState('')
-  const [specificAddress, setSpecificAddress] = useState(() => user?.address || '')
+  const initialParsedAddress = parseVietnameseAddress(initialAddressString)
 
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
-  const [mapSearchQuery, setMapSearchQuery] = useState('')
-  const [coords, setCoords] = useState(() => ({
-    lat: user?.latitude ? Number(user.latitude) : 21.0285,
-    lng: user?.longitude ? Number(user.longitude) : 105.8542,
-  }))
-  const [addressSuggestions, setAddressSuggestions] = useState([])
-  const [isSearchingAddress, setIsSearchingAddress] = useState(false)
-  const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false)
-  const [isGeocodedDetail, setIsGeocodedDetail] = useState(() =>
-    Boolean(user?.address && user?.latitude && user?.longitude)
+  const [province, setProvince] = useState(
+    () => taskDraft?.province || initialParsedAddress.province || ''
   )
-  const addressContainerRef = useRef(null)
-
-  // Bước 1: Khởi tạo State và tải danh sách Tỉnh/Thành
-  useEffect(() => {
-    const loadProvinces = async () => {
-      const data = await fetchProvinces()
-      if (data.length > 0) {
-        setProvincesList(data)
-      }
-    }
-    loadProvinces()
-  }, [])
-
-  // Bước 2: Logic chọn Tỉnh → Tải Quận/Huyện (Cascading 1)
-  const handleProvinceChange = async (e) => {
-    const selectedProvince = e.target.value
-    setProvince(selectedProvince)
-    setDistrict('')
-    setWard('')
-    setWardsList([])
-
-    if (!selectedProvince) {
-      setDistrictsList([])
-      return
-    }
-
-    const p = provincesList.find(
-      (item) => item.full_name === selectedProvince || item.name === selectedProvince
-    )
-    if (!p) {
-      setDistrictsList([])
-      return
-    }
-
-    if (p.latitude && p.longitude) {
-      setCoords({ lat: parseFloat(p.latitude), lng: parseFloat(p.longitude) })
-    }
-
-    const data = await fetchDistricts(p.id)
-    setDistrictsList(data)
-  }
-
-  // Bước 3: Logic chọn Huyện → Tải Phường/Xã (Cascading 2)
-  const handleDistrictChange = async (e) => {
-    const selectedDistrict = e.target.value
-    setDistrict(selectedDistrict)
-    setWard('')
-
-    if (!selectedDistrict) {
-      setWardsList([])
-      return
-    }
-
-    const d = districtsList.find(
-      (item) => item.full_name === selectedDistrict || item.name === selectedDistrict
-    )
-    if (!d) {
-      setWardsList([])
-      return
-    }
-
-    if (d.latitude && d.longitude) {
-      setCoords({ lat: parseFloat(d.latitude), lng: parseFloat(d.longitude) })
-    }
-
-    const data = await fetchWards(d.id)
-    setWardsList(data)
-  }
-
-  // Logic chọn Phường/Xã (Cascading 3)
-  const handleWardChange = (e) => {
-    const selectedWard = e.target.value
-    setWard(selectedWard)
-    if (!selectedWard) return
-
-    const w = wardsList.find(
-      (item) => item.full_name === selectedWard || item.name === selectedWard
-    )
-    if (w && w.latitude && w.longitude) {
-      setCoords({ lat: parseFloat(w.latitude), lng: parseFloat(w.longitude) })
-    }
-  }
-
-  // Tự động gợi ý địa điểm theo từ khoá nhập và toạ độ khu vực hiện tại
-  useEffect(() => {
-    const trimmed = specificAddress.trim()
-    if (trimmed.length < 2) return
-
-    const controller = new AbortController()
-    const timer = setTimeout(async () => {
-      setIsSearchingAddress(true)
-      try {
-        const list = await searchAddressSuggestions(
-          trimmed,
-          { lat: coords.lat, lng: coords.lng },
-          {
-            signal: controller.signal,
-            limit: 5,
-          }
-        )
-        setAddressSuggestions(list)
-        setIsAddressDropdownOpen(list.length > 0)
-      } finally {
-        setIsSearchingAddress(false)
-      }
-    }, 300)
-
-    return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
-  }, [specificAddress, coords.lat, coords.lng])
-
-  // Đóng dropdown gợi ý khi click ra ngoài
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        addressContainerRef.current &&
-        !addressContainerRef.current.contains(e.target)
-      ) {
-        setIsAddressDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Tự động geocoding vị trí chi tiết khi nhập số nhà, tên đường, toà nhà
-  const triggerGeocodeSpecificAddress = useCallback(
-    async (addrToSearch) => {
-      const input = (addrToSearch !== undefined ? addrToSearch : specificAddress).trim()
-      if (input.length < 2) return
-
-      // Thử tìm địa chỉ kết hợp: số nhà/toà nhà + Phường/Xã + Quận/Huyện + Tỉnh/Thành
-      const fullQuery = [input, ward, district, province].filter(Boolean).join(', ')
-      setIsSearchingAddress(true)
-
-      try {
-        let results = await geocodeAddress(fullQuery, {
-          biasCoords: coords,
-          limit: 3,
-        })
-
-        // Nếu query đầy đủ chưa tìm thấy, thử tìm [input, district, province]
-        if (!results || results.length === 0) {
-          const districtQuery = [input, district, province].filter(Boolean).join(', ')
-          results = await geocodeAddress(districtQuery, {
-            biasCoords: coords,
-            limit: 3,
-          })
-        }
-
-        // Nếu vẫn chưa thấy, thử tìm riêng tên input với bias tọa độ hiện tại
-        if (!results || results.length === 0) {
-          results = await geocodeAddress(input, {
-            biasCoords: coords,
-            limit: 3,
-          })
-        }
-
-        if (results && results.length > 0) {
-          const match = results[0]
-          if (match.lat && match.lng) {
-            setCoords({ lat: match.lat, lng: match.lng })
-            setIsGeocodedDetail(true)
-          }
-        }
-      } catch (err) {
-        console.warn('Geocoding specific address error:', err)
-      } finally {
-        setIsSearchingAddress(false)
-      }
-    },
-    [specificAddress, ward, district, province, coords]
+  const [district, setDistrict] = useState(
+    () => taskDraft?.district || initialParsedAddress.district || ''
   )
+  const [ward, setWard] = useState(
+    () => taskDraft?.ward || initialParsedAddress.ward || ''
+  )
+  const [specificAddress, setSpecificAddress] = useState(
+    () =>
+      taskDraft?.specificAddress ||
+      initialParsedAddress.specificAddress ||
+      user?.address ||
+      ''
+  )
+  const [fullAddress, setFullAddress] = useState(() => initialAddressString)
 
-  const handleSelectSuggestion = (item) => {
-    setSpecificAddress(item.title)
-    if (item.lat && item.lng) {
-      setCoords({ lat: item.lat, lng: item.lng })
-      setIsGeocodedDetail(true)
-    }
-    setIsAddressDropdownOpen(false)
-  }
-
-  // Bước 4: Tự động tổng hợp địa chỉ hoàn chỉnh ($derived)
-  const fullAddress = [specificAddress, ward, district, province]
-    .filter(Boolean)
-    .join(', ')
-
-  // Cập nhật toạ độ khi người dùng click hoặc kéo ghim trên bản đồ
-  const handleMapLocationSelect = (loc) => {
-    if (loc.lat && loc.lng) {
-      setCoords({ lat: loc.lat, lng: loc.lng })
-      setIsGeocodedDetail(true)
-    }
-  }
-
-  const handleMapAddressResolved = () => {
-    // Address resolved on map pin drop
-  }
-
-  // Bước 5: Logic tương tác với Google Maps
-  const handleOpenMapModal = () => {
-    setMapSearchQuery(fullAddress || 'Thành phố Hà Nội, Việt Nam')
-    setIsMapModalOpen(true)
-  }
-
-  const handleConfirmFromMap = (confirmedQuery, newCoords) => {
-    if (newCoords && newCoords.lat && newCoords.lng) {
-      setCoords(newCoords)
-      setIsGeocodedDetail(true)
-    }
-    if (confirmedQuery) {
-      setSpecificAddress(confirmedQuery)
-    }
-  }
+  const handleAddressChange = useCallback((addrData) => {
+    setProvince(addrData.province || '')
+    setDistrict(addrData.district || '')
+    setWard(addrData.ward || '')
+    setSpecificAddress(addrData.specificAddress || '')
+    setFullAddress(addrData.fullAddress || '')
+  }, [])
 
   // State for Section 5: Budget
-  const [amount, setAmount] = useState(450000)
+  const [amount, setAmount] = useState(
+    taskDraft?.offeredPrice ? Number(taskDraft.offeredPrice) : 450000
+  )
   const [allowNegotiate, setAllowNegotiate] = useState(true)
 
   // State for Section 6: Schedule & Duration (Real-time Date & Start-End Time)
@@ -314,13 +125,13 @@ export default function TaskDetail({ onNavigate }) {
     return `${d} Th${m}`
   }
 
-  const todayIso = today.toISOString().split('T')[0]
-  const tomorrowIso = tomorrow.toISOString().split('T')[0]
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const tomorrowIso = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
 
-  const [selectedDate, setSelectedDate] = useState('tomorrow')
-  const [customDate, setCustomDate] = useState(tomorrowIso)
-  const [startTime, setStartTime] = useState('08:30')
-  const [endTime, setEndTime] = useState('11:30')
+  const [selectedDate, setSelectedDate] = useState(taskDraft?.selectedDate || 'tomorrow')
+  const [customDate, setCustomDate] = useState(taskDraft?.customDate || tomorrowIso)
+  const [startTime, setStartTime] = useState(taskDraft?.startTime || '08:30')
+  const [endTime, setEndTime] = useState(taskDraft?.endTime || '11:30')
 
   const dateOptions = [
     {
@@ -365,17 +176,73 @@ export default function TaskDetail({ onNavigate }) {
     const newEndHour = (sh + hoursToAdd) % 24
     const formatted = `${String(newEndHour).padStart(2, '0')}:${String(sm).padStart(2, '0')}`
     setEndTime(formatted)
+    clearFieldError('scheduleTime')
   }
 
   const handleSubmit = (e) => {
     e?.preventDefault()
-    if (!taskCategory.trim()) {
-      alert('Vui lòng nhập tên công việc cần hỗ trợ.')
+
+    const fallbackParsed = parseVietnameseAddress(specificAddress)
+    const resolvedProvince = province || fallbackParsed.province
+    const resolvedDistrict = district || fallbackParsed.district
+    const resolvedWard = ward || fallbackParsed.ward
+
+    const validation = validateTaskDetailForm({
+      taskCategory,
+      description,
+      province: resolvedProvince,
+      district: resolvedDistrict,
+      ward: resolvedWard,
+      specificAddress,
+      amount,
+      selectedDate,
+      customDate,
+      startTime,
+      endTime,
+    })
+
+    if (!validation.isValid) {
+      setErrors(validation.errors)
+      if (validation.firstErrorSection) {
+        const sectionEl = document.getElementById(validation.firstErrorSection)
+        if (sectionEl) {
+          sectionEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
       return
     }
-    alert(`Đã đăng yêu cầu dịch vụ thành công! Hệ thống đang chuyển đến danh sách thợ phù hợp.`)
+
+    setErrors({})
+
+    const activeDateOption = dateOptions.find((d) => d.id === selectedDate)
+    const dateLabel =
+      selectedDate === 'other'
+        ? customDate
+        : activeDateOption?.title || `Ngày mai, ${formatDateTitle(tomorrow)}`
+
+    const taskData = {
+      title: taskCategory.trim(),
+      categoryName: preselected?.categoryName || 'Điện & Gia dụng',
+      requestCode: '#TM-84920',
+      description: description.trim(),
+      province: resolvedProvince,
+      district: resolvedDistrict,
+      ward: resolvedWard,
+      specificAddress: specificAddress.trim(),
+      fullAddress: fullAddress || specificAddress.trim(),
+      offeredPrice: amount,
+      scheduledText: `${dateLabel} • ${startTime} - ${endTime}`,
+      selectedDate,
+      customDate,
+      startTime,
+      endTime,
+    }
+
     if (onNavigate) {
-      onNavigate('search')
+      onNavigate('filter-tasker', {
+        fromTaskDetail: true,
+        taskData,
+      })
     }
   }
 
@@ -436,9 +303,16 @@ export default function TaskDetail({ onNavigate }) {
         {/* Main Content Form */}
         <div className="w-full bg-surface py-8">
           <div className="max-w-[1240px] mx-auto px-6">
-            <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
+            <form onSubmit={handleSubmit} noValidate className="max-w-4xl mx-auto space-y-6">
               {/* Section 1: Chuẩn hóa công việc (Đã bỏ danh sách gợi ý vì user đã chọn từ trang home) */}
-              <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
+              <div
+                id="step-1"
+                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                  errors.taskCategory
+                    ? 'border-error/60 ring-1 ring-error/20'
+                    : 'border-surface-variant/30'
+                }`}
+              >
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -462,51 +336,91 @@ export default function TaskDetail({ onNavigate }) {
                 <TaskSearchInput
                   id="task-category-input"
                   required
+                  error={errors.taskCategory}
                   label={
                     <span>
                       Tên công việc <span className="text-error">*</span>
                     </span>
                   }
                   value={taskCategory}
-                  onChange={setTaskCategory}
+                  onChange={(val) => {
+                    setTaskCategory(val)
+                    clearFieldError('taskCategory')
+                  }}
                   onSelectTask={(task) => {
+                    clearFieldError('taskCategory')
                     if (task?.suggestedPrice) {
                       setAmount(task.suggestedPrice)
                     }
                   }}
                   placeholder="Nhập việc cần làm (vd: Lắp tủ IKEA, sửa ống nước, chuyển nhà...)"
                   icon="handyman"
-                  className="mb-2"
+                  className="mb-1"
                 />
+                {errors.taskCategory && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
+                    <Icon name="error" size={15} />
+                    <span>{errors.taskCategory}</span>
+                  </p>
+                )}
               </div>
 
               {/* Section 2: Chi tiết mô tả (Đã bỏ bộ kiểm tra tiện ích nhanh) */}
-              <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
+              <div
+                id="step-2"
+                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                  errors.description
+                    ? 'border-error/60 ring-1 ring-error/20'
+                    : 'border-surface-variant/30'
+                }`}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
                       Bước 2: Chi tiết mô tả
                     </span>
                     <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                      Mô tả cụ thể hiện trạng &amp; yêu cầu
+                      Mô tả cụ thể hiện trạng &amp; yêu cầu <span className="text-error">*</span>
                     </h2>
                   </div>
-                  <span className="font-caption text-caption text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">
+                  <span
+                    className={`font-caption text-caption px-2 py-1 rounded ${
+                      description.length > 1000
+                        ? 'bg-error-container text-error font-bold'
+                        : 'text-on-surface-variant bg-surface-container-low'
+                    }`}
+                  >
                     {description.length}/1000 ký tự
                   </span>
                 </div>
 
                 <textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    setDescription(e.target.value)
+                    clearFieldError('description')
+                  }}
                   rows={4}
                   placeholder="Mô tả cụ thể về đồ cần lắp, kích thước, hiện trạng vị trí lắp, tầng mấy (có thang máy không)..."
-                  className="w-full p-4 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all placeholder:text-on-surface-variant/60 resize-y border border-transparent focus:border-primary/20"
+                  className={`w-full p-4 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:bg-surface-container-lowest focus:outline-none transition-all placeholder:text-on-surface-variant/60 resize-y border ${
+                    errors.description
+                      ? 'border-error ring-1 ring-error/20 focus:ring-2 focus:ring-error/40'
+                      : 'border-transparent focus:ring-2 focus:ring-primary/40 focus:border-primary/20'
+                  }`}
                 />
+                {errors.description && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
+                    <Icon name="error" size={15} />
+                    <span>{errors.description}</span>
+                  </p>
+                )}
               </div>
 
               {/* Section 3: Hình ảnh hiện trạng */}
-              <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
+              <div
+                id="step-3"
+                className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30"
+              >
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
@@ -571,346 +485,46 @@ export default function TaskDetail({ onNavigate }) {
                 </div>
               </div>
 
-              {/* Section 4: Địa điểm thực hiện (Cascading Dropdowns & Google Maps) */}
-              <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-                  <div>
-                    <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
-                      Bước 4: Địa điểm thực hiện
-                    </span>
-                    <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                      Vị trí căn hộ / nhà riêng
-                    </h2>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">
-                      Chọn Tỉnh/Thành, Quận/Huyện, Phường/Xã hoặc chọn trực tiếp trên Google Maps.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    icon="map"
-                    onClick={handleOpenMapModal}
-                    className="self-start sm:self-auto text-primary rounded-xl font-bold border-primary/30 hover:bg-primary-fixed/20 shadow-sm cursor-pointer"
-                  >
-                    Chọn trên bản đồ
-                  </Button>
-                </div>
-
-                {/* 3 Cascading Dropdowns: Tỉnh -> Huyện -> Xã */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                  {/* Cấp 1: Tỉnh / Thành phố */}
-                  <div>
-                    <label
-                      htmlFor="province-select"
-                      className="block text-xs font-bold text-outline uppercase tracking-wider mb-1.5"
-                    >
-                      Tỉnh / Thành phố <span className="text-error">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="province-select"
-                        value={province}
-                        onChange={handleProvinceChange}
-                        className="w-full px-3.5 py-3 bg-surface-container-low rounded-xl text-on-surface font-label-md text-sm outline-none border border-surface-variant/40 focus:border-primary transition-all cursor-pointer appearance-none"
-                      >
-                        <option value="">-- Chọn Tỉnh / Thành phố --</option>
-                        {provincesList.map((p) => (
-                          <option key={p.id} value={p.full_name}>
-                            {p.full_name}
-                          </option>
-                        ))}
-                      </select>
-                      <Icon
-                        name="expand_more"
-                        size={20}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Cấp 2: Quận / Huyện */}
-                  <div>
-                    <label
-                      htmlFor="district-select"
-                      className="block text-xs font-bold text-outline uppercase tracking-wider mb-1.5"
-                    >
-                      Quận / Huyện <span className="text-error">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="district-select"
-                        value={district}
-                        onChange={handleDistrictChange}
-                        disabled={!province || districtsList.length === 0}
-                        className="w-full px-3.5 py-3 bg-surface-container-low disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-on-surface font-label-md text-sm outline-none border border-surface-variant/40 focus:border-primary transition-all cursor-pointer appearance-none"
-                      >
-                        <option value="">-- Chọn Quận / Huyện --</option>
-                        {districtsList.map((d) => (
-                          <option key={d.id} value={d.full_name}>
-                            {d.full_name}
-                          </option>
-                        ))}
-                      </select>
-                      <Icon
-                        name="expand_more"
-                        size={20}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Cấp 3: Phường / Xã */}
-                  <div>
-                    <label
-                      htmlFor="ward-select"
-                      className="block text-xs font-bold text-outline uppercase tracking-wider mb-1.5"
-                    >
-                      Phường / Xã <span className="text-error">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="ward-select"
-                        value={ward}
-                        onChange={handleWardChange}
-                        disabled={!district || wardsList.length === 0}
-                        className="w-full px-3.5 py-3 bg-surface-container-low disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-on-surface font-label-md text-sm outline-none border border-surface-variant/40 focus:border-primary transition-all cursor-pointer appearance-none"
-                      >
-                        <option value="">-- Chọn Phường / Xã --</option>
-                        {wardsList.map((w) => (
-                          <option key={w.id} value={w.full_name}>
-                            {w.full_name}
-                          </option>
-                        ))}
-                      </select>
-                      <Icon
-                        name="expand_more"
-                        size={20}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Specific Address: Số nhà, tên đường with Autocomplete Dropdown */}
-                <div className="mb-4 relative" ref={addressContainerRef}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label
-                      htmlFor="specific-address-input"
-                      className="block text-xs font-bold text-outline uppercase tracking-wider"
-                    >
-                      Số nhà, tên đường, toà nhà / căn hộ
-                    </label>
-                    <div className="flex items-center gap-2">
-                      {user?.address && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSpecificAddress(user.address)
-                            if (user.latitude && user.longitude) {
-                              setCoords({ lat: Number(user.latitude), lng: Number(user.longitude) })
-                              setIsGeocodedDetail(true)
-                            }
-                            triggerGeocodeSpecificAddress(user.address)
-                          }}
-                          className="text-[11px] font-semibold text-primary bg-primary-fixed/30 hover:bg-primary-fixed/50 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                          title="Sử dụng địa chỉ đã lưu trong hồ sơ cá nhân"
-                        >
-                          <Icon name="bookmark" size={13} />
-                          Dùng địa chỉ đã lưu của bạn
-                        </button>
-                      )}
-                      {isGeocodedDetail && (
-                        <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
-                          <Icon name="check_circle" size={13} />
-                          Đã ghim chi tiết
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="relative flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Icon
-                        name="home"
-                        size={20}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary pointer-events-none"
-                      />
-                      <input
-                        id="specific-address-input"
-                        type="text"
-                        value={specificAddress}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          setSpecificAddress(val)
-                          setIsGeocodedDetail(false)
-                          if (val.trim().length >= 2) {
-                            setIsAddressDropdownOpen(true)
-                          } else {
-                            setAddressSuggestions([])
-                            setIsAddressDropdownOpen(false)
-                          }
-                        }}
-                        onFocus={() => {
-                          if (addressSuggestions.length > 0) {
-                            setIsAddressDropdownOpen(true)
-                          }
-                        }}
-                        onBlur={() => {
-                          triggerGeocodeSpecificAddress()
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            setIsAddressDropdownOpen(false)
-                            triggerGeocodeSpecificAddress()
-                          }
-                        }}
-                        placeholder="Ví dụ: Tiểu học Vĩnh Hưng, 53 Lĩnh Nam, Toà nhà Park 12..."
-                        className="w-full pl-11 pr-14 py-3 bg-surface-container-low rounded-xl text-on-surface font-label-md text-sm outline-none border border-surface-variant/40 focus:border-primary focus:bg-surface-container-lowest transition-all"
-                      />
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                        {isSearchingAddress && (
-                          <Icon
-                            name="sync"
-                            size={16}
-                            className="animate-spin text-primary"
-                          />
-                        )}
-                        {specificAddress && !isSearchingAddress && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSpecificAddress('')
-                              setAddressSuggestions([])
-                              setIsAddressDropdownOpen(false)
-                              setIsGeocodedDetail(false)
-                            }}
-                            className="text-outline hover:text-on-surface p-1 transition-colors cursor-pointer"
-                            title="Xoá"
-                          >
-                            <Icon name="close" size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => triggerGeocodeSpecificAddress()}
-                      disabled={!specificAddress.trim() || isSearchingAddress}
-                      className="px-3.5 py-3 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl border border-primary/20 flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer"
-                      title="Định vị ngay địa chỉ này trên bản đồ"
-                    >
-                      <Icon name="my_location" size={16} />
-                      <span className="hidden sm:inline">Ghim vị trí</span>
-                    </button>
-                  </div>
-
-                  {/* Suggestions Dropdown */}
-                  {isAddressDropdownOpen && addressSuggestions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 z-30 bg-surface-container-lowest rounded-xl shadow-xl border border-surface-variant/40 overflow-hidden divide-y divide-surface-variant/20 animate-in fade-in zoom-in-95 duration-150">
-                      <div className="px-3.5 py-2 bg-surface-container-low text-[11px] font-bold text-primary uppercase tracking-wider flex items-center justify-between">
-                        <span>Gợi ý địa điểm &amp; toà nhà</span>
-                        <span className="text-outline font-normal">Click để định vị bản đồ</span>
-                      </div>
-                      <div className="max-h-60 overflow-y-auto">
-                        {addressSuggestions.map((item) => (
-                          <div
-                            key={item.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => handleSelectSuggestion(item)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                handleSelectSuggestion(item)
-                              }
-                            }}
-                            className="p-3 hover:bg-primary-fixed/20 flex items-start gap-3 transition-colors cursor-pointer text-left"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                              <Icon name="location_on" size={18} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-sm text-on-surface truncate">
-                                {item.title}
-                              </div>
-                              {item.subtitle && (
-                                <div className="text-xs text-on-surface-variant truncate">
-                                  {item.subtitle}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Derived Full Address Preview */}
-                <div className="p-3.5 rounded-xl bg-surface-container-low border border-primary/20 flex items-start gap-3">
-                  <Icon
-                    name="location_on"
-                    size={22}
-                    className="text-primary flex-shrink-0 mt-0.5"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="block text-[11px] font-bold text-primary uppercase tracking-wider mb-0.5">
-                      Địa chỉ hoàn chỉnh được tổng hợp:
-                    </span>
-                    <p className="text-sm font-semibold text-on-surface break-words">
-                      {fullAddress || (
-                        <span className="text-outline font-normal italic">
-                          Chưa có thông tin. Vui lòng chọn Tỉnh/Huyện/Xã hoặc bấm &quot;Chọn trên bản đồ&quot;.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Live Interactive Map Preview */}
-                {fullAddress && (
-                  <div className="mt-4 rounded-2xl overflow-hidden border border-surface-variant/40 bg-surface-container-low shadow-sm">
-                    <div className="px-4 py-2.5 bg-surface-container flex items-center justify-between border-b border-surface-variant/30">
-                      <div className="flex items-center gap-2">
-                        <Icon name="map" size={18} className="text-primary" />
-                        <span className="font-label-sm text-xs font-bold text-on-surface">
-                          Vị trí trên bản đồ (Click hoặc kéo ghim để định vị chính xác)
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleOpenMapModal}
-                        className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <span>Phóng to bản đồ</span>
-                        <Icon name="open_in_full" size={14} />
-                      </button>
-                    </div>
-                    <div className="relative w-full h-64 sm:h-72 bg-surface-container">
-                      <MapPicker
-                        lat={coords.lat}
-                        lng={coords.lng}
-                        onLocationSelect={handleMapLocationSelect}
-                        onAddressResolved={handleMapAddressResolved}
-                        className="w-full h-full rounded-none border-none shadow-none"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Google Maps Modal */}
-                <GoogleMapModal
-                  isOpen={isMapModalOpen}
-                  initialQuery={mapSearchQuery}
-                  initialCoords={coords}
-                  onClose={() => setIsMapModalOpen(false)}
-                  onConfirm={handleConfirmFromMap}
+              {/* Section 4: Địa điểm thực hiện (Reusing shared <AddressSelector />) */}
+              <div
+                id="step-4"
+                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                  errors.province || errors.district || errors.ward || errors.specificAddress
+                    ? 'border-error/60 ring-1 ring-error/20'
+                    : 'border-surface-variant/30'
+                }`}
+              >
+                <AddressSelector
+                  initialAddress={initialAddressString}
+                  initialLat={user?.latitude ? Number(user.latitude) : 21.0285}
+                  initialLng={user?.longitude ? Number(user.longitude) : 105.8542}
+                  savedUserAddress={user?.address || ''}
+                  savedUserCoords={
+                    user?.latitude && user?.longitude
+                      ? { lat: Number(user.latitude), lng: Number(user.longitude) }
+                      : null
+                  }
+                  required
+                  stepLabel="Bước 4: Địa điểm thực hiện"
+                  headerTitle="Vị trí căn hộ / nhà riêng"
+                  headerSubtitle="Chọn Tỉnh/Thành, Quận/Huyện, Phường/Xã hoặc chọn trực tiếp trên Google Maps."
+                  showDerivedPreview
+                  showLiveMap
+                  errors={errors}
+                  onClearError={clearFieldError}
+                  onChange={handleAddressChange}
                 />
               </div>
 
               {/* Section 5: Thù lao đề xuất */}
-              <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
+              <div
+                id="step-5"
+                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                  errors.amount
+                    ? 'border-error/60 ring-1 ring-error/20'
+                    : 'border-surface-variant/30'
+                }`}
+              >
                 <div className="mb-5">
                   <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
                     Bước 5: Thù lao đề xuất
@@ -949,7 +563,10 @@ export default function TaskDetail({ onNavigate }) {
                       max={2000000}
                       step={20000}
                       value={amount}
-                      onChange={(e) => setAmount(Number(e.target.value))}
+                      onChange={(e) => {
+                        setAmount(Number(e.target.value))
+                        clearFieldError('amount')
+                      }}
                       className="w-full h-3 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary"
                     />
                     <div className="flex justify-between items-center text-on-surface-variant font-caption text-xs mt-2 font-medium px-1">
@@ -960,6 +577,12 @@ export default function TaskDetail({ onNavigate }) {
                       <span>2.000.000 đ</span>
                     </div>
                   </div>
+                  {errors.amount && (
+                    <p className="mt-2 flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
+                      <Icon name="error" size={15} />
+                      <span>{errors.amount}</span>
+                    </p>
+                  )}
 
                   {/* Note if urgent */}
                   <div className="mt-4 p-3.5 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-2.5 text-xs text-on-surface">
@@ -989,7 +612,14 @@ export default function TaskDetail({ onNavigate }) {
               </div>
 
               {/* Section 6: Lịch hẹn & Thời lượng (Real-time Date & Start-End Duration) */}
-              <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
+              <div
+                id="step-6"
+                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                  errors.customDate || errors.startTime || errors.scheduleTime
+                    ? 'border-error/60 ring-1 ring-error/20'
+                    : 'border-surface-variant/30'
+                }`}
+              >
                 <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
                   Bước 6: Lịch hẹn &amp; Thời lượng
                 </span>
@@ -1009,7 +639,10 @@ export default function TaskDetail({ onNavigate }) {
                         <button
                           key={opt.id}
                           type="button"
-                          onClick={() => setSelectedDate(opt.id)}
+                          onClick={() => {
+                            setSelectedDate(opt.id)
+                            clearFieldError('customDate', 'startTime')
+                          }}
                           className={`flex items-center gap-3 p-3.5 rounded-xl text-left transition-all cursor-pointer ${
                             isActive
                               ? 'bg-primary-fixed/30 ring-2 ring-primary shadow-sm'
@@ -1052,9 +685,22 @@ export default function TaskDetail({ onNavigate }) {
                           type="date"
                           min={todayIso}
                           value={customDate}
-                          onChange={(e) => setCustomDate(e.target.value)}
-                          className="bg-surface-container-lowest px-3 py-2 rounded-lg font-label-md text-sm text-on-surface outline-none border border-surface-variant/40 focus:border-primary w-full max-w-xs cursor-pointer shadow-sm"
+                          onChange={(e) => {
+                            setCustomDate(e.target.value)
+                            clearFieldError('customDate', 'startTime')
+                          }}
+                          className={`bg-surface-container-lowest px-3 py-2 rounded-lg font-label-md text-sm text-on-surface outline-none border w-full max-w-xs cursor-pointer shadow-sm ${
+                            errors.customDate
+                              ? 'border-error ring-1 ring-error/20 focus:border-error'
+                              : 'border-surface-variant/40 focus:border-primary'
+                          }`}
                         />
+                        {errors.customDate && (
+                          <p className="mt-1.5 flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
+                            <Icon name="error" size={15} />
+                            <span>{errors.customDate}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1074,7 +720,13 @@ export default function TaskDetail({ onNavigate }) {
                   {/* Start - End Time Input Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                     {/* Start Time */}
-                    <div className="p-3.5 rounded-xl bg-surface-container-low border border-surface-variant/30 flex items-center gap-3">
+                    <div
+                      className={`p-3.5 rounded-xl bg-surface-container-low border flex items-center gap-3 ${
+                        errors.startTime || errors.scheduleTime
+                          ? 'border-error ring-1 ring-error/20'
+                          : 'border-surface-variant/30'
+                      }`}
+                    >
                       <div className="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm flex-shrink-0">
                         <Icon name="schedule" size={20} />
                       </div>
@@ -1089,14 +741,23 @@ export default function TaskDetail({ onNavigate }) {
                           id="start-time-input"
                           type="time"
                           value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
+                          onChange={(e) => {
+                            setStartTime(e.target.value)
+                            clearFieldError('startTime', 'scheduleTime')
+                          }}
                           className="bg-transparent font-label-md text-base font-bold text-on-surface outline-none w-full cursor-pointer"
                         />
                       </div>
                     </div>
 
                     {/* End Time */}
-                    <div className="p-3.5 rounded-xl bg-surface-container-low border border-surface-variant/30 flex items-center gap-3">
+                    <div
+                      className={`p-3.5 rounded-xl bg-surface-container-low border flex items-center gap-3 ${
+                        errors.scheduleTime
+                          ? 'border-error ring-1 ring-error/20'
+                          : 'border-surface-variant/30'
+                      }`}
+                    >
                       <div className="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-secondary shadow-sm flex-shrink-0">
                         <Icon name="timelapse" size={20} />
                       </div>
@@ -1111,12 +772,31 @@ export default function TaskDetail({ onNavigate }) {
                           id="end-time-input"
                           type="time"
                           value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
+                          onChange={(e) => {
+                            setEndTime(e.target.value)
+                            clearFieldError('scheduleTime')
+                          }}
                           className="bg-transparent font-label-md text-base font-bold text-on-surface outline-none w-full cursor-pointer"
                         />
                       </div>
                     </div>
                   </div>
+                  {(errors.startTime || errors.scheduleTime) && (
+                    <div className="mb-3 space-y-1">
+                      {errors.startTime && (
+                        <p className="flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
+                          <Icon name="error" size={15} />
+                          <span>{errors.startTime}</span>
+                        </p>
+                      )}
+                      {errors.scheduleTime && (
+                        <p className="flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
+                          <Icon name="error" size={15} />
+                          <span>{errors.scheduleTime}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Quick Preset Buttons */}
                   <div className="flex flex-wrap items-center gap-2 pt-1">

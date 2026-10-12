@@ -1,12 +1,15 @@
 namespace smart_marketplace_new.dto;
 
-// PUT /api/auth/worker-profile — Cập nhật hồ sơ năng lực Thợ (CV Tasker):
+// PUT /api/auth/worker-profile — Cập nhật hồ sơ năng lực Thợ (CV Tasker) & Trạng thái nhận việc:
 // - Description (Giới thiệu bản thân)
+// - Status (Trạng thái nhận việc: "ONLINE" | "OFFLINE")
 // - SkillIds (Danh sách kỹ năng chuyên môn trong worker_skills)
 // - ServiceDistricts (Danh sách Quận/Huyện hoạt động trong worker_districts)
 public class UpdateWorkerProfileRequest
 {
     public string? Description { get; set; }
+
+    public string? Status { get; set; }
 
     public List<string>? SkillIds { get; set; }
 

@@ -84,30 +84,41 @@ export async function geocodeAddress(query, { biasCoords, signal, limit = 5 } = 
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data.features) && data.features.length > 0) {
-        return data.features.map((f, idx) => {
-          const p = f.properties || {}
-          const title = p.name || (p.housenumber ? `${p.housenumber} ${p.street || ''}`.trim() : '') || p.street || trimmed
-          const subtitleParts = [
-            p.street !== title ? p.street : '',
-            p.quarter || p.suburb,
-            p.district || p.city_district,
-            p.city || p.state,
-          ].filter(Boolean)
-          const subtitle = subtitleParts.join(', ')
-          const fullDisplayName = [title, subtitle].filter(Boolean).join(', ')
+        return data.features
+          .filter((f) => {
+            const cc = f.properties?.countrycode
+            return !cc || cc.toUpperCase() === 'VN'
+          })
+          .map((f, idx) => {
+            const p = f.properties || {}
+            const rawStreet =
+              p.street && !/^national route\b/i.test(p.street) ? p.street : ''
+            const title =
+              p.name ||
+              (p.housenumber ? `${p.housenumber} ${rawStreet}`.trim() : '') ||
+              rawStreet ||
+              trimmed
+            const subtitleParts = [
+              rawStreet && rawStreet !== title ? rawStreet : '',
+              p.quarter || p.suburb,
+              p.district || p.city_district,
+              p.city || p.state,
+            ].filter(Boolean)
+            const subtitle = subtitleParts.join(', ')
+            const fullDisplayName = [title, subtitle].filter(Boolean).join(', ')
 
-          return {
-            id: `${p.osm_id || idx}-${f.geometry.coordinates.join('-')}`,
-            displayName: fullDisplayName,
-            title,
-            subtitle,
-            lat: f.geometry.coordinates[1],
-            lng: f.geometry.coordinates[0],
-            road: p.street || '',
-            district: p.district || p.city_district || '',
-            city: p.city || p.state || '',
-          }
-        })
+            return {
+              id: `${p.osm_id || idx}-${f.geometry.coordinates.join('-')}`,
+              displayName: fullDisplayName,
+              title,
+              subtitle,
+              lat: f.geometry.coordinates[1],
+              lng: f.geometry.coordinates[0],
+              road: rawStreet,
+              district: p.district || p.city_district || '',
+              city: p.city || p.state || '',
+            }
+          })
       }
     }
   } catch (err) {
@@ -157,9 +168,11 @@ export async function reverseGeocode(lat, lng, { signal } = {}) {
       const data = await res.json()
       const p = data.features?.[0]?.properties
       if (p) {
+        const rawStreet =
+          p.street && !/^national route\b/i.test(p.street) ? p.street : ''
         const parts = [
           p.name,
-          p.housenumber ? `${p.housenumber} ${p.street || ''}`.trim() : p.street,
+          p.housenumber ? `${p.housenumber} ${rawStreet}`.trim() : rawStreet,
           p.quarter || p.suburb,
           p.district || p.city_district,
           p.city || p.state,
@@ -168,7 +181,7 @@ export async function reverseGeocode(lat, lng, { signal } = {}) {
         const displayName = parts.join(', ') || `Toạ độ (${lat.toFixed(5)}, ${lng.toFixed(5)})`
         return {
           displayName,
-          road: p.street || p.name || '',
+          road: rawStreet || p.name || '',
           district: p.district || p.city_district || '',
           city: p.city || p.state || '',
           lat,

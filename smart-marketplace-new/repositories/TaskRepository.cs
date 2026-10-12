@@ -11,6 +11,39 @@ public class TaskRepository(AppDbContext db) : ITaskRepository
     public Task<User?> FindUserByIdAsync(string userId, CancellationToken ct = default) =>
         db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
+    public Task<TaskItem?> FindTaskWithDetailsByIdAsync(string taskId, CancellationToken ct = default) =>
+        db.Tasks
+            .Include(t => t.RequiredSkill)
+            .Include(t => t.Client)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == taskId, ct);
+
+    public async Task<List<WorkerProfile>> GetCandidateWorkersAsync(
+        string requiredSkillId,
+        string taskCity,
+        string taskDistrict,
+        CancellationToken ct = default)
+    {
+        var normalizedCity = taskCity.Trim().ToLower();
+        var normalizedDistrict = taskDistrict.Trim().ToLower();
+
+        return await db.WorkerProfiles
+            .Include(wp => wp.User)
+            .Include(wp => wp.Skills)
+                .ThenInclude(ws => ws.Skill)
+            .Include(wp => wp.ServiceDistricts)
+            .Include(wp => wp.TasksAccepted.Where(t =>
+                t.Status == TaskItemStatus.MATCHED || t.Status == TaskItemStatus.IN_PROGRESS))
+            .AsNoTracking()
+            .Where(wp =>
+                wp.Status == "ONLINE" &&
+                wp.Skills.Any(ws => ws.SkillId == requiredSkillId) &&
+                wp.ServiceDistricts.Any(wd =>
+                    wd.ProvinceName.ToLower() == normalizedCity &&
+                    wd.DistrictName.ToLower() == normalizedDistrict))
+            .ToListAsync(ct);
+    }
+
     // Task + TaskImages được Add cùng lúc; 1 lần SaveAsync duy nhất ở service
     // → EF Core bọc cả hai trong đúng 1 transaction tự động (tương đương $transaction của Prisma).
     public async Task AddAsync(TaskItem task, CancellationToken ct = default) =>

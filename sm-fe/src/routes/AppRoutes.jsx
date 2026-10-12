@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Homepage from '../UsersPages/Homepage'
 import Services from '../UsersPages/Services'
-import SearchTasker from '../UsersPages/SearchTasker'
+import FilterTasker from '../UsersPages/FilterTasker'
 import TaskerProfile from '../UsersPages/TaskerProfile'
 import UserProfile from '../UsersPages/UserProfile'
 import TaskDetail from '../UsersPages/TaskDetail'
@@ -25,6 +25,7 @@ export default function AppRoutes() {
       login: ROUTES.LOGIN,
       services: ROUTES.SERVICES,
       search: ROUTES.SEARCH,
+      'filter-tasker': ROUTES.SEARCH,
       'become-tasker': ROUTES.TASKER_DASHBOARD,
       'tasker-dashboard': ROUTES.TASKER_DASHBOARD,
       'task-detail': ROUTES.TASK_DETAIL,
@@ -46,7 +47,8 @@ export default function AppRoutes() {
       <Route path={ROUTES.HOME} element={<Homepage onNavigate={handleNavigate} />} />
       <Route path="/home" element={<Navigate to={ROUTES.HOME} replace />} />
       <Route path={ROUTES.SERVICES} element={<Services onNavigate={handleNavigate} />} />
-      <Route path={ROUTES.SEARCH} element={<SearchTasker onNavigate={handleNavigate} />} />
+      <Route path={ROUTES.SEARCH} element={<FilterTasker onNavigate={handleNavigate} />} />
+      <Route path={ROUTES.FILTER_TASKER} element={<FilterTasker onNavigate={handleNavigate} />} />
       <Route path="/taskers" element={<Navigate to={ROUTES.SEARCH} replace />} />
 
       {/* 3. Các trang Riêng tư / Có ID người dùng yêu cầu JWT qua kiểm duyệt (Protected Routes) */}

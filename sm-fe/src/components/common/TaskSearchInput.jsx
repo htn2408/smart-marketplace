@@ -15,6 +15,7 @@ export default function TaskSearchInput({
   id = 'task-search-input',
   required = false,
   icon = 'handyman',
+  error = '',
   className = '',
   inputClassName = '',
   dropdownClassName = '',
@@ -132,7 +133,9 @@ export default function TaskSearchInput({
         className={`relative flex items-center transition-all ${
           variant === 'hero'
             ? 'gap-3 px-3.5 py-2.5 rounded-xl bg-surface-container-low flex-1 min-w-0'
-            : 'rounded-lg bg-surface-container-low focus-within:bg-surface-container-lowest focus-within:ring-2 focus-within:ring-primary/40 border border-transparent focus-within:border-primary/20'
+            : error
+              ? 'rounded-lg bg-surface-container-low focus-within:bg-surface-container-lowest border border-error ring-1 ring-error/20 focus-within:ring-2 focus-within:ring-error/40'
+              : 'rounded-lg bg-surface-container-low focus-within:bg-surface-container-lowest focus-within:ring-2 focus-within:ring-primary/40 border border-transparent focus-within:border-primary/20'
         }`}
       >
         <Icon

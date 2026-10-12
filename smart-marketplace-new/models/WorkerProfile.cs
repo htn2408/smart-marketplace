@@ -18,6 +18,11 @@ public class WorkerProfile
     [Column("description", TypeName = "text")]
     public string? Description { get; set; }
 
+    [Required]
+    [MaxLength(20)]
+    [Column("status", TypeName = "varchar(20)")]
+    public string Status { get; set; } = "ONLINE";
+
     [Column("rating", TypeName = "decimal(3,2)")]
     public decimal Rating { get; set; } = 5.00m;
 

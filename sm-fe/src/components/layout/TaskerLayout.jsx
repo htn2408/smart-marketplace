@@ -2,6 +2,7 @@ import TaskerSidebar from './TaskerSidebar'
 import Icon from '../common/Icon'
 import Button from '../common/Button'
 import { useAuth } from '../../hooks/useAuth'
+import { updateWorkerProfileApi } from '../../services/authService'
 import { DEFAULT_AVATAR } from '../../assets/constants'
 
 /**
@@ -11,15 +12,32 @@ import { DEFAULT_AVATAR } from '../../assets/constants'
 export default function TaskerLayout({
   activeMenu = 'overview',
   onSelectMenu,
-  isOnline = true,
+  isOnline,
   onToggleOnline,
   onNavigate,
   title = 'Bảng điều khiển Thợ',
   children,
 }) {
-  const { user } = useAuth()
+  const { user, token, updateUser } = useAuth()
   const displayName = user?.name || 'Đối tác Tasker'
   const rating = user?.workerProfile?.rating ? Number(user.workerProfile.rating).toFixed(1) : '5.0'
+  const resolvedOnline =
+    isOnline !== undefined ? isOnline : (user?.workerProfile?.status || 'ONLINE') === 'ONLINE'
+
+  const handleToggleStatus = async () => {
+    if (onToggleOnline) {
+      onToggleOnline()
+      return
+    }
+    if (!token) return
+    const nextStatus = resolvedOnline ? 'OFFLINE' : 'ONLINE'
+    try {
+      const updatedUser = await updateWorkerProfileApi(token, { status: nextStatus })
+      updateUser(updatedUser)
+    } catch {
+      // Giữ nguyên trạng thái nếu lỗi mạng
+    }
+  }
 
   const handleMenuClick = (menuId) => {
     if (onSelectMenu) {
@@ -39,8 +57,8 @@ export default function TaskerLayout({
       <TaskerSidebar
         activeMenu={activeMenu}
         onSelectMenu={handleMenuClick}
-        isOnline={isOnline}
-        onToggleOnline={onToggleOnline}
+        isOnline={resolvedOnline}
+        onToggleOnline={handleToggleStatus}
         onNavigate={onNavigate}
       />
 
