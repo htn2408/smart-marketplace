@@ -46,6 +46,10 @@ export default function TaskerLayout({
     }
     if (menuId === 'profile_services') {
       onNavigate?.('tasker-profile', { isOwnerView: true })
+    } else if (menuId === 'requests') {
+      onNavigate?.('tasker-requests')
+    } else if (menuId === 'overview') {
+      onNavigate?.('tasker-dashboard')
     } else {
       onNavigate?.('tasker-dashboard', { tab: menuId })
     }

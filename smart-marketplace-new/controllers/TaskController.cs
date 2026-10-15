@@ -37,9 +37,9 @@ public class TaskController(ITaskService tasks) : ControllerBase
 
     // Lọc & chấm điểm Tasker theo taskId (Hard filter: ONLINE + Skill + worker_districts + không trùng lịch;
     // Score: Rating 60% + CompletedTasks 40%)
+    // Chỉ CLIENT đăng task mới được xem danh sách ứng viên — response không chứa PII (email/SDT)
     [HttpPost("filter")]
-    [HttpPost("/api/filter")]
-    [AllowAnonymous]
+    [AuthorizeRoles("CLIENT")]
     public async Task<ActionResult<FilterTaskersResponse>> FilterTaskers(
         [FromBody] FilterTaskersRequest request, CancellationToken ct = default)
     {

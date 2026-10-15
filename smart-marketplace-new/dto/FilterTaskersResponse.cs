@@ -41,8 +41,7 @@ public class FilterTaskersResponse
         public string Id { get; set; } = null!;
         public string UserId { get; set; } = null!;
         public string Name { get; set; } = null!;
-        public string Email { get; set; } = null!;
-        public string? PhoneNumber { get; set; }
+        // Không trả Email/PhoneNumber — PII chỉ chia sẻ sau khi client gửi offer
         public string? Description { get; set; }
         public string Status { get; set; } = "ONLINE";
         public decimal Rating { get; set; }

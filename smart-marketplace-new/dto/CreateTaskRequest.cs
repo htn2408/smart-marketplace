@@ -22,6 +22,13 @@ public class CreateTaskRequest
     [MaxLength(100, ErrorMessage = "District tối đa 100 ký tự.")]
     public string District { get; set; } = null!;
 
+    // Mã hành chính (Esgoo) để matching worker_districts theo code thay vì so tên
+    [MaxLength(20, ErrorMessage = "ProvinceCode tối đa 20 ký tự.")]
+    public string? ProvinceCode { get; set; }
+
+    [MaxLength(20, ErrorMessage = "DistrictCode tối đa 20 ký tự.")]
+    public string? DistrictCode { get; set; }
+
     public string? Address { get; set; }
 
     // decimal(10,8) chỉ chứa tối đa 99.99999999 — vĩ độ vượt 90 là dữ liệu sai

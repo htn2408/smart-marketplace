@@ -33,7 +33,15 @@ export default function Header({ activePath, onNavigate }) {
     { label: 'Trang chủ', path: 'home', to: ROUTES.HOME },
     { label: 'Đăng việc', path: 'task-detail', to: ROUTES.TASK_DETAIL },
     { label: 'Dịch vụ', path: 'services', to: ROUTES.SERVICES },
-    { label: 'Hồ sơ Tasker', path: 'profile', to: ROUTES.PROFILE },
+    ...(isAuthenticated
+      ? [
+          {
+            label: 'Quản lý công việc',
+            path: 'my-tasks',
+            to: ROUTES.MY_TASKS,
+          },
+        ]
+      : []),
   ]
 
   // Auto-detect active route if activePath isn't explicitly passed
@@ -41,10 +49,21 @@ export default function Header({ activePath, onNavigate }) {
     if (activePath) return activePath
     const p = location.pathname
     if (p === '/' || p === '/home') return 'home'
-    if (p.startsWith('/task-detail') || p.startsWith('/tasks')) return 'task-detail'
+    if (
+      p.startsWith('/client/task-detail') ||
+      p.startsWith('/task-detail') ||
+      p.startsWith('/tasks')
+    )
+      return 'task-detail'
     if (p.startsWith('/services')) return 'services'
-    if (p.startsWith('/search')) return 'search'
-    if (p.startsWith('/profile')) return 'profile'
+    if (
+      p.startsWith('/client/filter-tasker') ||
+      p.startsWith('/search') ||
+      p.startsWith('/filter-tasker')
+    )
+      return 'search'
+    if (p.startsWith('/client/tasks') || p.startsWith('/my-tasks')) return 'my-tasks'
+    if (p.startsWith('/client/profile') || p.startsWith('/user-profile')) return 'profile'
     return ''
   }
 

@@ -12,12 +12,14 @@ function App() {
   const getActiveTab = () => {
     const p = location.pathname
     if (p === '/' || p === '/home') return 'home'
-    if (p.startsWith('/task-detail') || p.startsWith('/tasks')) return 'task-detail'
+    if (p.startsWith('/client/task-detail') || p.startsWith('/task-detail') || p.startsWith('/tasks')) return 'task-detail'
+    if (p.startsWith('/client/tasks') || p.startsWith('/my-tasks')) return 'my-tasks'
     if (p.startsWith('/services')) return 'services'
-    if (p.startsWith('/search')) return 'search'
-    if (p.startsWith('/user-profile')) return 'user-profile'
-    if (p.startsWith('/tasker-dashboard')) return 'tasker-dashboard'
-    if (p.startsWith('/profile')) return 'profile'
+    if (p.startsWith('/client/filter-tasker') || p.startsWith('/search')) return 'search'
+    if (p.startsWith('/client/profile') || p.startsWith('/user-profile')) return 'user-profile'
+    if (p.startsWith('/tasker/dashboard') || p.startsWith('/tasker-dashboard')) return 'tasker-dashboard'
+    if (p.startsWith('/tasker/requests') || p.startsWith('/tasker-requests')) return 'tasker-requests'
+    if (p.startsWith('/tasker/profile') || p.startsWith('/tasker')) return 'profile'
     if (p.startsWith('/login')) return 'login'
     return ''
   }
@@ -30,7 +32,7 @@ function App() {
         <ScrollToTop />
 
         {/* Floating Demo Page Switcher for rapid navigation between routes */}
-        <div className="fixed bottom-4 right-4 z-50 bg-inverse-surface/90 backdrop-blur-md text-inverse-on-surface px-3 py-2 rounded-full shadow-2xl flex items-center gap-1.5 border border-white/10 text-xs">
+        <div className="fixed bottom-4 right-4 z-50 bg-inverse-surface/90 backdrop-blur-md text-inverse-on-surface px-3 py-2 rounded-full shadow-2xl flex items-center gap-1.5 border border-white/10 text-xs overflow-x-auto max-w-[95vw]">
           <span className="font-semibold text-secondary-fixed pr-1 hidden sm:inline">
             Route:
           </span>
@@ -43,51 +45,29 @@ function App() {
                 : 'hover:bg-white/10 text-gray-300'
             }`}
           >
-            / (Trang chủ)
+            /
           </button>
           <button
             type="button"
-            onClick={() => navigate(ROUTES.SERVICES)}
+            onClick={() => navigate(ROUTES.CLIENT_TASKS)}
             className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
-              activeTab === 'services'
+              activeTab === 'my-tasks'
                 ? 'bg-primary text-white shadow-sm'
                 : 'hover:bg-white/10 text-gray-300'
             }`}
           >
-            /services
+            /client/tasks
           </button>
           <button
             type="button"
-            onClick={() => navigate(ROUTES.TASK_DETAIL)}
+            onClick={() => navigate(ROUTES.CLIENT_TASK_DETAIL)}
             className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
               activeTab === 'task-detail'
                 ? 'bg-primary text-white shadow-sm'
                 : 'hover:bg-white/10 text-gray-300'
             }`}
           >
-            /task-detail
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(ROUTES.SEARCH)}
-            className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
-              activeTab === 'search'
-                ? 'bg-primary text-white shadow-sm'
-                : 'hover:bg-white/10 text-gray-300'
-            }`}
-          >
-            /search
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(ROUTES.USER_PROFILE)}
-            className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
-              activeTab === 'user-profile'
-                ? 'bg-primary text-white shadow-sm'
-                : 'hover:bg-white/10 text-gray-300'
-            }`}
-          >
-            /user-profile
+            /client/task-detail
           </button>
           <button
             type="button"
@@ -98,18 +78,18 @@ function App() {
                 : 'hover:bg-white/10 text-gray-300'
             }`}
           >
-            /tasker-dashboard
+            /tasker/dashboard
           </button>
           <button
             type="button"
-            onClick={() => navigate(ROUTES.PROFILE)}
+            onClick={() => navigate(ROUTES.TASKER_REQUESTS)}
             className={`px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
-              activeTab === 'profile'
+              activeTab === 'tasker-requests'
                 ? 'bg-primary text-white shadow-sm'
                 : 'hover:bg-white/10 text-gray-300'
             }`}
           >
-            /profile (Tasker)
+            /tasker/requests
           </button>
           <button
             type="button"

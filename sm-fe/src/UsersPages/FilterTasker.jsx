@@ -22,21 +22,31 @@ export default function FilterTasker({ onNavigate }) {
 
   const [sortBy, setSortBy] = useState('match')
   const [apiTaskers, setApiTaskers] = useState(null)
+  const [isLoading, setIsLoading] = useState(Boolean(location.state?.taskData?.id))
+  const [apiError, setApiError] = useState('')
+  const [hasNoResults, setHasNoResults] = useState(false)
   const [selectedOfferTasker, setSelectedOfferTasker] = useState(null)
+  const [retryToken, setRetryToken] = useState(0)
 
   // Nếu có taskId thực tế từ Backend thì gọi API lọc & chấm điểm Tasker
   useEffect(() => {
     if (!taskData?.id) return
-    let isMounted = true
+    const controller = new AbortController()
 
-    filterTaskersByTaskId(taskData.id)
+    filterTaskersByTaskId(taskData.id, { signal: controller.signal })
       .then((res) => {
-        if (isMounted && Array.isArray(res?.results) && res.results.length > 0) {
-          const mapped = res.results.map((item, idx) => {
+        const results = Array.isArray(res?.results) ? res.results : []
+        if (results.length === 0) {
+          setHasNoResults(true)
+          setApiTaskers([])
+          return
+        }
+        const mapped = results.map((item, idx) => {
             const c = item.candidate
             const scorePercent = Math.round((item.matchingScore || 0) * 100)
             return {
               id: c.id || c.userId,
+              userId: c.userId,
               name: c.name,
               avatar: DEFAULT_AVATAR,
               onlineText: c.status === 'ONLINE' ? 'Đang online' : 'Tạm nghỉ',
@@ -65,18 +75,28 @@ export default function FilterTasker({ onNavigate }) {
             }
           })
           setApiTaskers(mapped)
-        }
       })
-      .catch(() => {
-        // Giữ danh sách gợi ý mặc định nếu chưa kết nối DB hoặc chưa có ứng viên khớp cứng
+      .catch((err) => {
+        if (err.name === 'AbortError') return
+        setApiError(err.message || 'Không thể kết nối máy chủ.')
+      })
+      .finally(() => {
+        setIsLoading(false)
       })
 
-    return () => {
-      isMounted = false
-    }
-  }, [taskData?.id])
+    return () => controller.abort()
+  }, [taskData?.id, retryToken])
 
   const baseTaskers = apiTaskers && apiTaskers.length > 0 ? apiTaskers : FILTER_TASKERS_MOCK
+
+  // Nút thử lại: reset trạng thái rồi bump token để effect chạy lại
+  const handleRetry = () => {
+    setIsLoading(true)
+    setApiError('')
+    setHasNoResults(false)
+    setApiTaskers(null)
+    setRetryToken((t) => t + 1)
+  }
 
   const sortedTaskers = useMemo(() => {
     const list = [...baseTaskers]
@@ -121,11 +141,13 @@ export default function FilterTasker({ onNavigate }) {
   }
 
   const handleViewProfile = (tasker) => {
-    if (onNavigate) {
-      onNavigate('tasker-profile', {
-        isOwnerView: false,
-        tasker,
-      })
+    if (!onNavigate) return
+    // Tasker thật từ API: mở /profile/:userId để fetch hồ sơ thật từ DB.
+    // Tasker mẫu (mock) không có userId — giữ hành vi cũ.
+    if (tasker.userId) {
+      onNavigate(`/tasker/${tasker.userId}`, { isOwnerView: false, tasker })
+    } else {
+      onNavigate('tasker-profile', { isOwnerView: false, tasker })
     }
   }
 
@@ -280,7 +302,7 @@ export default function FilterTasker({ onNavigate }) {
                       <span className="font-headline-sm text-headline-sm font-bold text-on-surface">
                         Tìm thấy{' '}
                         <span className="text-primary font-black">
-                          {sortedTaskers.length} Thợ phù hợp
+                          {hasNoResults ? 0 : sortedTaskers.length} Thợ phù hợp
                         </span>
                       </span>
                       <span className="font-caption text-caption text-on-surface-variant block">
@@ -320,7 +342,49 @@ export default function FilterTasker({ onNavigate }) {
 
               {/* Tasker List Container */}
               <div className="flex flex-col gap-5">
-                {sortedTaskers.map((tasker, index) => {
+                {isLoading ? (
+                  <div className="rounded-xl bg-surface-container-lowest p-12 shadow-sm border border-surface-variant/30 flex flex-col items-center justify-center gap-3">
+                    <Icon
+                      name="progress_activity"
+                      size={36}
+                      className="text-primary animate-spin"
+                    />
+                    <span className="font-label-md text-label-md font-semibold text-on-surface-variant">
+                      Đang quét thợ online phù hợp với yêu cầu của bạn...
+                    </span>
+                  </div>
+                ) : hasNoResults ? (
+                  <div className="rounded-xl bg-surface-container-lowest p-12 shadow-sm border border-surface-variant/30 flex flex-col items-center justify-center gap-3 text-center">
+                    <span className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center">
+                      <Icon name="search_off" size={32} className="text-on-surface-variant" />
+                    </span>
+                    <h3 className="font-headline-md text-headline-md font-bold text-on-surface">
+                      Chưa có thợ phù hợp trong khu vực này
+                    </h3>
+                    <p className="font-body-sm text-body-sm text-on-surface-variant max-w-md">
+                      Các thợ đúng kỹ năng tại {areaLabel} hiện đang bận lịch vào khung giờ này.
+                      Bạn có thể thử lại sau hoặc điều chỉnh thời gian làm việc.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRetry}
+                      className="mt-1 px-5 py-2.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-bold hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm cursor-pointer"
+                    >
+                      Thử quét lại
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {apiError && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-secondary-fixed/60 text-on-surface font-label-sm text-label-sm font-semibold border border-outline-variant/40">
+                        <Icon name="wifi_off" size={18} className="shrink-0 mt-0.5 text-error" />
+                        <span>
+                          Không lấy được danh sách từ máy chủ ({apiError}) — đang hiển thị danh sách
+                          mẫu minh hoạ.
+                        </span>
+                      </div>
+                    )}
+                    {sortedTaskers.map((tasker, index) => {
                   const showBestRibbon = index === 0 && tasker.isTopRecommendation
                   return (
                     <article
@@ -527,6 +591,8 @@ export default function FilterTasker({ onNavigate }) {
                     </article>
                   )
                 })}
+                  </>
+                )}
               </div>
 
               {/* Pagination / Load more */}

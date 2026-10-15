@@ -45,6 +45,10 @@ export default function TaskersDashboard({ onNavigate }) {
       onNavigate?.('tasker-profile', { isOwnerView: true })
       return
     }
+    if (menuId === 'requests') {
+      onNavigate?.('tasker-requests')
+      return
+    }
     setActiveMenu(menuId)
   }
 

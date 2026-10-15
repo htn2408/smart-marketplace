@@ -17,11 +17,12 @@ export default function Footer({ onNavigate }) {
     } else {
       const routeMap = {
         home: ROUTES.HOME,
-        services: ROUTES.SEARCH,
-        search: ROUTES.SEARCH,
-        'become-tasker': ROUTES.SEARCH,
-        'task-detail': ROUTES.TASK_DETAIL,
-        profile: ROUTES.PROFILE,
+        services: ROUTES.SERVICES,
+        search: ROUTES.CLIENT_FILTER_TASKER,
+        'become-tasker': ROUTES.TASKER_DASHBOARD,
+        'task-detail': ROUTES.CLIENT_TASK_DETAIL,
+        'my-tasks': ROUTES.CLIENT_TASKS,
+        profile: ROUTES.CLIENT_PROFILE,
       }
       navigate(routeMap[path] || ROUTES.HOME)
     }

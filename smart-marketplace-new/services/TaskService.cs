@@ -49,6 +49,8 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
                 Description = request.Description?.Trim(),
                 City = request.City.Trim(),
                 District = request.District.Trim(),
+                ProvinceCode = request.ProvinceCode,
+                DistrictCode = request.DistrictCode,
                 Address = request.Address?.Trim(),
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
@@ -135,10 +137,11 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
     // ════════════════════════════════════════════════════════════════════════
     // Lọc & Chấm điểm Tasker cho một Task (FilterAndScoreWorkersAsync)
     //
-    // STEP 1: HARD FILTER (Lọc cứng trong MySQL + kiểm tra trùng lịch)
+    // STEP 1: HARD FILTER (Lọc cứng trong MySQL — 1 câu query duy nhất)
     //   ✔ WorkerProfile.Status == "ONLINE"
     //   ✔ Sở hữu kỹ năng requiredSkillId của Task (bảng worker_skills)
-    //   ✔ Có đăng ký hoạt động tại Tỉnh/Thành + Quận/Huyện của Task (bảng worker_districts)
+    //   ✔ Có đăng ký hoạt động tại khu vực của Task (bảng worker_districts —
+    //     ưu tiên so ProvinceCode/DistrictCode, task cũ thiếu code thì so tên)
     //   ✔ Không có Task nào đang MATCHED / IN_PROGRESS trùng khung giờ
     //
     // STEP 2: SCORING (Bỏ distanceScore vì khu vực đã lọc cứng qua worker_districts)
@@ -167,30 +170,24 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         var newStart = task.ScheduledStartTime;
         var newEnd = newStart.AddMinutes(task.ExpectedTime);
 
-        // 1. Hard filter từ DB (ONLINE + có Skill + có đăng ký Quận/Huyện trong worker_districts)
+        // Hard filter hoàn toàn trong SQL (ONLINE + Skill + khu vực + không trùng lịch)
         var candidates = await tasks.GetCandidateWorkersAsync(
             task.RequiredSkillId,
             task.City,
             task.District,
+            task.ProvinceCode,
+            task.DistrictCode,
+            newStart,
+            newEnd,
             ct);
 
-        // 2. Loại bỏ các worker bị trùng lịch (otherStart < newEnd && otherEnd > newStart)
-        var availableCandidates = candidates
-            .Where(worker => !worker.TasksAccepted.Any(existing =>
-            {
-                var otherStart = existing.ScheduledStartTime;
-                var otherEnd = otherStart.AddMinutes(existing.ExpectedTime);
-                return otherStart < newEnd && otherEnd > newStart;
-            }))
-            .ToList();
-
-        // 3. Tính điểm: Rating (60%) + Kinh nghiệm CompletedTasks (40%)
-        var scored = availableCandidates
+        // Tính điểm: Rating (60%) + Kinh nghiệm CompletedTasks (40%)
+        var scored = candidates
             .Select(worker =>
             {
-                var ratingScore = CalculateRatingScore(worker.Rating);
-                var experienceScore = CalculateExperienceScore(worker.CompletedTasks);
-                var matchingScore = ratingScore * 0.60 + experienceScore * 0.40;
+                var ratingScore = MatchingScorer.CalculateRatingScore(worker.Rating);
+                var experienceScore = MatchingScorer.CalculateExperienceScore(worker.CompletedTasks);
+                var matchingScore = MatchingScorer.CalculateMatchingScore(ratingScore, experienceScore);
 
                 return new FilterTaskersResponse.ScoredCandidateDto
                 {
@@ -199,8 +196,6 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
                         Id = worker.Id,
                         UserId = worker.UserId,
                         Name = worker.User.Name,
-                        Email = worker.User.Email,
-                        PhoneNumber = worker.User.PhoneNumber,
                         Description = worker.Description,
                         Status = worker.Status,
                         Rating = worker.Rating,
@@ -260,18 +255,6 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
             TotalCandidates = scored.Count,
             Results = scored,
         };
-    }
-
-    private static double CalculateRatingScore(decimal rating)
-    {
-        var r = (double)rating;
-        return Math.Clamp(r, 0.0, 5.0) / 5.0;
-    }
-
-    private static double CalculateExperienceScore(int completedTasks)
-    {
-        if (completedTasks <= 0) return 0.0;
-        return Math.Min(completedTasks / 50.0, 1.0);
     }
 
     private static string MapCategoryToIcon(string? categoryName)

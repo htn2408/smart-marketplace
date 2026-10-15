@@ -22,25 +22,39 @@ public class TaskRepository(AppDbContext db) : ITaskRepository
         string requiredSkillId,
         string taskCity,
         string taskDistrict,
+        string? provinceCode,
+        string? districtCode,
+        DateTime taskStart,
+        DateTime taskEnd,
         CancellationToken ct = default)
     {
         var normalizedCity = taskCity.Trim().ToLower();
         var normalizedDistrict = taskDistrict.Trim().ToLower();
 
+        // Ưu tiên so mã hành chính (ổn định, không phụ thuộc dấu/định dạng tên);
+        // task cũ chưa có code thì fallback so tên như trước.
+        var useCodeMatching = !string.IsNullOrEmpty(provinceCode) && !string.IsNullOrEmpty(districtCode);
+
+        // Lọc trùng lịch ngay trong SQL: task MATCHED/IN_PROGRESS của worker
+        // phải không overlap [taskStart, taskEnd)
         return await db.WorkerProfiles
             .Include(wp => wp.User)
             .Include(wp => wp.Skills)
                 .ThenInclude(ws => ws.Skill)
             .Include(wp => wp.ServiceDistricts)
-            .Include(wp => wp.TasksAccepted.Where(t =>
-                t.Status == TaskItemStatus.MATCHED || t.Status == TaskItemStatus.IN_PROGRESS))
             .AsNoTracking()
             .Where(wp =>
                 wp.Status == "ONLINE" &&
                 wp.Skills.Any(ws => ws.SkillId == requiredSkillId) &&
                 wp.ServiceDistricts.Any(wd =>
-                    wd.ProvinceName.ToLower() == normalizedCity &&
-                    wd.DistrictName.ToLower() == normalizedDistrict))
+                    useCodeMatching
+                        ? wd.ProvinceCode == provinceCode && wd.DistrictCode == districtCode
+                        : wd.ProvinceName.ToLower() == normalizedCity &&
+                          wd.DistrictName.ToLower() == normalizedDistrict) &&
+                !wp.TasksAccepted.Any(t =>
+                    (t.Status == TaskItemStatus.MATCHED || t.Status == TaskItemStatus.IN_PROGRESS) &&
+                    t.ScheduledStartTime < taskEnd &&
+                    t.ScheduledStartTime.AddMinutes(t.ExpectedTime) > taskStart))
             .ToListAsync(ct);
     }
 

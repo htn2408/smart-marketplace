@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
@@ -8,6 +8,8 @@ import Badge from '../components/common/Badge'
 import TaskSearchInput from '../components/common/TaskSearchInput'
 import AddressSelector from '../components/common/AddressSelector'
 import { parseVietnameseAddress } from '../services/addressService'
+import { createTaskApi } from '../services/taskService'
+import { MAX_TASK_IMAGES, MAX_IMAGE_BYTES } from '../constants/uploadLimits'
 import { useAuth } from '../hooks/useAuth'
 import { validateTaskDetailForm } from '../utils/validation'
 
@@ -40,31 +42,55 @@ export default function TaskDetail({ onNavigate }) {
   const [taskCategory, setTaskCategory] = useState(
     taskDraft?.title || preselected?.title || ''
   )
+  // Skill thực tế trong DB — chỉ có khi người dùng chọn từ gợi ý (bắt buộc cho matching)
+  const [requiredSkillId, setRequiredSkillId] = useState(taskDraft?.skillId || '')
 
   // State for Section 2: Description (empty by default)
   const [description, setDescription] = useState(taskDraft?.description || '')
 
-  // State for Section 3: Images
-  const [uploadedImages, setUploadedImages] = useState([
-    {
-      id: 1,
-      src: '/images/task-detail/ikea-boxes.jpg',
-      label: 'Thùng kiện IKEA',
-    },
-    {
-      id: 2,
-      src: '/images/task-detail/empty-corner.jpg',
-      label: 'Góc tường trống',
-    },
-    {
-      id: 3,
-      src: '/images/task-detail/manual-schematic.jpg',
-      label: 'Sơ đồ sách mẫu',
-    },
-  ])
+  // State for Section 3: Images — file thật, upload qua POST /api/tasks (multipart)
+  const [taskImages, setTaskImages] = useState([])
+  const [imageError, setImageError] = useState('')
+  const imageInputRef = useRef(null)
 
   const removeImage = (id) => {
-    setUploadedImages((prev) => prev.filter((img) => img.id !== id))
+    setTaskImages((prev) => {
+      const found = prev.find((img) => img.id === id)
+      if (found?.previewUrl) URL.revokeObjectURL(found.previewUrl)
+      return prev.filter((img) => img.id !== id)
+    })
+  }
+
+  const handleImagesSelected = (e) => {
+    const files = Array.from(e.target.files || [])
+    e.target.value = '' // reset để chọn lại được cùng 1 file
+    if (files.length === 0) return
+
+    const problems = []
+    const accepted = []
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        problems.push(`"${file.name}" không phải là file ảnh.`)
+      } else if (file.size > MAX_IMAGE_BYTES) {
+        problems.push(`Ảnh "${file.name}" vượt quá 5MB.`)
+      } else {
+        accepted.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          file,
+          previewUrl: URL.createObjectURL(file),
+          label: file.name,
+        })
+      }
+    }
+
+    setTaskImages((prev) => {
+      const remaining = Math.max(0, MAX_TASK_IMAGES - prev.length)
+      if (accepted.length > remaining) {
+        problems.push(`Tối đa ${MAX_TASK_IMAGES} ảnh — đã bỏ bớt ${accepted.length - remaining} ảnh.`)
+      }
+      return [...prev, ...accepted.slice(0, remaining)]
+    })
+    setImageError(problems.join(' '))
   }
 
   // ==============================================================
@@ -100,13 +126,30 @@ export default function TaskDetail({ onNavigate }) {
   )
   const [fullAddress, setFullAddress] = useState(() => initialAddressString)
 
+  // Mã hành chính (Esgoo) + toạ độ do AddressSelector trả về — gửi lên backend để matching theo code
+  const [provinceCode, setProvinceCode] = useState(() => taskDraft?.provinceCode || '')
+  const [districtCode, setDistrictCode] = useState(() => taskDraft?.districtCode || '')
+  const [coords, setCoords] = useState(() => ({
+    lat: taskDraft?.latitude ?? (user?.latitude ? Number(user.latitude) : 21.0285),
+    lng: taskDraft?.longitude ?? (user?.longitude ? Number(user.longitude) : 105.8542),
+  }))
+
   const handleAddressChange = useCallback((addrData) => {
     setProvince(addrData.province || '')
     setDistrict(addrData.district || '')
     setWard(addrData.ward || '')
+    setProvinceCode(addrData.provinceCode || '')
+    setDistrictCode(addrData.districtCode || '')
     setSpecificAddress(addrData.specificAddress || '')
     setFullAddress(addrData.fullAddress || '')
+    if (addrData.latitude != null && addrData.longitude != null) {
+      setCoords({ lat: Number(addrData.latitude), lng: Number(addrData.longitude) })
+    }
   }, [])
+
+  // Trạng thái đăng việc thật (POST /api/tasks)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   // State for Section 5: Budget
   const [amount, setAmount] = useState(
@@ -179,7 +222,7 @@ export default function TaskDetail({ onNavigate }) {
     clearFieldError('scheduleTime')
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault()
 
     const fallbackParsed = parseVietnameseAddress(specificAddress)
@@ -212,6 +255,22 @@ export default function TaskDetail({ onNavigate }) {
       return
     }
 
+    // Skill bắt buộc phải có trong DB — chỉ xác định được khi chọn từ gợi ý
+    if (!requiredSkillId) {
+      setErrors({
+        taskCategory:
+          'Vui lòng chọn tên công việc từ danh sách gợi ý để hệ thống xác định kỹ năng cần thiết.',
+      })
+      document.getElementById('step-1')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+
+    if (durationInfo.totalMinutes < 15) {
+      setErrors({ scheduleTime: 'Thời lượng làm việc tối thiểu 15 phút.' })
+      document.getElementById('step-6')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+
     setErrors({})
 
     const activeDateOption = dateOptions.find((d) => d.id === selectedDate)
@@ -220,29 +279,74 @@ export default function TaskDetail({ onNavigate }) {
         ? customDate
         : activeDateOption?.title || `Ngày mai, ${formatDateTitle(tomorrow)}`
 
-    const taskData = {
+    // Ngày bắt đầu: today/tomorrow theo ISO nội bộ, 'other' dùng customDate
+    const dateStr =
+      selectedDate === 'today' ? todayIso : selectedDate === 'other' ? customDate : tomorrowIso
+    const [sh, sm] = startTime.split(':').map(Number)
+    const scheduledDate = new Date(
+      `${dateStr}T${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`
+    )
+
+    const taskPayload = {
       title: taskCategory.trim(),
-      categoryName: preselected?.categoryName || 'Điện & Gia dụng',
-      requestCode: '#TM-84920',
       description: description.trim(),
-      province: resolvedProvince,
+      city: resolvedProvince,
       district: resolvedDistrict,
-      ward: resolvedWard,
-      specificAddress: specificAddress.trim(),
-      fullAddress: fullAddress || specificAddress.trim(),
-      offeredPrice: amount,
-      scheduledText: `${dateLabel} • ${startTime} - ${endTime}`,
-      selectedDate,
-      customDate,
-      startTime,
-      endTime,
+      provinceCode,
+      districtCode,
+      address: [specificAddress, resolvedWard].filter(Boolean).join(', '),
+      latitude: coords.lat,
+      longitude: coords.lng,
+      scheduledStartTime: scheduledDate.toISOString(),
+      expectedTime: durationInfo.totalMinutes,
+      offeredPrice: Number(amount),
+      requiredSkillId,
     }
 
-    if (onNavigate) {
-      onNavigate('filter-tasker', {
-        fromTaskDetail: true,
-        taskData,
-      })
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const res = await createTaskApi(
+        taskPayload,
+        taskImages.map((img) => img.file)
+      )
+      const created = res.task || {}
+
+      const taskData = {
+        id: created.id,
+        requestCode: created.id ? `#${created.id.slice(0, 8).toUpperCase()}` : '#TM-NEW',
+        title: created.title || taskPayload.title,
+        categoryName: preselected?.categoryName || created.requiredSkill?.name || 'Dịch vụ đời sống',
+        skillId: created.requiredSkill?.id || requiredSkillId,
+        skillName: created.requiredSkill?.name,
+        description: created.description || taskPayload.description,
+        province: created.city || resolvedProvince,
+        district: created.district || resolvedDistrict,
+        ward: resolvedWard,
+        specificAddress,
+        fullAddress:
+          created.address || fullAddress ||
+          [specificAddress, resolvedWard, resolvedDistrict, resolvedProvince].filter(Boolean).join(', '),
+        latitude: created.latitude ?? coords.lat,
+        longitude: created.longitude ?? coords.lng,
+        offeredPrice: created.offeredPrice ?? amount,
+        scheduledStartTime: created.scheduledStartTime || scheduledDate.toISOString(),
+        expectedTime: created.expectedTime ?? durationInfo.totalMinutes,
+        scheduledText: `${dateLabel} • ${startTime} - ${endTime}`,
+        images: created.images?.map((img) => img.imageUrl) || [],
+      }
+
+      if (onNavigate) {
+        onNavigate('filter-tasker', {
+          fromTaskDetail: true,
+          taskData,
+        })
+      }
+    } catch (err) {
+      setSubmitError(err.message || 'Không thể tạo công việc. Vui lòng thử lại.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -349,6 +453,7 @@ export default function TaskDetail({ onNavigate }) {
                   }}
                   onSelectTask={(task) => {
                     clearFieldError('taskCategory')
+                    setRequiredSkillId(task?.skillId || '')
                     if (task?.suggestedPrice) {
                       setAmount(task.suggestedPrice)
                     }
@@ -427,25 +532,41 @@ export default function TaskDetail({ onNavigate }) {
                       Bước 3: Hình ảnh hiện trạng
                     </span>
                     <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                      Tải ảnh hộp đồ &amp; vị trí cần lắp ({uploadedImages.length}/6)
+                      Tải ảnh hiện trạng công việc ({taskImages.length}/{MAX_TASK_IMAGES})
                     </h2>
                     <p className="font-body-sm text-body-sm text-on-surface-variant">
                       Đăng ảnh thực tế giúp Tasker hiểu việc chuẩn xác và nhận ngay mà không cần khảo sát rườm rà.
                     </p>
                   </div>
                   <span className="px-2.5 py-1 rounded bg-primary-fixed/30 text-on-primary-fixed-variant font-label-sm text-label-sm font-semibold shrink-0">
-                    Tối đa 6 ảnh
+                    Tối đa 10 ảnh • 5MB/ảnh
                   </span>
                 </div>
 
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleImagesSelected}
+                />
+
+                {imageError && (
+                  <p className="mb-3 flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
+                    <Icon name="error" size={15} />
+                    <span>{imageError}</span>
+                  </p>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {uploadedImages.map((img) => (
+                  {taskImages.map((img) => (
                     <div
                       key={img.id}
                       className="relative group rounded-lg overflow-hidden bg-surface-container aspect-square shadow-sm"
                     >
                       <img
-                        src={img.src}
+                        src={img.previewUrl}
                         alt={img.label}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
@@ -465,20 +586,20 @@ export default function TaskDetail({ onNavigate }) {
                     </div>
                   ))}
 
-                  {uploadedImages.length < 6 && (
+                  {taskImages.length < MAX_TASK_IMAGES && (
                     <button
                       type="button"
-                      onClick={() => alert('Chọn tệp ảnh hoặc video từ thiết bị của bạn')}
+                      onClick={() => imageInputRef.current?.click()}
                       className="aspect-square rounded-lg bg-surface-container-low hover:bg-surface-container flex flex-col items-center justify-center gap-1.5 p-3 text-on-surface-variant hover:text-primary transition-all group cursor-pointer border border-dashed border-outline-variant/60"
                     >
                       <span className="w-10 h-10 rounded-full bg-surface-container-lowest flex items-center justify-center shadow-sm group-hover:bg-primary group-hover:text-on-primary transition-colors">
                         <Icon name="add_a_photo" size={22} />
                       </span>
                       <span className="font-label-sm text-label-sm font-semibold">
-                        Thêm ảnh / video
+                        Thêm ảnh
                       </span>
                       <span className="font-caption text-caption text-on-surface-variant/70">
-                        JPG, PNG, MP4
+                        JPG, PNG • ≤5MB
                       </span>
                     </button>
                   )}
@@ -837,6 +958,12 @@ export default function TaskDetail({ onNavigate }) {
 
               {/* Final Action CTA Buttons */}
               <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm space-y-4 border border-surface-variant/30">
+                {submitError && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-error-container text-error font-label-sm text-label-sm font-semibold">
+                    <Icon name="error" size={18} className="shrink-0 mt-0.5" />
+                    <span>{submitError}</span>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row items-center gap-3">
                   <Button
                     type="submit"
@@ -844,9 +971,10 @@ export default function TaskDetail({ onNavigate }) {
                     size="lg"
                     icon="send"
                     fullWidth
+                    disabled={submitting}
                     className="py-4"
                   >
-                    Đăng việc ngay (Miễn phí)
+                    {submitting ? 'Đang đăng việc...' : 'Đăng việc ngay (Miễn phí)'}
                   </Button>
                   <Button
                     type="button"

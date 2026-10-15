@@ -30,6 +30,16 @@ public class TaskItem
     [Column("district")]
     public string District { get; set; } = null!;
 
+    // Mã hành chính (Esgoo) — dùng để matching worker_districts ổn định hơn so tên.
+    // Nullable vì task cũ chưa có code; khi có code thì filter ưu tiên so code.
+    [MaxLength(20)]
+    [Column("province_code")]
+    public string? ProvinceCode { get; set; }
+
+    [MaxLength(20)]
+    [Column("district_code")]
+    public string? DistrictCode { get; set; }
+
     [Column("status")]
     public TaskItemStatus Status { get; set; } = TaskItemStatus.PENDING;
 

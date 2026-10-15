@@ -13,7 +13,7 @@ export default function TaskerSidebar({
   onNavigate,
 }) {
   return (
-    <aside className="w-64 bg-surface-container-lowest border-r border-surface-variant/40 flex flex-col justify-between shrink-0 min-h-screen sticky top-0 h-screen select-none">
+    <aside className="w-64 bg-surface-container-lowest border-r border-surface-variant/40 flex flex-col justify-between shrink-0 min-h-screen sticky top-0 h-screen select-none overflow-y-auto">
       {/* Top Section: Brand + Status Toggle + Navigation */}
       <div className="p-5 space-y-6">
         {/* Brand Logo */}

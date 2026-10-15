@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
@@ -14,6 +14,7 @@ import ReviewsList from '../components/profile/ReviewsList'
 import BookingSidebar from '../components/profile/BookingSidebar'
 import { useAuth } from '../hooks/useAuth'
 import { updateWorkerProfileApi } from '../services/authService'
+import { fetchWorkerProfileById } from '../services/workerService'
 import { DEFAULT_AVATAR } from '../assets/constants'
 
 /**
@@ -47,7 +48,29 @@ export default function TaskerProfile({ onNavigate }) {
   const [saveError, setSaveError] = useState('')
 
   const wp = user?.workerProfile || null
-  const displayName = user?.name || 'Nguyễn Anh Tuấn'
+
+  // Chế độ khách xem hồ sơ Tasker khác (/profile/:id): fetch hồ sơ thật từ DB qua GET /api/workers/{userId}
+  const isViewingOther = Boolean(paramTaskerId)
+  const [viewedTasker, setViewedTasker] = useState(null)
+  const [viewError, setViewError] = useState('')
+
+  useEffect(() => {
+    if (!paramTaskerId) return
+    const controller = new AbortController()
+
+    fetchWorkerProfileById(paramTaskerId, { signal: controller.signal })
+      .then((res) => setViewedTasker(res))
+      .catch((err) => {
+        if (err.name === 'AbortError') return
+        setViewError(err.message || 'Không thể tải hồ sơ Tasker.')
+      })
+
+    return () => controller.abort()
+  }, [paramTaskerId])
+
+  const displayName = isViewingOther
+    ? viewedTasker?.name || location.state?.tasker?.name || 'Tasker'
+    : user?.name || 'Nguyễn Anh Tuấn'
 
   // State cục bộ (nếu người dùng đã chỉnh sửa trực tiếp trên trang, ưu tiên state cục bộ; nếu chưa thì đọc từ user.workerProfile)
   const [draftDescription, setDraftDescription] = useState(null)
@@ -55,12 +78,31 @@ export default function TaskerProfile({ onNavigate }) {
   const [draftDistricts, setDraftDistricts] = useState(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
-  const description = draftDescription !== null ? draftDescription : wp?.description || ''
-  const skills = draftSkills !== null ? draftSkills : wp?.skills || []
-  const districts = draftDistricts !== null ? draftDistricts : wp?.serviceDistricts || []
+  const description = isViewingOther
+    ? viewedTasker?.description || ''
+    : draftDescription !== null
+    ? draftDescription
+    : wp?.description || ''
 
-  const completedTasks = wp?.completedTasks ?? 0
-  const rating = wp?.rating ?? 5.0
+  const skills = isViewingOther
+    ? (viewedTasker?.skills || []).map((s) => ({ skillId: s.id, skillName: s.name }))
+    : draftSkills !== null
+    ? draftSkills
+    : wp?.skills || []
+
+  const districts = isViewingOther
+    ? viewedTasker?.serviceDistricts || []
+    : draftDistricts !== null
+    ? draftDistricts
+    : wp?.serviceDistricts || []
+
+  const completedTasks = isViewingOther
+    ? viewedTasker?.completedTasks ?? 0
+    : wp?.completedTasks ?? 0
+
+  const rating = isViewingOther ? viewedTasker?.rating ?? 5.0 : wp?.rating ?? 5.0
+
+  const memberSince = isViewingOther ? viewedTasker?.memberSince : user?.createdAt
 
   const professionText =
     skills.length > 0
@@ -197,6 +239,13 @@ export default function TaskerProfile({ onNavigate }) {
         </div>
       )}
 
+      {isViewingOther && viewError && (
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-2.5 text-sm font-bold">
+          <Icon name="error" size={20} />
+          <span>{viewError}</span>
+        </div>
+      )}
+
       {/* Tasker Identity Header Card */}
       <TaskerHeader
         name={displayName}
@@ -211,7 +260,7 @@ export default function TaskerProfile({ onNavigate }) {
       {/* About Me Section */}
       <AboutTasker
         description={description}
-        createdAt={user?.createdAt}
+        createdAt={memberSince}
         editable={isOwnerCVView}
         saving={saving}
         onSaveDescription={handleSaveDescription}

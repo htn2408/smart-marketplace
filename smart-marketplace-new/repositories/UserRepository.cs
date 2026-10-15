@@ -27,6 +27,15 @@ public class UserRepository(AppDbContext db) : IUserRepository
                 .ThenInclude(wp => wp!.ServiceDistricts)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
 
+    public Task<WorkerProfile?> FindWorkerProfileByUserIdAsync(string userId, CancellationToken ct = default) =>
+        db.WorkerProfiles
+            .Include(wp => wp.User)
+            .Include(wp => wp.Skills)
+                .ThenInclude(ws => ws.Skill)
+            .Include(wp => wp.ServiceDistricts)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(wp => wp.UserId == userId, ct);
+
     public Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default) =>
         db.Users.AnyAsync(u => u.Email == email, ct);
 

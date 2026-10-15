@@ -1,9 +1,19 @@
 /**
  * Task Service for API communication with Backend
  */
+import { getToken } from './authService'
 
 // Port 5236 is the default ASP.NET Core URL configured in smart-marketplace-new launchSettings.json
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5236/api'
+
+// Header auth dùng chung — backend chặn endpoint filter/task theo role
+function authHeaders(extra = {}) {
+  const token = getToken()
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  }
+}
 
 // Fallback suggestions ONLY used if backend server is not running
 const FALLBACK_SUGGESTIONS = [
@@ -115,19 +125,21 @@ export async function fetchTaskSuggestions(query, { signal, limit = 6 } = {}) {
  * Hard Filter: ONLINE + requiredSkillId + worker_districts + no schedule conflict
  * Score: Rating (60%) + CompletedTasks (40%)
  * @param {string} taskId
+ * @param {{ signal?: AbortSignal }} [options]
  * @returns {Promise<{ task: object, totalCandidates: number, results: Array<object> }>}
  */
-export async function filterTaskersByTaskId(taskId) {
+export async function filterTaskersByTaskId(taskId, { signal } = {}) {
   if (!taskId) {
     throw new Error('taskId là bắt buộc.')
   }
 
   const response = await fetch(`${API_BASE_URL}/tasks/filter`, {
+    signal,
     method: 'POST',
-    headers: {
+    headers: authHeaders({
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-    },
+    }),
     body: JSON.stringify({ taskId }),
   })
 
@@ -138,6 +150,57 @@ export async function filterTaskersByTaskId(taskId) {
       data.message ||
       data.title ||
       'Không thể lọc danh sách Tasker phù hợp.'
+    throw new Error(message)
+  }
+
+  return data
+}
+
+/**
+ * Create a task via Backend POST /api/tasks (multipart/form-data, role CLIENT required)
+ * @param {object} taskForm { title, description, city, district, provinceCode, districtCode,
+ *   address, latitude, longitude, scheduledStartTime (ISO string), expectedTime (minutes), offeredPrice, requiredSkillId }
+ * @param {File[]} images 0-10 ảnh, mỗi ảnh ≤ 5MB
+ * @param {{ signal?: AbortSignal }} [options]
+ * @returns {Promise<{ task: object }>} CreateTaskResponse
+ */
+export async function createTaskApi(taskForm, images = [], { signal } = {}) {
+  const formData = new FormData()
+
+  formData.append('title', taskForm.title)
+  if (taskForm.description) formData.append('description', taskForm.description)
+  formData.append('city', taskForm.city)
+  formData.append('district', taskForm.district)
+  if (taskForm.provinceCode) formData.append('provinceCode', taskForm.provinceCode)
+  if (taskForm.districtCode) formData.append('districtCode', taskForm.districtCode)
+  if (taskForm.address) formData.append('address', taskForm.address)
+  if (taskForm.latitude != null) formData.append('latitude', String(taskForm.latitude))
+  if (taskForm.longitude != null) formData.append('longitude', String(taskForm.longitude))
+  formData.append('scheduledStartTime', taskForm.scheduledStartTime)
+  formData.append('expectedTime', String(taskForm.expectedTime))
+  formData.append('offeredPrice', String(taskForm.offeredPrice))
+  formData.append('requiredSkillId', taskForm.requiredSkillId)
+
+  for (const image of images) {
+    formData.append('images', image)
+  }
+
+  // KHÔNG set Content-Type thủ công — trình duyệt tự thêm boundary của multipart
+  const response = await fetch(`${API_BASE_URL}/tasks`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+    body: formData,
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    // ASP.NET [ApiController] trả ProblemDetails { title, errors: { field: [msg] } }
+    let message = data.error || data.title || 'Không thể tạo công việc.'
+    if (data.errors) {
+      const details = Object.values(data.errors).flat().join(' ')
+      if (details) message = details
+    }
     throw new Error(message)
   }
 

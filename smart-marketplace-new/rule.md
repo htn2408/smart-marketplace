@@ -69,7 +69,7 @@ AppDbContext      (models/)        — mapping entity ↔ bảng MySQL
 | `DuplicateResourceException` | 409 | email/SĐT/unique đã tồn tại |
 | `InvalidCredentialsException` | 401 | sai thông tin đăng nhập, user không tồn tại theo token |
 | (chưa có) `ForbiddenException` | 403 | — thêm khi cần |
-| (chưa có) `NotFoundException` | 404 | — thêm khi cần |
+| `NotFoundException` | 404 | task/Tasker không tồn tại (TaskService, WorkerService) |
 | mọi exception khác | 500 | log full + trả thông báo chung "Lỗi máy chủ nội bộ." |
 
 Body lỗi thống nhất: `{ "error": "<thông báo tiếng Việt>" }`. Validate DTO thất bại → ASP.NET tự trả 400 (không cần code).
@@ -122,3 +122,11 @@ Body lỗi thống nhất: `{ "error": "<thông báo tiếng Việt>" }`. Valida
 - [ ] Thông báo lỗi tiếng Anh hoặc qua `Console.WriteLine` → **dùng GlobalExceptionHandler + tiếng Việt**
 - [ ] Quên đăng ký DI trong `Program.cs` → **500 lúc runtime, không phải lúc build**
 - [ ] `dotnet build` phải 0 warning 0 error trước khi xong việc
+
+---
+
+## 9. Logic thuần & Unit test
+
+- Business logic **thuần** (không đụng DbContext/HTTP — ví dụ tính điểm matching, kiểm tra trùng lịch) tách thành `static class` trong `services/` (ví dụ `MatchingScorer.cs`) để test được mà không cần database.
+- Project test: `smart-marketplace-new.Tests/` (xunit), tham chiếu project chính, chỉ test logic thuần — KHÔNG test qua HTTP/DbContext. Chạy: `dotnet test` (nếu `bin` đang bị server chạy khóa, thêm `-p:OutputPath=bin/Debug/net10.0-tests/`).
+- Ví dụ endpoint theo recipe mục 3: `WorkersController` → `IWorkerService` → `IUserRepository` (hồ sơ public `GET api/workers/{userId}`, không chứa PII).

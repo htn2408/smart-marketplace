@@ -11,6 +11,10 @@ public interface ITaskRepository
         string requiredSkillId,
         string taskCity,
         string taskDistrict,
+        string? provinceCode,
+        string? districtCode,
+        DateTime taskStart,
+        DateTime taskEnd,
         CancellationToken ct = default);
     Task AddAsync(TaskItem task, CancellationToken ct = default);
     Task<int> SaveAsync(CancellationToken ct = default);

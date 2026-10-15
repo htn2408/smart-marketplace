@@ -9,6 +9,7 @@ public interface IUserRepository
 {
     Task<User?> FindByEmailAsync(string email, CancellationToken ct = default);
     Task<User?> FindByIdAsync(string id, CancellationToken ct = default);
+    Task<WorkerProfile?> FindWorkerProfileByUserIdAsync(string userId, CancellationToken ct = default);
     Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default);
     Task<bool> ExistsByPhoneAsync(string phoneNumber, CancellationToken ct = default);
     Task AddAsync(User user, CancellationToken ct = default);

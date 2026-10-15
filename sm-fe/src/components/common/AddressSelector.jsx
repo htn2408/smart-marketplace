@@ -40,6 +40,10 @@ export default function AddressSelector({
   const [province, setProvince] = useState('')
   const [district, setDistrict] = useState('')
   const [ward, setWard] = useState('')
+  // Mã hành chính (Esgoo id) — cùng nguồn với worker_districts của Tasker,
+  // để backend matching theo code thay vì so tên có dấu
+  const [provinceCode, setProvinceCode] = useState('')
+  const [districtCode, setDistrictCode] = useState('')
   const [specificAddress, setSpecificAddress] = useState(initialAddress || '')
 
   const [coords, setCoords] = useState({
@@ -103,7 +107,9 @@ export default function AddressSelector({
     d = district,
     w = ward,
     s = specificAddress,
-    c = coords
+    c = coords,
+    pc = provinceCode,
+    dc = districtCode
   ) => {
     const parts = [s, w, d, p].filter(Boolean)
     const fullAddress = parts.join(', ')
@@ -114,6 +120,8 @@ export default function AddressSelector({
         province: p,
         district: d,
         ward: w,
+        provinceCode: pc,
+        districtCode: dc,
         specificAddress: s,
         latitude: c.lat,
         longitude: c.lng,
@@ -185,6 +193,7 @@ export default function AddressSelector({
 
     const matchedProv = pFound.full_name
     setProvince(matchedProv)
+    setProvinceCode(pFound.id)
     onClearError?.('province')
 
     // 2. Tải và tìm Quận / Huyện
@@ -214,12 +223,14 @@ export default function AddressSelector({
           null
         )
         setSpecificAddress(cleanedOnlyProv)
-        emitChange(matchedProv, '', '', cleanedOnlyProv, targetCoords || coords)
+        setDistrictCode('')
+        emitChange(matchedProv, '', '', cleanedOnlyProv, targetCoords || coords, pFound.id, '')
         return
       }
 
       const matchedDist = dFound.full_name
       setDistrict(matchedDist)
+      setDistrictCode(dFound.id)
       onClearError?.('district')
 
       // 3. Tải và tìm Phường / Xã
@@ -259,7 +270,9 @@ export default function AddressSelector({
         matchedDist,
         matchedWd,
         cleanedSpec,
-        targetCoords || coords
+        targetCoords || coords,
+        pFound.id,
+        dFound.id
       )
     } catch (err) {
       console.warn('Lỗi tự động map địa chính:', err)
@@ -300,7 +313,9 @@ export default function AddressSelector({
 
     if (!selected) {
       setDistrictsList([])
-      emitChange('', '', '', specificAddress, coords)
+      setProvinceCode('')
+      setDistrictCode('')
+      emitChange('', '', '', specificAddress, coords, '', '')
       return
     }
 
@@ -309,7 +324,8 @@ export default function AddressSelector({
     )
     if (!pObj) {
       setDistrictsList([])
-      emitChange(selected, '', '', specificAddress, coords)
+      setProvinceCode('')
+      emitChange(selected, '', '', specificAddress, coords, '')
       return
     }
 
@@ -321,7 +337,9 @@ export default function AddressSelector({
 
     const data = await fetchDistricts(pObj.id)
     setDistrictsList(data)
-    emitChange(selected, '', '', specificAddress, newCoords)
+    setProvinceCode(pObj.id)
+    setDistrictCode('')
+    emitChange(selected, '', '', specificAddress, newCoords, pObj.id, '')
   }
 
   // Chọn Huyện
@@ -333,7 +351,8 @@ export default function AddressSelector({
 
     if (!selected) {
       setWardsList([])
-      emitChange(province, '', '', specificAddress, coords)
+      setDistrictCode('')
+      emitChange(province, '', '', specificAddress, coords, undefined, '')
       return
     }
 
@@ -342,7 +361,8 @@ export default function AddressSelector({
     )
     if (!dObj) {
       setWardsList([])
-      emitChange(province, selected, '', specificAddress, coords)
+      setDistrictCode('')
+      emitChange(province, selected, '', specificAddress, coords, undefined, '')
       return
     }
 
@@ -354,7 +374,8 @@ export default function AddressSelector({
 
     const data = await fetchWards(dObj.id)
     setWardsList(data)
-    emitChange(province, selected, '', specificAddress, newCoords)
+    setDistrictCode(dObj.id)
+    emitChange(province, selected, '', specificAddress, newCoords, undefined, dObj.id)
   }
 
   // Chọn Xã
