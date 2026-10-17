@@ -1,0 +1,33 @@
+services:
+  backend:
+    image: smart-marketplace-be
+    container_name: smart-marketplace-api
+    ports:
+      - "5236:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
+      ASPNETCORE_URLS: "http://+:8080"
+
+      # Database
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT:-3306}"
+      DB_NAME: "${DB_NAME}"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      ConnectionStrings__DefaultConnection: "${ConnectionStrings__DefaultConnection}"
+
+      # JWT
+      Jwt__Key: "${Jwt__Key:?Jwt__Key is required}"
+      Jwt__Issuer: "${Jwt__Issuer:-smart-marketplace}"
+      Jwt__Audience: "${Jwt__Audience:-smart-marketplace}"
+      Jwt__ExpiresMinutes: "${Jwt__ExpiresMinutes:-1440}"
+      JWT_SECRET: "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-24h}"
+
+      # CORS
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}"
+
+      # Cloudinary
+      CLOUDINARY_CLOUD_NAME: "${CLOUDINARY_CLOUD_NAME:-}"
+      CLOUDINARY_API_KEY: "${CLOUDINARY_API_KEY:-}"
+      CLOUDINARY_API_SECRET: "${CLOUDINARY_API_SECRET:-}"

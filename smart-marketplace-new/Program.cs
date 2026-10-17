@@ -99,12 +99,15 @@ builder.Services.AddControllers();
 // Exception nghiệp vụ → HTTP status (401/409/500)
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
-
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 var app = builder.Build();
-
+app.UseSwagger();
+app.UseSwaggerUI();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+   
     app.MapOpenApi();
 }
 
