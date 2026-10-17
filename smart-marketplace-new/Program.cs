@@ -6,18 +6,65 @@ using smart_marketplace_new.models;
 using smart_marketplace_new.repositories;
 using smart_marketplace_new.services;
 
+// 1. Tự động đọc và nạp cấu hình từ file .env (nếu có) vào Environment Variables
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envPath))
+{
+    foreach (var line in File.ReadAllLines(envPath))
+    {
+        var trimmed = line.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#'))
+            continue;
+
+        var separatorIndex = trimmed.IndexOf('=');
+        if (separatorIndex > 0)
+        {
+            var key = trimmed[..separatorIndex].Trim();
+            var value = trimmed[(separatorIndex + 1)..].Trim().Trim('"', '\'');
+            Environment.SetEnvironmentVariable(key, value);
+        }
+    }
+}
+
+// Hỗ trợ tự sinh connection string nếu người dùng cấu hình các biến rời rạc DB_*
+var dbHost = Environment.GetEnvironmentVariable("DB_HOST");
+var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbName) &&
+    string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")))
+{
+    var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "3306";
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "root";
+    var dbPass = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "";
+    var generatedConn = $"Server={dbHost};Port={dbPort};Database={dbName};User={dbUser};Password={dbPass};";
+    Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", generatedConn);
+}
+
+// Hỗ trợ alias JWT_SECRET -> Jwt__Key
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+if (!string.IsNullOrEmpty(jwtSecret) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("Jwt__Key")))
+{
+    Environment.SetEnvironmentVariable("Jwt__Key", jwtSecret);
+}
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Đảm bảo biến môi trường và .env được ưu tiên nạp đè lên appsettings.json
+builder.Configuration.AddEnvironmentVariables();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 // CORS for Frontend (Vite)
+var corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -25,7 +72,7 @@ builder.Services.AddCors(options =>
 
 // MySQL (Pomelo) — serverVersion khớp MySQL 8.0 theo dump
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Thiếu ConnectionStrings:DefaultConnection.");
+    ?? throw new InvalidOperationException("Thiếu ConnectionStrings:DefaultConnection (cần cấu hình trong .env hoặc appsettings.json).");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));

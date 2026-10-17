@@ -1,0 +1,21 @@
+## .NET Build & Output Folders
+bin/
+obj/
+TestResults/
+
+## Environment & Secrets
+.env
+.env.*
+!.env.example
+
+## Visual Studio & VS Code & Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## OS Files
+.DS_Store
+Thumbs.db
