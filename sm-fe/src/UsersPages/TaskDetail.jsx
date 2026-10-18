@@ -628,7 +628,7 @@ export default function TaskDetail({ onNavigate }) {
                   required
                   stepLabel="Bước 4: Địa điểm thực hiện"
                   headerTitle="Vị trí căn hộ / nhà riêng"
-                  headerSubtitle="Chọn Tỉnh/Thành, Quận/Huyện, Phường/Xã hoặc chọn trực tiếp trên Google Maps."
+                  headerSubtitle="Nhập địa chỉ hoặc nhấp trực tiếp trên bản đồ bên dưới để xác định vị trí."
                   showDerivedPreview
                   showLiveMap
                   errors={errors}

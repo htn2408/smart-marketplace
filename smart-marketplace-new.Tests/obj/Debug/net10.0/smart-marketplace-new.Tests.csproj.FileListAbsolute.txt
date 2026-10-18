@@ -232,3 +232,6 @@ C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new.Tests\bin\Debug\net10.0\zh
 C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new.Tests\bin\Debug\net10.0\zh-Hant\Microsoft.VisualStudio.TestPlatform.Common.resources.dll
 C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new.Tests\bin\Debug\net10.0\smart-marketplace-new.dll
 C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new.Tests\bin\Debug\net10.0\smart-marketplace-new.pdb
+C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new.Tests\bin\Debug\net10.0-tests\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new.Tests\bin\Debug\net10.0-tests\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Sony\Desktop\SMmoinhat\smart-marketplace-new.Tests\bin\Debug\net10.0-tests\Swashbuckle.AspNetCore.SwaggerUI.dll

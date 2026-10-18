@@ -1,107 +1,113 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import TaskerLayout from '../components/layout/TaskerLayout'
 import Icon from '../components/common/Icon'
 import Button from '../components/common/Button'
 import Badge from '../components/common/Badge'
+import { formatCurrency, formatDateTime, formatHourSlot } from '../utils/formatters'
+import {
+  fetchTaskerTasks,
+  acceptTaskApi,
+  declineTaskApi,
+  startTaskApi,
+  completeTaskApi,
+} from '../services/taskService'
 
 /**
- * Danh sách yêu cầu & lịch hẹn mẫu chuẩn hoá theo thiết kế TaskMate
+ * Map ngành nghề sang Material Symbols icon tương ứng
  */
-const INITIAL_REQUESTS = [
-  {
-    id: 'REQ-01',
-    code: '#TM-89421',
-    title: 'Lắp quạt trần tại nhà',
-    category: 'Điện gia dụng',
-    icon: 'mode_fan',
-    clientName: 'Nguyễn Minh Anh',
-    clientRating: '5.0',
-    clientPhone: '0982 345 671',
-    price: 250000,
-    priceNote: 'Báo giá dịch vụ trọn gói',
-    time: '14/10/2026 • 09:00',
-    dateIso: '2026-10-14',
-    hourSlot: '09:00 - 10:30',
-    location: 'Cầu Giấy, Hà Nội',
-    distance: 'cách bạn 2.4 km',
-    addressDetail: 'Số 18 Dịch Vọng Hậu, Cầu Giấy, Hà Nội',
-    note: 'Trần bê tông có sẵn móc treo và đường điện chờ',
-    status: 'NEW', // NEW, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
-    statusNote: 'Khách yêu cầu xác nhận trước 20:00 tối nay',
-  },
-  {
-    id: 'REQ-02',
-    code: '#TM-89422',
-    title: 'Sửa đường ống nước bồn rửa chén rò rỉ',
-    category: 'Sửa điện nước',
-    icon: 'plumbing',
-    clientName: 'Lê Hoàng Yến',
-    clientRating: '4.9',
-    clientPhone: '0913 888 234',
-    price: 320000,
-    priceNote: 'Bao gồm công thợ & phụ kiện nhỏ',
-    time: '15/10/2026 • 14:00',
-    dateIso: '2026-10-15',
-    hourSlot: '14:00 - 15:30',
-    location: 'Đống Đa, Hà Nội',
-    distance: 'cách bạn 4.1 km',
-    addressDetail: 'Phòng 402, Nhà A3 TT Kim Liên, Đống Đa, Hà Nội',
-    note: 'Cần mang thêm ống ruột gà phi 34 và băng tan cao su non',
-    noteWarning: true,
-    status: 'NEW',
-    statusNote: 'Yêu cầu đến đúng hẹn vì khách bận giờ hành chính',
-  },
-  {
-    id: 'REQ-03',
-    code: '#TM-88231',
-    title: 'Lắp ráp bàn làm việc gỗ tự nhiên & ghế công thái học',
-    category: 'Lắp ráp nội thất',
-    icon: 'handyman',
-    clientName: 'Trần Văn Nam',
-    clientRating: '4.8',
-    clientPhone: '0977 123 456',
-    price: 180000,
-    priceNote: 'Đã thanh toán Escrow an toàn',
-    time: '16/10/2026 • 08:30 Sáng',
-    dateIso: '2026-10-16',
-    hourSlot: '08:30 - 10:30',
-    location: 'Nam Từ Liêm, Hà Nội',
-    distance: 'chung cư Vinhomes Smart City',
-    addressDetail: 'Tòa S2.03 Vinhomes Smart City, Tây Mỗ, Nam Từ Liêm, Hà Nội',
-    note: 'Kiện hàng nguyên thùng để tại phòng khách tầng 15',
-    status: 'CONFIRMED',
-    statusNote: 'Khách đã đặt cọc trực tuyến qua cổng TaskMate',
-  },
-  {
-    id: 'REQ-04',
-    code: '#TM-88190',
-    title: 'Thay thế ổ cắm điện & aptomat chống giật Panasonic',
-    category: 'Sửa chữa điện gia dụng',
-    icon: 'electric_bolt',
-    clientName: 'Vũ Quỳnh Trang',
-    clientRating: '5.0',
-    clientPhone: '0904 999 888',
-    price: 200000,
-    priceNote: 'Tiền công đã chốt',
-    time: 'Hôm nay • 10:00 (Đang làm việc)',
-    dateIso: '2026-10-15',
-    hourSlot: '10:00 - 11:30',
-    location: 'Phố Giảng Võ, Ba Đình, Hà Nội',
-    distance: 'cách bạn 1.8 km',
-    addressDetail: 'Số 62 ngõ 187 Giảng Võ, Ba Đình, Hà Nội',
-    note: 'Aptomat cũ nhảy liên tục khi bật bình nóng lạnh',
-    status: 'IN_PROGRESS',
-    statusNote: 'Thời gian thực tế: 35 phút',
-  },
-]
+function getCategoryIcon(categoryName) {
+  if (!categoryName) return 'handyman'
+  const cat = categoryName.toLowerCase()
+  if (cat.includes('điện') && cat.includes('nước')) return 'plumbing'
+  if (cat.includes('điện') || cat.includes('quạt') || cat.includes('đèn') || cat.includes('aptomat'))
+    return 'electric_bolt'
+  if (cat.includes('nước') || cat.includes('ống') || cat.includes('bồn')) return 'plumbing'
+  if (
+    cat.includes('lắp') ||
+    cat.includes('nội thất') ||
+    cat.includes('bàn') ||
+    cat.includes('ghế') ||
+    cat.includes('tủ')
+  )
+    return 'shelves'
+  if (cat.includes('dọn') || cat.includes('vệ sinh')) return 'cleaning_services'
+  if (cat.includes('chuyển') || cat.includes('vận chuyển') || cat.includes('bốc'))
+    return 'local_shipping'
+  if (cat.includes('sơn') || cat.includes('sửa')) return 'build'
+  return 'handyman'
+}
+
+/**
+ * Tính toán danh sách 7 ngày trong tuần hiện tại và đếm số việc thực tế
+ */
+function getCurrentWeekDays(tasks = []) {
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  // Khoảng cách từ Thứ 2 (Chủ nhật = 0 thì distance = -6)
+  const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + distanceToMonday)
+  monday.setHours(0, 0, 0, 0)
+
+  const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+
+  return dayNames.map((dayName, idx) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + idx)
+
+    const isToday =
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+
+    const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+
+    // Đếm số công việc thực tế trong ngày
+    const count = tasks.filter((t) => {
+      if (!t.scheduledStartTime) return false
+      const tDate = new Date(t.scheduledStartTime)
+      return (
+        tDate.getDate() === d.getDate() &&
+        tDate.getMonth() === d.getMonth() &&
+        tDate.getFullYear() === d.getFullYear() &&
+        (t.status === 'MATCHED' || t.status === 'IN_PROGRESS' || t.status === 'AWAITING_APPROVAL')
+      )
+    }).length
+
+    return {
+      day: dayName,
+      date: dateStr,
+      count: count > 0 ? `${count} việc` : 'Nghỉ',
+      isToday,
+    }
+  })
+}
 
 /**
  * RequireAndCalendar Component - Trang Quản lý Yêu cầu & Lịch hẹn của Tasker
- * Tuân thủ chuẩn rule.md: Tái sử dụng TaskerLayout, Icon, Button, Badge và theme Verdant Trust.
+ * Tích hợp 100% Backend API ASP.NET Core (.NET 10 port 5236)
+ * Tuân thủ chuẩn rule.md: Không mock data, dùng shared components và service layer
  */
 export default function RequireAndCalendar({ onNavigate }) {
-  const [requests, setRequests] = useState(INITIAL_REQUESTS)
-  const [filterTab, setFilterTab] = useState('all') // all, new, confirmed, in_progress, completed, cancelled
+  const [data, setData] = useState({
+    stats: {
+      pendingCount: 0,
+      matchedCount: 0,
+      inProgressCount: 0,
+      awaitingApprovalCount: 0,
+      doneCount: 0,
+      cancelledCount: 0,
+    },
+    tasks: [],
+  })
+
+  // all, pending, matched, in_progress, awaiting_approval, done, cancelled
+  const [filterTab, setFilterTab] = useState('all')
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState(null)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
+  const [refreshToken, setRefreshToken] = useState(0)
+
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false)
   const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
@@ -109,109 +115,159 @@ export default function RequireAndCalendar({ onNavigate }) {
   // Hiển thị toast thông báo nhanh
   const showToast = (message) => {
     setToastMessage(message)
-    setTimeout(() => setToastMessage(null), 3000)
+    setTimeout(() => setToastMessage(null), 3500)
   }
 
-  // Thao tác với yêu cầu: Chấp nhận
-  const handleAccept = (taskId) => {
-    setRequests((prev) =>
-      prev.map((item) =>
-        item.id === taskId
-          ? {
-              ...item,
-              status: 'CONFIRMED',
-              statusNote: 'Bạn đã chấp nhận đơn. Hãy chuẩn bị đồ nghề!',
-            }
-          : item
-      )
-    )
-    showToast('Đã chấp nhận đơn việc thành công!')
-  }
+  // Làm mới dữ liệu từ server
+  const handleRefresh = useCallback(() => {
+    setIsLoading(true)
+    setErrorMessage(null)
+    setRefreshToken((t) => t + 1)
+  }, [])
 
-  // Thao tác với yêu cầu: Từ chối
-  const handleDecline = (taskId) => {
-    setRequests((prev) =>
-      prev.map((item) =>
-        item.id === taskId
-          ? {
-              ...item,
-              status: 'CANCELLED',
-              statusNote: 'Bạn đã từ chối yêu cầu này.',
-            }
-          : item
-      )
-    )
-    showToast('Đã từ chối đơn công việc.')
-  }
+  useEffect(() => {
+    const controller = new AbortController()
 
-  // Thao tác: Bắt đầu di chuyển
-  const handleStartMoving = (taskId) => {
-    setRequests((prev) =>
-      prev.map((item) =>
-        item.id === taskId
-          ? {
-              ...item,
-              status: 'IN_PROGRESS',
-              statusNote: 'Đang di chuyển đến nhà khách',
-            }
-          : item
-      )
-    )
-    showToast('Đã cập nhật: Bạn đang di chuyển đến địa điểm!')
-  }
+    fetchTaskerTasks(filterTab, { signal: controller.signal })
+      .then((res) => {
+        setData(res)
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return
+        setErrorMessage(err.message || 'Không thể tải danh sách yêu cầu công việc.')
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
 
-  // Thao tác: Hoàn thành & Nghiệm thu
-  const handleComplete = (taskId) => {
-    setRequests((prev) =>
-      prev.map((item) =>
-        item.id === taskId
-          ? {
-              ...item,
-              status: 'COMPLETED',
-              statusNote: 'Công việc hoàn thành xuất sắc!',
-            }
-          : item
-      )
-    )
-    showToast('Đã xác nhận hoàn thành công việc. Tiền công đang giải ngân!')
-  }
+    return () => controller.abort()
+  }, [filterTab, refreshToken])
 
-  // Tính toán số liệu thống kê (Metrics) động theo state
-  const metrics = useMemo(() => {
-    const newCount = requests.filter((r) => r.status === 'NEW').length
-    const confirmedCount = requests.filter((r) => r.status === 'CONFIRMED').length
-    const inProgressCount = requests.filter((r) => r.status === 'IN_PROGRESS').length
-    const completedCount = requests.filter((r) => r.status === 'COMPLETED').length + 12 // 12 lịch đã hoàn thành trước đó
-    return {
-      newCount,
-      confirmedCount,
-      inProgressCount,
-      completedCount,
+  // Thao tác: Chấp nhận việc (PENDING -> MATCHED)
+  const handleAccept = async (taskId) => {
+    try {
+      setActionLoadingId(taskId)
+      const res = await acceptTaskApi(taskId)
+      showToast(res.message || 'Đã nhận việc thành công!')
+      handleRefresh()
+    } catch (err) {
+      showToast(err.message || 'Không thể nhận việc.')
+    } finally {
+      setActionLoadingId(null)
     }
-  }, [requests])
-
-  // Lọc danh sách theo filterTab
-  const filteredRequests = useMemo(() => {
-    if (filterTab === 'all') return requests
-    if (filterTab === 'new') return requests.filter((r) => r.status === 'NEW')
-    if (filterTab === 'confirmed') return requests.filter((r) => r.status === 'CONFIRMED')
-    if (filterTab === 'in_progress') return requests.filter((r) => r.status === 'IN_PROGRESS')
-    if (filterTab === 'completed') return requests.filter((r) => r.status === 'COMPLETED')
-    if (filterTab === 'cancelled') return requests.filter((r) => r.status === 'CANCELLED')
-    return requests
-  }, [requests, filterTab])
-
-  // Định dạng tiền tệ VND
-  const formatCurrency = (amount) => {
-    return Number(amount || 0).toLocaleString('vi-VN') + 'đ'
   }
+
+  // Thao tác: Từ chối việc (PENDING/MATCHED -> Hoàn tiền & quay về PENDING)
+  const handleDecline = async (taskId) => {
+    if (
+      !window.confirm(
+        'Bạn có chắc chắn muốn từ chối công việc này? Tiền cọc Escrow sẽ được hoàn trả lại cho khách hàng.'
+      )
+    ) {
+      return
+    }
+
+    try {
+      setActionLoadingId(taskId)
+      const res = await declineTaskApi(taskId)
+      showToast(res.message || 'Đã từ chối công việc.')
+      handleRefresh()
+    } catch (err) {
+      showToast(err.message || 'Không thể từ chối công việc.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // Thao tác: Bắt đầu làm / di chuyển (MATCHED -> IN_PROGRESS)
+  const handleStartMoving = async (taskId) => {
+    try {
+      setActionLoadingId(taskId)
+      const res = await startTaskApi(taskId)
+      showToast(res.message || 'Đã bắt đầu công việc!')
+      handleRefresh()
+    } catch (err) {
+      showToast(err.message || 'Không thể bắt đầu công việc.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // Thao tác: Thợ báo hoàn thành (IN_PROGRESS -> AWAITING_APPROVAL)
+  const handleComplete = async (taskId) => {
+    try {
+      setActionLoadingId(taskId)
+      const res = await completeTaskApi(taskId)
+      showToast(res.message || 'Đã báo hoàn thành công việc, đang chờ khách hàng duyệt và giải ngân!')
+      handleRefresh()
+    } catch (err) {
+      showToast(err.message || 'Không thể hoàn thành công việc.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // 7 ngày trong tuần được tính động từ tasks thật
+  const weekDays = useMemo(() => getCurrentWeekDays(data.tasks), [data.tasks])
+
+  // Các ca làm sắp tới cho modal lịch
+  const upcomingScheduleTasks = useMemo(() => {
+    return data.tasks.filter(
+      (t) => t.status === 'MATCHED' || t.status === 'IN_PROGRESS' || t.status === 'AWAITING_APPROVAL'
+    )
+  }, [data.tasks])
+
+  // Danh sách các tab lọc
+  const filterTabs = [
+    {
+      id: 'all',
+      label: 'Tất cả',
+      count:
+        data.stats.pendingCount +
+        data.stats.matchedCount +
+        data.stats.inProgressCount +
+        data.stats.awaitingApprovalCount +
+        data.stats.doneCount +
+        data.stats.cancelledCount,
+    },
+    {
+      id: 'pending',
+      label: 'Yêu cầu mới',
+      count: data.stats.pendingCount,
+      color: 'bg-amber-100 text-amber-900',
+    },
+    {
+      id: 'matched',
+      label: 'Đã xác nhận',
+      count: data.stats.matchedCount,
+      color: 'bg-primary-fixed text-primary',
+    },
+    {
+      id: 'in_progress',
+      label: 'Đang thực hiện',
+      count: data.stats.inProgressCount,
+      color: 'bg-surface-container-high text-on-surface',
+    },
+    {
+      id: 'awaiting_approval',
+      label: 'Chờ khách duyệt',
+      count: data.stats.awaitingApprovalCount,
+      color: 'bg-blue-100 text-blue-900',
+    },
+    {
+      id: 'done',
+      label: 'Hoàn thành',
+      count: data.stats.doneCount,
+    },
+    {
+      id: 'cancelled',
+      label: 'Đã hủy',
+      count: data.stats.cancelledCount,
+    },
+  ]
 
   return (
-    <TaskerLayout
-      activeMenu="requests"
-      onNavigate={onNavigate}
-      title="Yêu cầu & Lịch hẹn"
-    >
+    <TaskerLayout activeMenu="requests" onNavigate={onNavigate} title="Yêu cầu & Lịch hẹn">
       {/* Toast thông báo nổi */}
       {toastMessage && (
         <div className="fixed top-20 right-8 z-50 animate-in fade-in slide-in-from-top-3 duration-200">
@@ -229,14 +285,14 @@ export default function RequireAndCalendar({ onNavigate }) {
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
             <span className="font-label-sm text-xs text-primary uppercase tracking-wider font-extrabold">
-              Khu vực làm việc • Hà Nội
+              Khu vực hoạt động đăng ký • TaskMate Network
             </span>
           </div>
           <h1 className="font-headline-lg text-2xl lg:text-3xl font-extrabold text-on-surface tracking-tight">
             Yêu cầu &amp; Lịch hẹn
           </h1>
           <p className="font-body-md text-sm text-on-surface-variant">
-            Quản lý yêu cầu đặt dịch vụ, sắp xếp thứ tự thực hiện và điều phối lịch làm việc của bạn trong tuần.
+            Quản lý yêu cầu trực tiếp từ khách hàng, điều phối lịch hẹn và theo dõi tiến độ nghiệm thu giải ngân.
           </p>
         </div>
 
@@ -255,15 +311,15 @@ export default function RequireAndCalendar({ onNavigate }) {
             type="button"
             variant="primary"
             size="md"
-            icon="tune"
-            onClick={() => showToast('Đang áp dụng bộ lọc ưu tiên khoảng cách gần nhất!')}
+            icon="refresh"
+            onClick={handleRefresh}
             className="rounded-2xl px-3.5 shadow-sm"
-            title="Lọc nhanh vị trí & thời gian"
+            title="Làm mới dữ liệu từ máy chủ"
           />
         </div>
       </section>
 
-      {/* 4 Bento Metrics Cards */}
+      {/* 4 Bento Metrics Cards (Dữ liệu từ API Backend) */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
         {/* Metric 1: Yêu cầu mới */}
         <div className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -278,7 +334,7 @@ export default function RequireAndCalendar({ onNavigate }) {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="font-display-hero text-3xl font-extrabold text-amber-800 tracking-tight">
-                {String(metrics.newCount).padStart(2, '0')}
+                {String(data.stats.pendingCount).padStart(2, '0')}
               </span>
               <span className="inline-flex items-center text-amber-900 font-label-sm text-xs font-extrabold bg-amber-200/60 px-2 py-0.5 rounded-lg">
                 Mới
@@ -304,7 +360,7 @@ export default function RequireAndCalendar({ onNavigate }) {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="font-display-hero text-3xl font-extrabold text-primary tracking-tight">
-                {String(metrics.confirmedCount).padStart(2, '0')}
+                {String(data.stats.matchedCount).padStart(2, '0')}
               </span>
               <span className="font-label-sm text-xs font-semibold text-on-surface-variant">
                 lịch đặt
@@ -317,7 +373,7 @@ export default function RequireAndCalendar({ onNavigate }) {
           </div>
         </div>
 
-        {/* Metric 3: Đang thực hiện */}
+        {/* Metric 3: Đang thực hiện & Chờ duyệt */}
         <div className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <span className="font-label-md text-sm font-semibold text-on-surface-variant">
@@ -330,15 +386,19 @@ export default function RequireAndCalendar({ onNavigate }) {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="font-display-hero text-3xl font-extrabold text-on-surface tracking-tight">
-                {String(metrics.inProgressCount).padStart(2, '0')}
+                {String(data.stats.inProgressCount + data.stats.awaitingApprovalCount).padStart(2, '0')}
               </span>
               <span className="font-label-sm text-xs font-semibold text-on-surface-variant">
-                đang chạy
+                đơn việc
               </span>
             </div>
             <p className="font-caption text-xs text-on-surface-variant font-medium mt-2 flex items-center gap-1">
               <Icon name="timer" size={15} className="text-primary" />
-              <span>Ba Đình, Hà Nội</span>
+              <span>
+                {data.stats.awaitingApprovalCount > 0
+                  ? `${data.stats.awaitingApprovalCount} đơn đang chờ khách duyệt`
+                  : 'Tiến độ đang được cập nhật'}
+              </span>
             </p>
           </div>
         </div>
@@ -356,15 +416,15 @@ export default function RequireAndCalendar({ onNavigate }) {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="font-display-hero text-3xl font-extrabold text-on-surface tracking-tight">
-                {metrics.completedCount}
+                {String(data.stats.doneCount).padStart(2, '0')}
               </span>
               <span className="font-label-sm text-xs font-bold text-primary">
-                Tháng 10
+                Đã giải ngân
               </span>
             </div>
             <p className="font-caption text-xs text-on-surface-variant font-medium mt-2 flex items-center gap-1">
               <Icon name="thumb_up" size={15} className="text-primary" />
-              <span>Đánh giá 100% hài lòng</span>
+              <span>Được bảo vệ bởi Escrow</span>
             </p>
           </div>
         </div>
@@ -379,20 +439,13 @@ export default function RequireAndCalendar({ onNavigate }) {
               Danh sách yêu cầu dịch vụ
             </h2>
             <p className="font-caption text-xs text-on-surface-variant">
-              Tự động sắp xếp theo thứ tự ưu tiên thời gian và khoảng cách địa lý gần bạn nhất
+              Được đồng bộ trực tiếp từ cơ sở dữ liệu hệ thống TaskMate
             </p>
           </div>
 
           {/* Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-            {[
-              { id: 'all', label: 'Tất cả', count: requests.length },
-              { id: 'new', label: 'Yêu cầu mới', count: metrics.newCount, color: 'bg-amber-100 text-amber-900' },
-              { id: 'confirmed', label: 'Đã xác nhận', count: metrics.confirmedCount, color: 'bg-primary-fixed text-primary' },
-              { id: 'in_progress', label: 'Đang thực hiện', count: metrics.inProgressCount },
-              { id: 'completed', label: 'Hoàn thành' },
-              { id: 'cancelled', label: 'Đã hủy' },
-            ].map((tab) => {
+            {filterTabs.map((tab) => {
               const isActive = filterTab === tab.id
               return (
                 <button
@@ -423,337 +476,398 @@ export default function RequireAndCalendar({ onNavigate }) {
           </div>
         </div>
 
-        {/* Requests Cards List */}
-        <div className="space-y-4">
-          {filteredRequests.length === 0 ? (
-            <div className="bg-surface-container-lowest rounded-3xl p-12 text-center border border-surface-variant/30 space-y-3">
-              <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-outline mx-auto">
-                <Icon name="inbox" size={32} />
-              </div>
-              <h3 className="font-headline-sm text-base font-bold text-on-surface">
-                Không có yêu cầu nào trong mục này
-              </h3>
-              <p className="font-body-sm text-xs text-on-surface-variant max-w-sm mx-auto">
-                Hệ thống sẽ tự động ghép nối và gửi thông báo khi khách hàng đăng công việc mới phù hợp với kỹ năng của bạn.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFilterTab('all')}
-                className="mt-2 text-xs"
-              >
-                Xem tất cả yêu cầu
-              </Button>
+        {/* Global Error Notice */}
+        {errorMessage && (
+          <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Icon name="error" size={18} />
+              <span>{errorMessage}</span>
             </div>
-          ) : (
-            filteredRequests.map((req) => {
-              const isNew = req.status === 'NEW'
-              const isConfirmed = req.status === 'CONFIRMED'
-              const isInProgress = req.status === 'IN_PROGRESS'
-              const isCompleted = req.status === 'COMPLETED'
-              const isCancelled = req.status === 'CANCELLED'
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="text-xs">
+              Thử lại
+            </Button>
+          </div>
+        )}
 
-              return (
-                <div
-                  key={req.id}
-                  className={`bg-surface-container-lowest rounded-3xl p-5 lg:p-6 shadow-sm border transition-all space-y-4 hover:shadow-md ${
-                    isInProgress
-                      ? 'border-l-4 border-l-primary border-surface-variant/30'
-                      : 'border-surface-variant/30'
-                  }`}
-                >
-                  <div className="flex flex-col md:flex-row gap-4 items-start">
-                    {/* Job Icon */}
-                    <div className="w-12 h-12 rounded-2xl bg-surface-container-high text-primary flex items-center justify-center shrink-0">
-                      <Icon name={req.icon || 'handyman'} size={24} />
-                    </div>
+        {/* Loading Spinner */}
+        {isLoading && (
+          <div className="py-16 text-center space-y-3">
+            <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="font-body-sm text-xs text-on-surface-variant">
+              Đang tải danh sách yêu cầu...
+            </p>
+          </div>
+        )}
 
-                    {/* Job Details */}
-                    <div className="flex-1 min-w-0 space-y-3 w-full">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3
-                              onClick={() => setSelectedTaskDetail(req)}
-                              className="font-headline-sm text-base lg:text-lg font-bold text-on-surface tracking-tight hover:text-primary transition-colors cursor-pointer"
-                            >
-                              {req.title}
-                            </h3>
-                            <Badge variant="primary" size="sm">
-                              {req.category}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="font-body-sm text-xs text-on-surface-variant">
-                              Khách hàng:
-                            </span>
-                            <span className="font-label-md text-xs font-bold text-on-surface">
-                              {req.clientName}
-                            </span>
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-label-sm text-[11px] font-extrabold">
-                              <Icon name="star" size={13} className="text-amber-600" />
-                              {req.clientRating}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Price Display */}
-                        <div className="flex flex-col items-start md:items-end">
-                          <span className="font-headline-md text-lg lg:text-xl font-extrabold text-primary tracking-tight">
-                            {formatCurrency(req.price)}
-                          </span>
-                          <span className="font-caption text-xs text-on-surface-variant font-medium">
-                            {req.priceNote}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Specs Row */}
-                      <div className="flex flex-wrap items-center gap-y-2 gap-x-4 py-2.5 px-3.5 rounded-2xl bg-surface-container-low border border-surface-variant/20">
-                        <div className="flex items-center gap-1.5 text-on-surface-variant text-xs">
-                          <Icon name="calendar_today" size={16} className="text-primary" />
-                          <span className="font-semibold text-on-surface">{req.time}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-on-surface-variant text-xs">
-                          <Icon name="location_on" size={16} className="text-primary" />
-                          <span className="font-semibold text-on-surface">{req.location}</span>
-                          <span className="text-on-surface-variant/80 font-medium">({req.distance})</span>
-                        </div>
-                        {req.note && (
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <Icon
-                              name={req.noteWarning ? 'priority_high' : 'info'}
-                              size={16}
-                              className={req.noteWarning ? 'text-red-500' : 'text-primary'}
-                            />
-                            <span
-                              className={`truncate max-w-md ${
-                                req.noteWarning ? 'text-red-600 font-semibold' : 'text-on-surface-variant'
-                              }`}
-                            >
-                              {req.note}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Status Row */}
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          {isNew && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-700 animate-pulse" />
-                              Chờ xác nhận
-                            </span>
-                          )}
-                          {isConfirmed && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed/60 text-primary font-label-sm text-xs font-bold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              Đã xác nhận
-                            </span>
-                          )}
-                          {isInProgress && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-on-surface font-label-sm text-xs font-bold">
-                              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                              Đang thực hiện
-                            </span>
-                          )}
-                          {isCompleted && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-label-sm text-xs font-bold">
-                              <Icon name="check_circle" size={14} />
-                              Đã hoàn thành
-                            </span>
-                          )}
-                          {isCancelled && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 font-label-sm text-xs font-bold">
-                              <Icon name="cancel" size={14} />
-                              Đã hủy
-                            </span>
-                          )}
-                          <span className="font-caption text-xs text-on-surface-variant">
-                            {req.statusNote}
-                          </span>
-                        </div>
-
-                        {req.code && (
-                          <span className="font-caption text-xs text-on-surface-variant font-medium">
-                            Mã: <strong className="text-on-surface">{req.code}</strong>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Toolbar */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-surface-variant/20">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTaskDetail(req)}
-                        className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                        title="Xem ghi chú & vị trí chi tiết"
-                      >
-                        <Icon name="chat_bubble_outline" size={18} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(
-                            `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                              req.addressDetail || req.location
-                            )}`,
-                            '_blank'
-                          )
-                        }
-                        className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                        title="Mở Google Maps chỉ đường"
-                      >
-                        <Icon name="map" size={18} />
-                      </button>
-                    </div>
-
-                    {/* Contextual Action Buttons */}
-                    <div className="flex items-center gap-2.5">
-                      {isNew && (
-                        <>
-                          <Button
-                            type="button"
-                            variant="tonal"
-                            size="sm"
-                            onClick={() => handleDecline(req.id)}
-                            className="rounded-xl text-xs font-bold text-on-surface hover:text-red-600"
-                          >
-                            Từ chối
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            icon="visibility"
-                            onClick={() => setSelectedTaskDetail(req)}
-                            className="rounded-xl text-xs font-bold border-surface-variant/40"
-                          >
-                            Chi tiết
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            icon="done_all"
-                            onClick={() => handleAccept(req.id)}
-                            className="rounded-xl text-xs font-extrabold px-5 shadow-sm"
-                          >
-                            Chấp nhận
-                          </Button>
-                        </>
-                      )}
-
-                      {isConfirmed && (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            icon="chat"
-                            onClick={() =>
-                              alert(`Mở hộp thoại chat trực tuyến với khách hàng: ${req.clientName}`)
-                            }
-                            className="rounded-xl text-xs font-bold border-surface-variant/40"
-                          >
-                            Nhắn tin
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            icon="description"
-                            onClick={() => setSelectedTaskDetail(req)}
-                            className="rounded-xl text-xs font-bold border-surface-variant/40"
-                          >
-                            Chi tiết
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            icon="directions_run"
-                            onClick={() => handleStartMoving(req.id)}
-                            className="rounded-xl text-xs font-extrabold px-5 shadow-sm"
-                          >
-                            Bắt đầu di chuyển
-                          </Button>
-                        </>
-                      )}
-
-                      {isInProgress && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              alert(
-                                'Đã gửi báo cáo sự cố kỹ thuật về tổng đài CSKH 24/7 để được hỗ trợ can thiệp!'
-                              )
-                            }
-                            className="inline-flex items-center gap-1 text-red-600 font-label-sm text-xs font-bold hover:underline cursor-pointer px-2"
-                          >
-                            <Icon name="report_problem" size={16} />
-                            <span>Báo sự cố phát sinh</span>
-                          </button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            icon="chat"
-                            onClick={() =>
-                              alert(`Mở hộp thoại chat trực tuyến với khách hàng: ${req.clientName}`)
-                            }
-                            className="rounded-xl text-xs font-bold border-surface-variant/40"
-                          >
-                            Nhắn tin
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            icon="check_circle"
-                            onClick={() => handleComplete(req.id)}
-                            className="rounded-xl text-xs font-extrabold px-5 shadow-sm bg-primary"
-                          >
-                            Hoàn thành &amp; Nghiệm thu
-                          </Button>
-                        </>
-                      )}
-
-                      {isCompleted && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-primary font-bold flex items-center gap-1">
-                            <Icon name="task_alt" size={16} />
-                            Đã quyết toán tiền công
-                          </span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedTaskDetail(req)}
-                            className="rounded-xl text-xs"
-                          >
-                            Xem hoá đơn
-                          </Button>
-                        </div>
-                      )}
-
-                      {isCancelled && (
-                        <span className="text-xs text-on-surface-variant italic">
-                          Đã đóng giao dịch
-                        </span>
-                      )}
-                    </div>
-                  </div>
+        {/* Requests Cards List */}
+        {!isLoading && (
+          <div className="space-y-4">
+            {data.tasks.length === 0 ? (
+              <div className="bg-surface-container-lowest rounded-3xl p-12 text-center border border-surface-variant/30 space-y-3">
+                <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-outline mx-auto">
+                  <Icon name="inbox" size={32} />
                 </div>
-              )
-            })
-          )}
-        </div>
+                <h3 className="font-headline-sm text-base font-bold text-on-surface">
+                  Không có yêu cầu nào trong mục này
+                </h3>
+                <p className="font-body-sm text-xs text-on-surface-variant max-w-sm mx-auto">
+                  Khi khách hàng chọn bạn làm thợ hoặc gửi đề xuất công việc mới, yêu cầu sẽ lập tức hiển thị tại đây.
+                </p>
+                {filterTab !== 'all' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFilterTab('all')}
+                    className="mt-2 text-xs"
+                  >
+                    Xem tất cả yêu cầu
+                  </Button>
+                )}
+              </div>
+            ) : (
+              data.tasks.map((task) => {
+                const isPending = task.status === 'PENDING'
+                const isMatched = task.status === 'MATCHED'
+                const isInProgress = task.status === 'IN_PROGRESS'
+                const isAwaitingApproval = task.status === 'AWAITING_APPROVAL'
+                const isDone = task.status === 'DONE'
+                const isCancelled = task.status === 'CANCELLED'
+
+                const code = `#TM-${task.id.slice(0, 8).toUpperCase()}`
+                const icon = getCategoryIcon(task.category || task.skillName)
+                const locationStr = `${task.district}, ${task.city}`
+                const timeStr = formatDateTime(task.scheduledStartTime)
+                const hourSlotStr = formatHourSlot(task.scheduledStartTime, task.expectedTime)
+                const isActionBusy = actionLoadingId === task.id
+
+                return (
+                  <div
+                    key={task.id}
+                    className={`bg-surface-container-lowest rounded-3xl p-5 lg:p-6 shadow-sm border transition-all space-y-4 hover:shadow-md ${
+                      isInProgress
+                        ? 'border-l-4 border-l-primary border-surface-variant/30'
+                        : isAwaitingApproval
+                          ? 'border-l-4 border-l-blue-500 border-surface-variant/30'
+                          : 'border-surface-variant/30'
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row gap-4 items-start">
+                      {/* Job Icon */}
+                      <div className="w-12 h-12 rounded-2xl bg-surface-container-high text-primary flex items-center justify-center shrink-0">
+                        <Icon name={icon} size={24} />
+                      </div>
+
+                      {/* Job Details */}
+                      <div className="flex-1 min-w-0 space-y-3 w-full">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3
+                                onClick={() => setSelectedTaskDetail(task)}
+                                className="font-headline-sm text-base lg:text-lg font-bold text-on-surface tracking-tight hover:text-primary transition-colors cursor-pointer"
+                              >
+                                {task.title}
+                              </h3>
+                              <Badge variant="primary" size="sm">
+                                {task.category}
+                              </Badge>
+                              {task.skillName && (
+                                <span className="font-caption text-xs px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant font-medium">
+                                  {task.skillName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="font-body-sm text-xs text-on-surface-variant">
+                                Khách hàng:
+                              </span>
+                              <span className="font-label-md text-xs font-bold text-on-surface">
+                                {task.client?.name || 'Khách hàng ẩn danh'}
+                              </span>
+                              {task.client?.phoneNumber && (
+                                <span className="font-caption text-xs text-primary font-semibold">
+                                  • {task.client.phoneNumber}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Price Display */}
+                          <div className="flex flex-col items-start md:items-end">
+                            <span className="font-headline-md text-lg lg:text-xl font-extrabold text-primary tracking-tight">
+                              {formatCurrency(task.offeredPrice)}
+                            </span>
+                            <span className="font-caption text-xs text-on-surface-variant font-medium">
+                              {isPending
+                                ? 'Đề xuất trọn gói'
+                                : 'Đã cọc Escrow an toàn'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Specs Row */}
+                        <div className="flex flex-wrap items-center gap-y-2 gap-x-4 py-2.5 px-3.5 rounded-2xl bg-surface-container-low border border-surface-variant/20">
+                          <div className="flex items-center gap-1.5 text-on-surface-variant text-xs">
+                            <Icon name="calendar_today" size={16} className="text-primary" />
+                            <span className="font-semibold text-on-surface">
+                              {timeStr}
+                              {hourSlotStr ? ` (${hourSlotStr})` : ''}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-on-surface-variant text-xs">
+                            <Icon name="schedule" size={16} className="text-primary" />
+                            <span className="font-semibold text-on-surface">
+                              {task.expectedTime} phút dự kiến
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-on-surface-variant text-xs">
+                            <Icon name="location_on" size={16} className="text-primary" />
+                            <span className="font-semibold text-on-surface">{locationStr}</span>
+                          </div>
+                          {task.description && (
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <Icon name="info" size={16} className="text-primary shrink-0" />
+                              <span className="truncate max-w-md text-on-surface-variant">
+                                {task.description}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Status Row */}
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            {isPending && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-700 animate-pulse" />
+                                Chờ xác nhận
+                              </span>
+                            )}
+                            {isMatched && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed/60 text-primary font-label-sm text-xs font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                Đã xác nhận &amp; Cọc
+                              </span>
+                            )}
+                            {isInProgress && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-on-surface font-label-sm text-xs font-bold">
+                                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                                Đang thực hiện
+                              </span>
+                            )}
+                            {isAwaitingApproval && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-label-sm text-xs font-bold">
+                                <Icon name="hourglass_top" size={14} />
+                                Chờ khách duyệt nghiệm thu
+                              </span>
+                            )}
+                            {isDone && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-label-sm text-xs font-bold">
+                                <Icon name="check_circle" size={14} />
+                                Đã hoàn thành
+                              </span>
+                            )}
+                            {isCancelled && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 font-label-sm text-xs font-bold">
+                                <Icon name="cancel" size={14} />
+                                Đã hủy
+                              </span>
+                            )}
+                            <span className="font-caption text-xs text-on-surface-variant">
+                              {isPending && 'Khách hàng gửi yêu cầu trực tiếp, vui lòng phản hồi sớm.'}
+                              {isMatched && 'Đã khóa lịch hẹn. Khách đã cọc tiền qua TaskMate.'}
+                              {isInProgress && 'Bạn đang làm việc. Bấm hoàn thành khi xong việc.'}
+                              {isAwaitingApproval && 'Đã gửi yêu cầu nghiệm thu, tiền sẽ vào ví khi khách xác nhận.'}
+                              {isDone && 'Đã quyết toán tiền công vào ví tài khoản.'}
+                              {isCancelled && 'Đơn yêu cầu đã hủy.'}
+                            </span>
+                          </div>
+
+                          <span className="font-caption text-xs text-on-surface-variant font-medium">
+                            Mã: <strong className="text-on-surface">{code}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-surface-variant/20">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTaskDetail(task)}
+                          className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                          title="Xem ghi chú & vị trí chi tiết"
+                        >
+                          <Icon name="chat_bubble_outline" size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.open(
+                              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                task.address || locationStr
+                              )}`,
+                              '_blank'
+                            )
+                          }
+                          className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                          title="Mở Google Maps chỉ đường"
+                        >
+                          <Icon name="map" size={18} />
+                        </button>
+                      </div>
+
+                      {/* Contextual Action Buttons */}
+                      <div className="flex items-center gap-2.5">
+                        {isPending && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="tonal"
+                              size="sm"
+                              disabled={isActionBusy}
+                              onClick={() => handleDecline(task.id)}
+                              className="rounded-xl text-xs font-bold text-on-surface hover:text-red-600"
+                            >
+                              Từ chối
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              icon="visibility"
+                              onClick={() => setSelectedTaskDetail(task)}
+                              className="rounded-xl text-xs font-bold border-surface-variant/40"
+                            >
+                              Chi tiết
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              icon="done_all"
+                              disabled={isActionBusy}
+                              onClick={() => handleAccept(task.id)}
+                              className="rounded-xl text-xs font-extrabold px-5 shadow-sm"
+                            >
+                              {isActionBusy ? 'Đang xử lý...' : 'Chấp nhận'}
+                            </Button>
+                          </>
+                        )}
+
+                        {isMatched && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="tonal"
+                              size="sm"
+                              disabled={isActionBusy}
+                              onClick={() => handleDecline(task.id)}
+                              className="rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50"
+                            >
+                              Hủy nhận
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              icon="description"
+                              onClick={() => setSelectedTaskDetail(task)}
+                              className="rounded-xl text-xs font-bold border-surface-variant/40"
+                            >
+                              Chi tiết
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              icon="directions_run"
+                              disabled={isActionBusy}
+                              onClick={() => handleStartMoving(task.id)}
+                              className="rounded-xl text-xs font-extrabold px-5 shadow-sm"
+                            >
+                              {isActionBusy ? 'Đang cập nhật...' : 'Bắt đầu làm việc'}
+                            </Button>
+                          </>
+                        )}
+
+                        {isInProgress && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              icon="description"
+                              onClick={() => setSelectedTaskDetail(task)}
+                              className="rounded-xl text-xs font-bold border-surface-variant/40"
+                            >
+                              Chi tiết
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              icon="check_circle"
+                              disabled={isActionBusy}
+                              onClick={() => handleComplete(task.id)}
+                              className="rounded-xl text-xs font-extrabold px-5 shadow-sm bg-primary"
+                            >
+                              {isActionBusy ? 'Đang lưu...' : 'Báo hoàn thành'}
+                            </Button>
+                          </>
+                        )}
+
+                        {isAwaitingApproval && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-blue-700 font-semibold flex items-center gap-1">
+                              <Icon name="hourglass_bottom" size={16} />
+                              Chờ khách hàng nghiệm thu
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              icon="visibility"
+                              onClick={() => setSelectedTaskDetail(task)}
+                              className="rounded-xl text-xs"
+                            >
+                              Xem đơn
+                            </Button>
+                          </div>
+                        )}
+
+                        {isDone && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-primary font-bold flex items-center gap-1">
+                              <Icon name="task_alt" size={16} />
+                              Đã quyết toán tiền công
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedTaskDetail(task)}
+                              className="rounded-xl text-xs"
+                            >
+                              Xem hoá đơn
+                            </Button>
+                          </div>
+                        )}
+
+                        {isCancelled && (
+                          <span className="text-xs text-on-surface-variant italic">
+                            Đã đóng giao dịch
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        )}
       </section>
 
       {/* Modal 1: Quick Calendar View Modal ("Xem chế độ Lịch") */}
@@ -768,10 +882,10 @@ export default function RequireAndCalendar({ onNavigate }) {
                 </div>
                 <div>
                   <h3 className="font-headline-md text-lg font-extrabold text-on-surface">
-                    Lịch làm việc tuần này (Tháng 10/2026)
+                    Lịch làm việc tuần này
                   </h3>
                   <p className="font-caption text-xs text-on-surface-variant">
-                    Lịch trình công việc thực tế được đồng bộ tự động
+                    Lịch trình công việc thực tế được đồng bộ tự động từ các đơn đã xác nhận
                   </p>
                 </div>
               </div>
@@ -784,17 +898,9 @@ export default function RequireAndCalendar({ onNavigate }) {
               </button>
             </div>
 
-            {/* Week Days Schedule Grid */}
+            {/* Week Days Schedule Grid (Tính động theo tuần thực tế) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { day: 'Thứ 2', date: '12/10', count: '1 việc', isToday: false },
-                { day: 'Thứ 3', date: '13/10', count: '2 việc', isToday: false },
-                { day: 'Thứ 4', date: '14/10', count: '1 việc', isToday: false },
-                { day: 'Thứ 5', date: '15/10', count: '2 việc', isToday: true },
-                { day: 'Thứ 6', date: '16/10', count: '1 việc', isToday: false },
-                { day: 'Thứ 7', date: '17/10', count: '3 việc', isToday: false },
-                { day: 'Chủ nhật', date: '18/10', count: 'Nghỉ', isToday: false },
-              ].map((item, idx) => (
+              {weekDays.map((item, idx) => (
                 <div
                   key={idx}
                   className={`p-3.5 rounded-2xl border transition-all ${
@@ -835,31 +941,39 @@ export default function RequireAndCalendar({ onNavigate }) {
                 Lịch chi tiết các ca làm sắp tới:
               </h4>
               <div className="space-y-2">
-                {requests
-                  .filter((r) => r.status === 'CONFIRMED' || r.status === 'IN_PROGRESS')
-                  .map((task) => (
+                {upcomingScheduleTasks.length === 0 ? (
+                  <p className="text-xs text-on-surface-variant italic py-3 text-center bg-surface-container-low rounded-2xl">
+                    Chưa có ca làm việc nào sắp tới trong tuần này.
+                  </p>
+                ) : (
+                  upcomingScheduleTasks.map((task) => (
                     <div
                       key={task.id}
                       className="p-3.5 rounded-2xl bg-surface-container-low border border-surface-variant/30 flex items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          <Icon name={task.icon || 'schedule'} size={20} />
+                          <Icon name={getCategoryIcon(task.category)} size={20} />
                         </div>
                         <div>
                           <p className="font-label-md text-sm font-bold text-on-surface">
                             {task.title}
                           </p>
                           <p className="font-caption text-xs text-on-surface-variant">
-                            {task.time} • {task.location}
+                            {formatDateTime(task.scheduledStartTime)} • {task.district}, {task.city}
                           </p>
                         </div>
                       </div>
                       <Badge variant="primary" size="sm">
-                        {task.status === 'IN_PROGRESS' ? 'Đang thực hiện' : 'Đã cọc'}
+                        {task.status === 'IN_PROGRESS'
+                          ? 'Đang thực hiện'
+                          : task.status === 'AWAITING_APPROVAL'
+                            ? 'Chờ duyệt'
+                            : 'Đã cọc Escrow'}
                       </Badge>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -881,11 +995,11 @@ export default function RequireAndCalendar({ onNavigate }) {
       {/* Modal 2: Task Detail Popup */}
       {selectedTaskDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-surface-container-lowest rounded-3xl max-w-xl w-full p-6 lg:p-8 shadow-2xl border border-surface-variant/30 space-y-5">
+          <div className="bg-surface-container-lowest rounded-3xl max-w-xl w-full p-6 lg:p-8 shadow-2xl border border-surface-variant/30 space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-surface-variant/30">
               <div>
                 <span className="font-label-sm text-xs font-bold text-primary uppercase tracking-wider">
-                  Chi tiết đơn việc • {selectedTaskDetail.code}
+                  Chi tiết đơn việc • #TM-{selectedTaskDetail.id.slice(0, 8).toUpperCase()}
                 </span>
                 <h3 className="font-headline-sm text-lg font-bold text-on-surface mt-0.5">
                   {selectedTaskDetail.title}
@@ -904,45 +1018,88 @@ export default function RequireAndCalendar({ onNavigate }) {
               <div className="bg-surface-container-low p-4 rounded-2xl space-y-2">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-on-surface-variant font-medium">Khách hàng:</span>
-                  <span className="font-bold text-on-surface">{selectedTaskDetail.clientName} ({selectedTaskDetail.clientPhone})</span>
+                  <span className="font-bold text-on-surface">
+                    {selectedTaskDetail.client?.name || 'Khách hàng'}
+                    {selectedTaskDetail.client?.phoneNumber
+                      ? ` (${selectedTaskDetail.client.phoneNumber})`
+                      : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-on-surface-variant font-medium">Ngành nghề &amp; Chuyên môn:</span>
+                  <span className="font-semibold text-on-surface">
+                    {selectedTaskDetail.category} • {selectedTaskDetail.skillName}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-on-surface-variant font-medium">Thù lao dịch vụ:</span>
-                  <span className="font-extrabold text-primary text-base">{formatCurrency(selectedTaskDetail.price)}</span>
+                  <span className="font-extrabold text-primary text-base">
+                    {formatCurrency(selectedTaskDetail.offeredPrice)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-on-surface-variant font-medium">Lịch hẹn dự kiến:</span>
-                  <span className="font-bold text-on-surface">{selectedTaskDetail.time}</span>
+                  <span className="text-on-surface-variant font-medium">Thời gian hẹn:</span>
+                  <span className="font-bold text-on-surface">
+                    {formatDateTime(selectedTaskDetail.scheduledStartTime)} ({selectedTaskDetail.expectedTime} phút)
+                  </span>
                 </div>
                 <div className="flex justify-between items-start text-xs pt-1 border-t border-surface-variant/20">
                   <span className="text-on-surface-variant font-medium shrink-0">Địa chỉ cụ thể:</span>
-                  <span className="font-semibold text-right text-on-surface">{selectedTaskDetail.addressDetail || selectedTaskDetail.location}</span>
+                  <span className="font-semibold text-right text-on-surface">
+                    {selectedTaskDetail.address || `${selectedTaskDetail.district}, ${selectedTaskDetail.city}`}
+                  </span>
                 </div>
               </div>
 
-              {selectedTaskDetail.note && (
+              {selectedTaskDetail.description && (
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/60 space-y-1">
                   <span className="font-label-sm text-xs font-bold text-amber-900 flex items-center gap-1.5">
                     <Icon name="info" size={16} />
-                    Ghi chú từ khách hàng:
+                    Ghi chú / Mô tả từ khách hàng:
                   </span>
-                  <p className="font-body-sm text-xs text-amber-950 leading-relaxed">
-                    {selectedTaskDetail.note}
+                  <p className="font-body-sm text-xs text-amber-950 leading-relaxed whitespace-pre-line">
+                    {selectedTaskDetail.description}
                   </p>
+                </div>
+              )}
+
+              {/* Danh sách ảnh đính kèm nếu có */}
+              {Array.isArray(selectedTaskDetail.images) && selectedTaskDetail.images.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="font-label-sm text-xs font-bold text-on-surface">
+                    Ảnh hiện trường ({selectedTaskDetail.images.length}):
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedTaskDetail.images.map((imgUrl, i) => (
+                      <img
+                        key={i}
+                        src={imgUrl}
+                        alt="Hiện trường"
+                        className="w-full h-24 object-cover rounded-xl border border-surface-variant/30"
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-surface-variant/20">
-              <Button
-                variant="outline"
-                size="sm"
-                icon="phone"
-                onClick={() => window.open(`tel:${selectedTaskDetail.clientPhone}`, '_self')}
-                className="rounded-xl text-xs"
-              >
-                Gọi cho khách
-              </Button>
+              {selectedTaskDetail.client?.phoneNumber ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon="phone"
+                  onClick={() => window.open(`tel:${selectedTaskDetail.client.phoneNumber}`, '_self')}
+                  className="rounded-xl text-xs"
+                >
+                  Gọi cho khách
+                </Button>
+              ) : (
+                <span className="text-xs text-on-surface-variant italic">
+                  SĐT sẽ hiện khi đơn được xác nhận
+                </span>
+              )}
               <Button
                 variant="primary"
                 size="sm"

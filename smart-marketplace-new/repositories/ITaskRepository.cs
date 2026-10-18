@@ -19,4 +19,10 @@ public interface ITaskRepository
     Task AddAsync(TaskItem task, CancellationToken ct = default);
     Task<int> SaveAsync(CancellationToken ct = default);
     Task<List<Skill>> GetSkillSuggestionsAsync(string? query, int limit, CancellationToken ct = default);
+    Task<List<TaskItem>> GetTasksByWorkerProfileIdAsync(string workerProfileId, CancellationToken ct = default);
+    Task<TaskItem?> FindTaskByIdTrackingAsync(string taskId, CancellationToken ct = default);
+    Task<WorkerProfile?> FindWorkerProfileByUserIdTrackingAsync(string userId, CancellationToken ct = default);
+    Task<WorkerProfile?> FindWorkerProfileByIdAsync(string workerProfileId, CancellationToken ct = default);
+    Task<bool> HasOverlappingTaskAsync(string workerProfileId, DateTime start, DateTime end, string? excludeTaskId, CancellationToken ct = default);
+    Task<List<TaskItem>> GetTasksByClientIdAsync(string clientId, CancellationToken ct = default);
 }

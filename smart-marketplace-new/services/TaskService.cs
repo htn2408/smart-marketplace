@@ -268,4 +268,415 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         if (cat.Contains("sơn") || cat.Contains("sửa")) return "build";
         return "handyman";
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // TASKER: Quản lý Yêu cầu & Lịch hẹn
+    // ════════════════════════════════════════════════════════════════════════
+
+    public async Task<TaskerTaskListResponse> GetTaskerTasksAsync(string workerUserId, string? statusFilter, CancellationToken ct = default)
+    {
+        var workerProfile = await tasks.FindWorkerProfileByUserIdTrackingAsync(workerUserId, ct)
+            ?? throw new NotFoundException("Không tìm thấy hồ sơ thợ.");
+
+        var allTasks = await tasks.GetTasksByWorkerProfileIdAsync(workerProfile.Id, ct);
+
+        var stats = new TaskerTaskListResponse.TaskerStatsDto
+        {
+            PendingCount = allTasks.Count(t => t.Status == TaskItemStatus.PENDING),
+            MatchedCount = allTasks.Count(t => t.Status == TaskItemStatus.MATCHED),
+            InProgressCount = allTasks.Count(t => t.Status == TaskItemStatus.IN_PROGRESS),
+            AwaitingApprovalCount = allTasks.Count(t => t.Status == TaskItemStatus.AWAITING_APPROVAL),
+            DoneCount = allTasks.Count(t => t.Status == TaskItemStatus.DONE),
+            CancelledCount = allTasks.Count(t => t.Status == TaskItemStatus.CANCELLED),
+        };
+
+        var filteredTasks = allTasks;
+        if (!string.IsNullOrWhiteSpace(statusFilter) && !statusFilter.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Enum.TryParse<TaskItemStatus>(statusFilter.Trim(), true, out var parsedStatus))
+            {
+                filteredTasks = allTasks.Where(t => t.Status == parsedStatus).ToList();
+            }
+            else
+            {
+                var normalized = statusFilter.Trim().ToUpperInvariant();
+                filteredTasks = normalized switch
+                {
+                    "NEW" => allTasks.Where(t => t.Status == TaskItemStatus.PENDING).ToList(),
+                    "CONFIRMED" => allTasks.Where(t => t.Status == TaskItemStatus.MATCHED).ToList(),
+                    "AWAITING_APPROVAL" => allTasks.Where(t => t.Status == TaskItemStatus.AWAITING_APPROVAL).ToList(),
+                    "COMPLETED" => allTasks.Where(t => t.Status == TaskItemStatus.DONE).ToList(),
+                    _ => allTasks
+                };
+            }
+        }
+
+        var taskDtos = filteredTasks.Select(t => new TaskerTaskListResponse.TaskerTaskDto
+        {
+            Id = t.Id,
+            Title = t.Title,
+            Description = t.Description,
+            Category = t.RequiredSkill?.Category?.Name ?? "Dịch vụ đời sống",
+            SkillName = t.RequiredSkill?.Name ?? "Chuyên môn",
+            Status = t.Status.ToString(),
+            Client = new TaskerTaskListResponse.ClientBriefDto
+            {
+                Id = t.ClientId,
+                Name = t.Client.Name,
+                PhoneNumber = t.Status >= TaskItemStatus.MATCHED ? t.Client.PhoneNumber : null,
+            },
+            City = t.City,
+            District = t.District,
+            Address = t.Address,
+            Latitude = t.Latitude,
+            Longitude = t.Longitude,
+            ScheduledStartTime = t.ScheduledStartTime,
+            ExpectedTime = t.ExpectedTime,
+            ActualStartTime = t.ActualStartTime,
+            ActualEndTime = t.ActualEndTime,
+            OfferedPrice = t.OfferedPrice,
+            Images = t.Images.Select(i => i.ImageUrl).ToList(),
+            CreatedAt = t.CreatedAt,
+        }).ToList();
+
+        return new TaskerTaskListResponse
+        {
+            Stats = stats,
+            Tasks = taskDtos,
+        };
+    }
+
+    public async Task AcceptTaskAsync(string workerUserId, string taskId, CancellationToken ct = default)
+    {
+        var workerProfile = await tasks.FindWorkerProfileByUserIdTrackingAsync(workerUserId, ct)
+            ?? throw new NotFoundException("Không tìm thấy hồ sơ thợ.");
+
+        var task = await tasks.FindTaskByIdTrackingAsync(taskId, ct)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+
+        if (task.WorkerProfileId != workerProfile.Id)
+        {
+            throw new BusinessValidationException("Công việc này không được giao cho bạn.");
+        }
+
+        if (task.Status != TaskItemStatus.PENDING)
+        {
+            throw new BusinessValidationException($"Công việc đang ở trạng thái \"{task.Status}\", chỉ có thể nhận khi ở trạng thái chờ (PENDING).");
+        }
+
+        var taskEnd = task.ScheduledStartTime.AddMinutes(task.ExpectedTime);
+        var isOverlapping = await tasks.HasOverlappingTaskAsync(workerProfile.Id, task.ScheduledStartTime, taskEnd, task.Id, ct);
+        if (isOverlapping)
+        {
+            throw new BusinessValidationException("Bạn đã có lịch làm việc trùng với khung giờ này.");
+        }
+
+        task.Status = TaskItemStatus.MATCHED;
+        task.UpdatedAt = DateTime.UtcNow;
+
+        await tasks.SaveAsync(ct);
+    }
+
+    public async Task DeclineTaskAsync(string workerUserId, string taskId, CancellationToken ct = default)
+    {
+        var workerProfile = await tasks.FindWorkerProfileByUserIdTrackingAsync(workerUserId, ct)
+            ?? throw new NotFoundException("Không tìm thấy hồ sơ thợ.");
+
+        var task = await tasks.FindTaskByIdTrackingAsync(taskId, ct)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+
+        if (task.WorkerProfileId != workerProfile.Id)
+        {
+            throw new BusinessValidationException("Bạn không có quyền thao tác trên công việc này.");
+        }
+
+        if (task.Status != TaskItemStatus.PENDING && task.Status != TaskItemStatus.MATCHED)
+        {
+            throw new BusinessValidationException($"Không thể từ chối công việc đang ở trạng thái \"{task.Status}\".");
+        }
+
+        // Hoàn cọc Escrow cho khách hàng
+        task.Client.HeldBalance = Math.Max(0m, task.Client.HeldBalance - task.OfferedPrice);
+        task.Client.Balance += task.OfferedPrice;
+
+        // Trả task về PENDING chưa gán thợ
+        task.WorkerProfileId = null;
+        task.Status = TaskItemStatus.PENDING;
+        task.UpdatedAt = DateTime.UtcNow;
+
+        await tasks.SaveAsync(ct);
+    }
+
+    public async Task StartTaskAsync(string workerUserId, string taskId, CancellationToken ct = default)
+    {
+        var workerProfile = await tasks.FindWorkerProfileByUserIdTrackingAsync(workerUserId, ct)
+            ?? throw new NotFoundException("Không tìm thấy hồ sơ thợ.");
+
+        var task = await tasks.FindTaskByIdTrackingAsync(taskId, ct)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+
+        if (task.WorkerProfileId != workerProfile.Id)
+        {
+            throw new BusinessValidationException("Bạn không có quyền thao tác trên công việc này.");
+        }
+
+        if (task.Status != TaskItemStatus.MATCHED)
+        {
+            throw new BusinessValidationException($"Chỉ có thể bắt đầu khi công việc đã xác nhận (MATCHED). Trạng thái hiện tại: {task.Status}.");
+        }
+
+        task.Status = TaskItemStatus.IN_PROGRESS;
+        task.ActualStartTime = DateTime.UtcNow;
+        task.UpdatedAt = DateTime.UtcNow;
+
+        await tasks.SaveAsync(ct);
+    }
+
+    public async Task CompleteTaskAsync(string workerUserId, string taskId, CancellationToken ct = default)
+    {
+        var workerProfile = await tasks.FindWorkerProfileByUserIdTrackingAsync(workerUserId, ct)
+            ?? throw new NotFoundException("Không tìm thấy hồ sơ thợ.");
+
+        var task = await tasks.FindTaskByIdTrackingAsync(taskId, ct)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+
+        if (task.WorkerProfileId != workerProfile.Id)
+        {
+            throw new BusinessValidationException("Bạn không có quyền thao tác trên công việc này.");
+        }
+
+        if (task.Status != TaskItemStatus.IN_PROGRESS)
+        {
+            throw new BusinessValidationException($"Chỉ có thể hoàn thành khi công việc đang thực hiện (IN_PROGRESS). Trạng thái hiện tại: {task.Status}.");
+        }
+
+        var now = DateTime.UtcNow;
+        task.Status = TaskItemStatus.AWAITING_APPROVAL;
+        task.ActualEndTime = now;
+        task.UpdatedAt = now;
+
+        // Tạo hoặc cập nhật hóa đơn ở trạng thái PENDING (chờ khách duyệt)
+        if (task.Invoice is null)
+        {
+            task.Invoice = new Invoice
+            {
+                TaskId = task.Id,
+                TotalAmount = task.OfferedPrice,
+                Status = InvoiceStatus.PENDING,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+        }
+        else
+        {
+            task.Invoice.TotalAmount = task.OfferedPrice;
+            task.Invoice.Status = InvoiceStatus.PENDING;
+            task.Invoice.UpdatedAt = now;
+        }
+
+        await tasks.SaveAsync(ct);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CLIENT: Chọn thợ (Direct Offer & Escrow) & Nghiệm thu
+    // ════════════════════════════════════════════════════════════════════════
+
+    public async Task AssignWorkerAsync(string clientUserId, string taskId, string workerProfileId, CancellationToken ct = default)
+    {
+        var task = await tasks.FindTaskByIdTrackingAsync(taskId, ct)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+
+        if (task.ClientId != clientUserId)
+        {
+            throw new BusinessValidationException("Bạn không phải chủ sở hữu công việc này.");
+        }
+
+        if (task.Status != TaskItemStatus.PENDING)
+        {
+            throw new BusinessValidationException($"Công việc đang ở trạng thái \"{task.Status}\", không thể gán thợ.");
+        }
+
+        if (!string.IsNullOrEmpty(task.WorkerProfileId))
+        {
+            throw new BusinessValidationException("Công việc này đã được gán cho một thợ khác.");
+        }
+
+        var worker = await tasks.FindWorkerProfileByIdAsync(workerProfileId, ct)
+            ?? throw new NotFoundException("Không tìm thấy hồ sơ thợ.");
+
+        if (worker.Status != "ONLINE")
+        {
+            throw new BusinessValidationException("Thợ hiện đang không trực tuyến (OFFLINE).");
+        }
+
+        if (task.Client.Balance < task.OfferedPrice)
+        {
+            throw new BusinessValidationException($"Số dư trong ví ({task.Client.Balance:N0} đ) không đủ để cọc ({task.OfferedPrice:N0} đ). Vui lòng nạp thêm tiền.");
+        }
+
+        // Đặt cọc Escrow
+        task.Client.Balance -= task.OfferedPrice;
+        task.Client.HeldBalance += task.OfferedPrice;
+
+        task.WorkerProfileId = worker.Id;
+        task.UpdatedAt = DateTime.UtcNow;
+
+        await tasks.SaveAsync(ct);
+    }
+
+    public async Task ApproveTaskAsync(string clientUserId, string taskId, CancellationToken ct = default)
+    {
+        var task = await tasks.FindTaskByIdTrackingAsync(taskId, ct)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+
+        if (task.ClientId != clientUserId)
+        {
+            throw new BusinessValidationException("Bạn không phải chủ sở hữu công việc này.");
+        }
+
+        if (task.Status != TaskItemStatus.AWAITING_APPROVAL)
+        {
+            throw new BusinessValidationException($"Chỉ có thể xác nhận khi thợ đã báo hoàn tất công việc (AWAITING_APPROVAL). Trạng thái hiện tại: {task.Status}.");
+        }
+
+        if (task.WorkerProfile is null)
+        {
+            throw new BusinessValidationException("Công việc chưa có thông tin thợ nhận việc.");
+        }
+
+        var now = DateTime.UtcNow;
+        task.Status = TaskItemStatus.DONE;
+        task.UpdatedAt = now;
+
+        // Giải ngân cọc Escrow: giảm HeldBalance của khách, cộng Balance cho thợ
+        task.Client.HeldBalance = Math.Max(0m, task.Client.HeldBalance - task.OfferedPrice);
+        task.WorkerProfile.User.Balance += task.OfferedPrice;
+        task.WorkerProfile.CompletedTasks += 1;
+
+        // Hóa đơn chuyển sang PAID
+        if (task.Invoice is null)
+        {
+            task.Invoice = new Invoice
+            {
+                TaskId = task.Id,
+                TotalAmount = task.OfferedPrice,
+                Status = InvoiceStatus.PAID,
+                CreatedAt = now,
+                UpdatedAt = now,
+                PaidAt = now,
+            };
+        }
+        else
+        {
+            task.Invoice.Status = InvoiceStatus.PAID;
+            task.Invoice.PaidAt = now;
+            task.Invoice.UpdatedAt = now;
+        }
+
+        await tasks.SaveAsync(ct);
+    }
+
+    public async Task<ClientTaskListResponse> GetClientTasksAsync(string clientUserId, string? statusFilter, CancellationToken ct = default)
+    {
+        var allTasks = await tasks.GetTasksByClientIdAsync(clientUserId, ct);
+
+        var stats = new ClientTaskListResponse.ClientStatsDto
+        {
+            PendingCount = allTasks.Count(t => t.Status == TaskItemStatus.PENDING),
+            MatchedCount = allTasks.Count(t => t.Status == TaskItemStatus.MATCHED),
+            InProgressCount = allTasks.Count(t => t.Status == TaskItemStatus.IN_PROGRESS),
+            AwaitingApprovalCount = allTasks.Count(t => t.Status == TaskItemStatus.AWAITING_APPROVAL),
+            DoneCount = allTasks.Count(t => t.Status == TaskItemStatus.DONE),
+            CancelledCount = allTasks.Count(t => t.Status == TaskItemStatus.CANCELLED),
+        };
+
+        var filteredTasks = allTasks;
+        if (!string.IsNullOrWhiteSpace(statusFilter) && !statusFilter.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Enum.TryParse<TaskItemStatus>(statusFilter.Trim(), true, out var parsedStatus))
+            {
+                filteredTasks = allTasks.Where(t => t.Status == parsedStatus).ToList();
+            }
+            else
+            {
+                var normalized = statusFilter.Trim().ToUpperInvariant();
+                filteredTasks = normalized switch
+                {
+                    "NEW" => allTasks.Where(t => t.Status == TaskItemStatus.PENDING).ToList(),
+                    "PENDING" => allTasks.Where(t => t.Status == TaskItemStatus.PENDING).ToList(),
+                    "ACCEPTED" or "MATCHED" or "CONFIRMED" => allTasks.Where(t => t.Status == TaskItemStatus.MATCHED).ToList(),
+                    "IN_PROGRESS" => allTasks.Where(t => t.Status == TaskItemStatus.IN_PROGRESS).ToList(),
+                    "AWAITING_APPROVAL" => allTasks.Where(t => t.Status == TaskItemStatus.AWAITING_APPROVAL).ToList(),
+                    "COMPLETED" or "DONE" => allTasks.Where(t => t.Status == TaskItemStatus.DONE).ToList(),
+                    "CANCELLED" => allTasks.Where(t => t.Status == TaskItemStatus.CANCELLED).ToList(),
+                    _ => allTasks
+                };
+            }
+        }
+
+        var taskDtos = filteredTasks.Select(t => new ClientTaskListResponse.ClientTaskDto
+        {
+            Id = t.Id,
+            Title = t.Title,
+            Description = t.Description,
+            Category = t.RequiredSkill?.Category?.Name ?? "Dịch vụ đời sống",
+            SkillName = t.RequiredSkill?.Name ?? "Chuyên môn",
+            Status = t.Status.ToString(),
+            Worker = t.WorkerProfile != null ? new ClientTaskListResponse.WorkerBriefDto
+            {
+                Id = t.WorkerProfile.Id,
+                UserId = t.WorkerProfile.UserId,
+                Name = t.WorkerProfile.User?.Name ?? "Thợ chuyên nghiệp",
+                PhoneNumber = t.Status >= TaskItemStatus.MATCHED ? t.WorkerProfile.User?.PhoneNumber : null,
+                Rating = t.WorkerProfile.Rating,
+                CompletedTasks = t.WorkerProfile.CompletedTasks,
+            } : null,
+            City = t.City,
+            District = t.District,
+            Address = t.Address,
+            Latitude = t.Latitude,
+            Longitude = t.Longitude,
+            ScheduledStartTime = t.ScheduledStartTime,
+            ExpectedTime = t.ExpectedTime,
+            ActualStartTime = t.ActualStartTime,
+            ActualEndTime = t.ActualEndTime,
+            OfferedPrice = t.OfferedPrice,
+            Images = t.Images.Select(i => i.ImageUrl).ToList(),
+            CreatedAt = t.CreatedAt,
+        }).ToList();
+
+        return new ClientTaskListResponse
+        {
+            Stats = stats,
+            Tasks = taskDtos,
+        };
+    }
+
+    public async Task CancelTaskByClientAsync(string clientUserId, string taskId, CancellationToken ct = default)
+    {
+        var task = await tasks.FindTaskByIdTrackingAsync(taskId, ct)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+
+        if (task.ClientId != clientUserId)
+        {
+            throw new BusinessValidationException("Bạn không phải chủ sở hữu công việc này.");
+        }
+
+        if (task.Status != TaskItemStatus.PENDING && task.Status != TaskItemStatus.MATCHED)
+        {
+            throw new BusinessValidationException($"Chỉ có thể hủy khi công việc đang chờ nhận hoặc đã xác nhận. Trạng thái hiện tại: {task.Status}.");
+        }
+
+        // Nếu đã gán thợ và đã cọc tiền -> hoàn cọc cho khách
+        if (!string.IsNullOrEmpty(task.WorkerProfileId))
+        {
+            task.Client.HeldBalance = Math.Max(0m, task.Client.HeldBalance - task.OfferedPrice);
+            task.Client.Balance += task.OfferedPrice;
+        }
+
+        task.Status = TaskItemStatus.CANCELLED;
+        task.UpdatedAt = DateTime.UtcNow;
+
+        await tasks.SaveAsync(ct);
+    }
 }

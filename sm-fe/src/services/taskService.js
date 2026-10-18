@@ -207,3 +207,171 @@ export async function createTaskApi(taskForm, images = [], { signal } = {}) {
   return data
 }
 
+/**
+ * Fetch tasker requests and schedule with metrics stats
+ * @param {string} [status] Optional status filter: PENDING, MATCHED, IN_PROGRESS, AWAITING_APPROVAL, DONE, CANCELLED
+ * @param {{ signal?: AbortSignal }} [options]
+ * @returns {Promise<{ stats: object, tasks: Array<object> }>}
+ */
+export async function fetchTaskerTasks(status, { signal } = {}) {
+  const query = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : ''
+  const response = await fetch(`${API_BASE_URL}/tasks/tasker${query}`, {
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể tải danh sách yêu cầu công việc.')
+  }
+  return data
+}
+
+/**
+ * Tasker accepts a task (PENDING -> MATCHED)
+ * @param {string} taskId
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function acceptTaskApi(taskId, { signal } = {}) {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/accept`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể nhận việc.')
+  }
+  return data
+}
+
+/**
+ * Tasker declines a task (PENDING/MATCHED -> refund Escrow to client & reset to PENDING)
+ * @param {string} taskId
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function declineTaskApi(taskId, { signal } = {}) {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/decline`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể từ chối công việc.')
+  }
+  return data
+}
+
+/**
+ * Tasker starts working / moving (MATCHED -> IN_PROGRESS)
+ * @param {string} taskId
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function startTaskApi(taskId, { signal } = {}) {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/start`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể bắt đầu công việc.')
+  }
+  return data
+}
+
+/**
+ * Tasker finishes work (IN_PROGRESS -> AWAITING_APPROVAL)
+ * @param {string} taskId
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function completeTaskApi(taskId, { signal } = {}) {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/complete`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể báo hoàn thành công việc.')
+  }
+  return data
+}
+
+/**
+ * Client approves and releases payment (AWAITING_APPROVAL -> DONE)
+ * @param {string} taskId
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function approveTaskApi(taskId, { signal } = {}) {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/approve`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể xác nhận nghiệm thu.')
+  }
+  return data
+}
+
+/**
+ * Client assigns a task directly to a worker profile (hold Escrow & set PENDING)
+ * @param {string} taskId
+ * @param {string} workerProfileId
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function assignWorkerApi(taskId, workerProfileId, { signal } = {}) {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/assign/${workerProfileId}`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể gán công việc cho thợ.')
+  }
+  return data
+}
+
+/**
+ * Fetch client tasks and stats
+ * @param {string} [status] Optional status filter: PENDING, MATCHED, IN_PROGRESS, AWAITING_APPROVAL, DONE, CANCELLED
+ * @param {{ signal?: AbortSignal }} [options]
+ * @returns {Promise<{ stats: object, tasks: Array<object> }>}
+ */
+export async function fetchClientTasks(status, { signal } = {}) {
+  const query = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : ''
+  const response = await fetch(`${API_BASE_URL}/tasks/client${query}`, {
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể tải danh sách công việc của bạn.')
+  }
+  return data
+}
+
+/**
+ * Client cancels a task (PENDING/MATCHED -> refund Escrow & set CANCELLED)
+ * @param {string} taskId
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function cancelTaskApi(taskId, { signal } = {}) {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/cancel`, {
+    method: 'POST',
+    signal,
+    headers: authHeaders({ Accept: 'application/json' }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || data.title || 'Không thể hủy công việc.')
+  }
+  return data
+}
+

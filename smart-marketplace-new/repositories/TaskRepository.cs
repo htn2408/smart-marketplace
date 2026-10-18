@@ -77,4 +77,75 @@ public class TaskRepository(AppDbContext db) : ITaskRepository
 
         return await q.OrderBy(s => s.Name).Take(limit).ToListAsync(ct);
     }
+
+    public async Task<List<TaskItem>> GetTasksByWorkerProfileIdAsync(string workerProfileId, CancellationToken ct = default)
+    {
+        return await db.Tasks
+            .Include(t => t.Client)
+            .Include(t => t.RequiredSkill)
+                .ThenInclude(s => s.Category)
+            .Include(t => t.Images)
+            .Where(t => t.WorkerProfileId == workerProfileId)
+            .OrderByDescending(t => t.ScheduledStartTime)
+            .ToListAsync(ct);
+    }
+
+    public Task<TaskItem?> FindTaskByIdTrackingAsync(string taskId, CancellationToken ct = default) =>
+        db.Tasks
+            .Include(t => t.Client)
+            .Include(t => t.WorkerProfile)
+                .ThenInclude(wp => wp!.User)
+            .Include(t => t.RequiredSkill)
+                .ThenInclude(s => s.Category)
+            .Include(t => t.Images)
+            .Include(t => t.Invoice)
+            .FirstOrDefaultAsync(t => t.Id == taskId, ct);
+
+    public Task<WorkerProfile?> FindWorkerProfileByUserIdTrackingAsync(string userId, CancellationToken ct = default) =>
+        db.WorkerProfiles
+            .Include(wp => wp.User)
+            .Include(wp => wp.Skills)
+                .ThenInclude(ws => ws.Skill)
+            .Include(wp => wp.ServiceDistricts)
+            .FirstOrDefaultAsync(wp => wp.UserId == userId, ct);
+
+    public Task<WorkerProfile?> FindWorkerProfileByIdAsync(string workerProfileId, CancellationToken ct = default) =>
+        db.WorkerProfiles
+            .Include(wp => wp.User)
+            .FirstOrDefaultAsync(wp => wp.Id == workerProfileId, ct);
+
+    public async Task<bool> HasOverlappingTaskAsync(
+        string workerProfileId,
+        DateTime start,
+        DateTime end,
+        string? excludeTaskId,
+        CancellationToken ct = default)
+    {
+        var query = db.Tasks
+            .Where(t => t.WorkerProfileId == workerProfileId &&
+                        (t.Status == TaskItemStatus.MATCHED || t.Status == TaskItemStatus.IN_PROGRESS) &&
+                        t.ScheduledStartTime < end &&
+                        t.ScheduledStartTime.AddMinutes(t.ExpectedTime) > start);
+
+        if (!string.IsNullOrEmpty(excludeTaskId))
+        {
+            query = query.Where(t => t.Id != excludeTaskId);
+        }
+
+        return await query.AnyAsync(ct);
+    }
+
+    public async Task<List<TaskItem>> GetTasksByClientIdAsync(string clientId, CancellationToken ct = default)
+    {
+        return await db.Tasks
+            .Include(t => t.WorkerProfile)
+                .ThenInclude(wp => wp!.User)
+            .Include(t => t.RequiredSkill)
+                .ThenInclude(s => s.Category)
+            .Include(t => t.Images)
+            .Include(t => t.Invoice)
+            .Where(t => t.ClientId == clientId)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync(ct);
+    }
 }

@@ -28,6 +28,7 @@ export default function AppRoutes() {
       services: ROUTES.SERVICES,
       search: ROUTES.CLIENT_FILTER_TASKER,
       'filter-tasker': ROUTES.CLIENT_FILTER_TASKER,
+      'filter-taskers': ROUTES.CLIENT_FILTER_TASKER,
       'become-tasker': ROUTES.TASKER_DASHBOARD,
       'tasker-dashboard': ROUTES.TASKER_DASHBOARD,
       'tasker-requests': ROUTES.TASKER_REQUESTS,

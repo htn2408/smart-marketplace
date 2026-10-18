@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import Icon from './Icon'
-import Button from './Button'
-import GoogleMapModal from '../task-detail/GoogleMapModal'
 import MapPicker from '../task-detail/MapPicker'
 import {
   fetchProvinces,
   fetchDistricts,
   fetchWards,
   searchAddressSuggestions,
+  parseVietnameseAddress,
+  resolveDistrictAndWardFromKeyword,
+  getCurrentDeviceLocation,
 } from '../../services/addressService'
 import { geocodeAddress, reverseGeocode } from '../../services/mapService'
 
@@ -31,7 +32,7 @@ export default function AddressSelector({
   headerTitle = '',
   headerSubtitle = '',
   showDerivedPreview = false,
-  showLiveMap = false,
+  showLiveMap = true,
 }) {
   const [provincesList, setProvincesList] = useState([])
   const [districtsList, setDistrictsList] = useState([])
@@ -50,13 +51,14 @@ export default function AddressSelector({
     lat: initialLat || 21.0285,
     lng: initialLng || 105.8542,
   })
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [addressSuggestions, setAddressSuggestions] = useState([])
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false)
   const [isGeocodedDetail, setIsGeocodedDetail] = useState(
     Boolean(initialAddress && initialLat && initialLng)
   )
+  const [isManualAreaOpen, setIsManualAreaOpen] = useState(false)
+  const [isLocatingGps, setIsLocatingGps] = useState(false)
 
   const addressContainerRef = useRef(null)
 
@@ -68,6 +70,7 @@ export default function AddressSelector({
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/đ/g, 'd')
       .replace(/^(thanh pho|tinh|tp\.?|quan|huyen|thi xa|phuong|xa|thi tran)\s+/gi, '')
+      .replace(/\s+(ward|phuong|xa|quan|huyen|tp|tinh)$/gi, '')
       .replace(/[^a-z0-9]/g, '')
 
   // Tách bỏ phần Phường/Quận/Tỉnh khỏi chuỗi địa chỉ chi tiết để tránh bị lặp 2 lần
@@ -79,7 +82,7 @@ export default function AddressSelector({
       .filter(Boolean)
       .filter((s) => !/^(việt nam|vietnam|\d{5,6})$/i.test(s))
 
-    if (segments.length <= 1) return rawSpecific.trim()
+    if (segments.length === 0) return ''
 
     const adminNorms = [
       provObj?.name && normalize(provObj.name),
@@ -90,15 +93,16 @@ export default function AddressSelector({
       wardObj?.full_name && normalize(wardObj.full_name),
     ].filter(Boolean)
 
-    const remaining = segments.filter((seg, idx) => {
-      // Giữ lại phần tử đầu tiên (số nhà/tên đường/tòa nhà)
-      if (idx === 0) return true
+    const nonAdminSegments = segments.filter((seg) => {
       const segNorm = normalize(seg)
-      if (!segNorm) return false
-      return !adminNorms.some((aNorm) => aNorm === segNorm)
+      return !adminNorms.includes(segNorm)
     })
 
-    return remaining.join(', ') || segments[0]
+    if (nonAdminSegments.length > 0) {
+      return nonAdminSegments.join(', ')
+    }
+
+    return ''
   }
 
   // Helper tính full address và thông báo ra ngoài
@@ -153,7 +157,19 @@ export default function AddressSelector({
     targetCoords,
     loadedProvinces = provincesList
   ) => {
-    if (!loadedProvinces || !loadedProvinces.length) return
+    let provs = loadedProvinces
+    if (!provs || !provs.length) {
+      provs = await fetchProvinces()
+      setProvincesList(provs)
+    }
+
+    if (!provs || !provs.length) {
+      if (addrText) {
+        setSpecificAddress(addrText)
+        emitChange(province, district, ward, addrText, targetCoords || coords)
+      }
+      return
+    }
 
     let geoCity = ''
     let geoDistrict = ''
@@ -165,7 +181,7 @@ export default function AddressSelector({
         if (rev) {
           geoCity = rev.city || ''
           geoDistrict = rev.district || ''
-          geoWard = rev.road || ''
+          geoWard = rev.quarter || rev.road || ''
         }
       } catch (e) {
         console.warn('Lỗi reverse geocode:', e)
@@ -176,20 +192,31 @@ export default function AddressSelector({
     const normSearchText = normalize(fullSearchText)
 
     // 1. Tìm Tỉnh / Thành phố
-    let pFound = loadedProvinces.find((p) => {
+    let pFound = provs.find((p) => {
       const pNorm = normalize(p.name)
+      const pFullNorm = normalize(p.full_name)
       return (
         normSearchText.includes(pNorm) ||
+        (pFullNorm && normSearchText.includes(pFullNorm)) ||
         fullSearchText.includes(p.name.toLowerCase()) ||
-        (p.name_en && fullSearchText.includes(p.name_en.toLowerCase()))
+        fullSearchText.includes(p.full_name.toLowerCase()) ||
+        (p.name_en && fullSearchText.includes(p.name_en.toLowerCase())) ||
+        (p.id === '79' && (normSearchText.includes('hcm') || fullSearchText.includes('hcm') || fullSearchText.includes('saigon'))) ||
+        (p.id === '01' && (fullSearchText.includes('hà nội') || fullSearchText.includes('ha noi')))
       )
     })
 
     if (!pFound && targetCoords?.lat && targetCoords?.lng) {
-      pFound = findClosest(loadedProvinces, targetCoords.lat, targetCoords.lng)
+      pFound = findClosest(provs, targetCoords.lat, targetCoords.lng)
     }
 
-    if (!pFound) return
+    if (!pFound) {
+      if (addrText) {
+        setSpecificAddress(addrText)
+        emitChange(province, district, ward, addrText, targetCoords || coords)
+      }
+      return
+    }
 
     const matchedProv = pFound.full_name
     setProvince(matchedProv)
@@ -201,16 +228,80 @@ export default function AddressSelector({
       const distData = await fetchDistricts(pFound.id)
       setDistrictsList(distData)
 
-      let dFound = distData.find((d) => {
+      // Chuẩn hoá giữ nguyên tiền tố "quan" / "huyen" để phân biệt (tránh "Quận 1" match nhầm vào "81" hay "123")
+      const normRaw = (str) =>
+        (str || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd')
+          .replace(/[^a-z0-9]/g, '')
+
+      const rawSearchText = normRaw(fullSearchText)
+      const sortedDistData = [...distData].sort((a, b) => (b.name?.length || 0) - (a.name?.length || 0))
+
+      let dFound = sortedDistData.find((d) => {
         const dNorm = normalize(d.name)
+        const dFullRaw = normRaw(d.full_name)
+        if (dNorm.length <= 2) {
+          return (
+            (dFullRaw && rawSearchText.includes(dFullRaw)) ||
+            fullSearchText.includes(d.full_name.toLowerCase())
+          )
+        }
         return (
           normSearchText.includes(dNorm) ||
+          (dFullRaw && rawSearchText.includes(dFullRaw)) ||
           fullSearchText.includes(d.name.toLowerCase()) ||
+          fullSearchText.includes(d.full_name.toLowerCase()) ||
           (d.name_en && fullSearchText.includes(d.name_en.toLowerCase()))
         )
       })
 
-      // Nếu tên text không chứa tên quận, tìm quận có toạ độ gần toạ độ GPS nhất
+      let wFound = null
+
+      // BỔ SUNG QUAN TRỌNG: Nếu tên text chưa tìm thấy quận (ví dụ: chỉ có "Giang Vo Ward", "Mễ Trì" hay tên trường học/toà nhà)
+      // -> Thử bóc tách từ khoá Phường / Xã để truy vết ngược ra Quận tương ứng!
+      if (!dFound) {
+        const candidateKeywords = []
+        const wardRegex = /(?:phường|xã|thị trấn|ward|p\.)\s+([^,]+)|([^,]+)\s+(?:ward|phường|xã|thị trấn)/gi
+        let m
+        while ((m = wardRegex.exec(fullSearchText)) !== null) {
+          const kw = (m[1] || m[2] || '').trim()
+          if (kw && !candidateKeywords.includes(kw)) candidateKeywords.push(kw)
+        }
+        if (geoDistrict && !candidateKeywords.includes(geoDistrict)) candidateKeywords.push(geoDistrict)
+        if (geoWard && !candidateKeywords.includes(geoWard)) candidateKeywords.push(geoWard)
+        const segs = (addrText || '').split(',').map((s) => s.trim()).filter(Boolean)
+        for (const seg of segs) {
+          if (!candidateKeywords.includes(seg)) candidateKeywords.push(seg)
+        }
+
+        for (const kw of candidateKeywords) {
+          const resolved = await resolveDistrictAndWardFromKeyword(kw, pFound.id)
+          if (resolved) {
+            dFound = distData.find(
+              (d) =>
+                String(d.code).padStart(3, '0') === resolved.districtCode ||
+                d.id === resolved.districtCode ||
+                Number(d.id) === Number(resolved.districtCode)
+            )
+            if (dFound) {
+              const wardList = await fetchWards(dFound.id)
+              setWardsList(wardList)
+              wFound = wardList.find(
+                (w) =>
+                  String(w.code).padStart(5, '0') === resolved.wardCode ||
+                  w.name === resolved.wardName ||
+                  w.full_name === resolved.wardName
+              )
+              break
+            }
+          }
+        }
+      }
+
+      // Nếu vẫn chưa tìm thấy quận, dùng toạ độ GPS gần nhất (findClosest)
       if (!dFound && targetCoords?.lat && targetCoords?.lng) {
         dFound = findClosest(distData, targetCoords.lat, targetCoords.lng)
       }
@@ -222,9 +313,14 @@ export default function AddressSelector({
           null,
           null
         )
-        setSpecificAddress(cleanedOnlyProv)
+        const finalSpec = cleanedOnlyProv || addrText || specificAddress
+        setSpecificAddress(finalSpec)
+        setDistrict('')
         setDistrictCode('')
-        emitChange(matchedProv, '', '', cleanedOnlyProv, targetCoords || coords, pFound.id, '')
+        setWard('')
+        setWardsList([])
+        onClearError?.('specificAddress')
+        emitChange(matchedProv, '', '', finalSpec, targetCoords || coords, pFound.id, '')
         return
       }
 
@@ -233,27 +329,43 @@ export default function AddressSelector({
       setDistrictCode(dFound.id)
       onClearError?.('district')
 
-      // 3. Tải và tìm Phường / Xã
-      const wardData = await fetchWards(dFound.id)
-      setWardsList(wardData)
+      // 3. Tải và tìm Phường / Xã (nếu chưa tìm được từ bước bóc tách phường ở trên)
+      let wardData = wardsList
+      if (!wFound) {
+        wardData = await fetchWards(dFound.id)
+        setWardsList(wardData)
 
-      let wFound = wardData.find((w) => {
-        const wNorm = normalize(w.name)
-        return (
-          normSearchText.includes(wNorm) ||
-          fullSearchText.includes(w.name.toLowerCase()) ||
-          (w.name_en && fullSearchText.includes(w.name_en.toLowerCase()))
-        )
-      })
+        const sortedWardData = [...wardData].sort((a, b) => (b.name?.length || 0) - (a.name?.length || 0))
 
-      if (!wFound && targetCoords?.lat && targetCoords?.lng) {
-        wFound = findClosest(wardData, targetCoords.lat, targetCoords.lng)
+        wFound = sortedWardData.find((w) => {
+          const wNorm = normalize(w.name)
+          const wFullRaw = normRaw(w.full_name)
+          if (wNorm.length <= 2) {
+            return (
+              (wFullRaw && rawSearchText.includes(wFullRaw)) ||
+              fullSearchText.includes(w.full_name.toLowerCase())
+            )
+          }
+          return (
+            normSearchText.includes(wNorm) ||
+            (wFullRaw && rawSearchText.includes(wFullRaw)) ||
+            fullSearchText.includes(w.name.toLowerCase()) ||
+            fullSearchText.includes(w.full_name.toLowerCase()) ||
+            (w.name_en && fullSearchText.includes(w.name_en.toLowerCase()))
+          )
+        })
+
+        if (!wFound && targetCoords?.lat && targetCoords?.lng) {
+          wFound = findClosest(wardData, targetCoords.lat, targetCoords.lng)
+        }
       }
 
       const matchedWd = wFound ? wFound.full_name : ''
       if (matchedWd) {
         setWard(matchedWd)
         onClearError?.('ward')
+      } else {
+        setWard('')
       }
 
       const cleanedSpec = stripAdminPartsFromSpecific(
@@ -262,20 +374,24 @@ export default function AddressSelector({
         dFound,
         wFound
       )
-      setSpecificAddress(cleanedSpec)
+      const finalSpec = cleanedSpec || addrText || specificAddress
+      setSpecificAddress(finalSpec)
       onClearError?.('specificAddress')
 
       emitChange(
         matchedProv,
         matchedDist,
         matchedWd,
-        cleanedSpec,
+        finalSpec,
         targetCoords || coords,
         pFound.id,
         dFound.id
       )
     } catch (err) {
       console.warn('Lỗi tự động map địa chính:', err)
+      const fallbackSpec = addrText || specificAddress
+      setSpecificAddress(fallbackSpec)
+      emitChange(matchedProv, '', '', fallbackSpec, targetCoords || coords, pFound.id, '')
     }
   }
 
@@ -301,6 +417,20 @@ export default function AddressSelector({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Tự động đồng bộ khi initialAddress được nạp bất đồng bộ từ AuthContext
+  const initialSyncedRef = useRef(false)
+  useEffect(() => {
+    if (initialAddress && !initialSyncedRef.current) {
+      initialSyncedRef.current = true
+      autoSyncDistrictAndWard(
+        initialAddress,
+        { lat: initialLat || coords.lat || 21.0285, lng: initialLng || coords.lng || 105.8542 },
+        provincesList
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAddress, initialLat, initialLng])
 
   // Chọn Tỉnh
   const handleProvinceChange = async (e) => {
@@ -495,39 +625,100 @@ export default function AddressSelector({
     }
   }
 
-  // Kết quả chọn từ GoogleMapModal -> Tự động đồng bộ dropdown Tỉnh, Huyện, Xã
-  const handleMapConfirm = async (selectedAddress, pickedCoords) => {
-    const addr =
-      typeof selectedAddress === 'string'
-        ? selectedAddress
-        : selectedAddress?.address || ''
-    const coordObj =
-      pickedCoords || (typeof selectedAddress === 'object' ? selectedAddress : null)
-
-    let newCoords = coords
-    if (coordObj && coordObj.lat && coordObj.lng) {
-      newCoords = { lat: coordObj.lat, lng: coordObj.lng }
-      setCoords(newCoords)
-      setIsGeocodedDetail(true)
-    }
-
-    if (addr) {
-      setSpecificAddress(addr)
-      onClearError?.('specificAddress')
-    }
-
-    setIsMapModalOpen(false)
-    emitChange(province, district, ward, addr || specificAddress, newCoords)
-    await autoSyncDistrictAndWard(addr || specificAddress, newCoords)
-  }
-
-  // Khi người dùng kéo thả ghim trực tiếp trên bản đồ nhỏ
+  // Khi người dùng kéo thả ghim hoặc click trực tiếp trên bản đồ ở màn hình chính
   const handleLiveMapPinMove = async (loc) => {
     if (loc?.lat && loc?.lng) {
       const newCoords = { lat: loc.lat, lng: loc.lng }
       setCoords(newCoords)
       setIsGeocodedDetail(true)
-      await autoSyncDistrictAndWard(specificAddress, newCoords)
+
+      let provs = provincesList
+      if (!provs || !provs.length) {
+        provs = await fetchProvinces()
+        setProvincesList(provs)
+      }
+
+      let revAddress = specificAddress
+      try {
+        const rev = await reverseGeocode(loc.lat, loc.lng)
+        if (rev) {
+          const streetOrName =
+            rev?.road ||
+            rev?.displayName?.split(',')[0] ||
+            rev?.displayName
+          if (streetOrName) {
+            revAddress = streetOrName
+            setSpecificAddress(streetOrName)
+            onClearError?.('specificAddress')
+          }
+        }
+      } catch (e) {
+        console.warn('Lỗi reverse geocode khi ghim bản đồ:', e)
+      }
+
+      emitChange(province, district, ward, revAddress || specificAddress, newCoords)
+      await autoSyncDistrictAndWard(revAddress || specificAddress, newCoords, provs)
+    }
+  }
+
+  // Khi click "Dùng địa chỉ đã lưu của bạn"
+  const handleUseSavedAddress = async () => {
+    if (!savedUserAddress) return
+
+    let uCoords = coords
+    if (savedUserCoords && savedUserCoords.lat && savedUserCoords.lng) {
+      uCoords = { lat: Number(savedUserCoords.lat), lng: Number(savedUserCoords.lng) }
+      setCoords(uCoords)
+      setIsGeocodedDetail(true)
+    }
+
+    const parsed = parseVietnameseAddress(savedUserAddress)
+    const initialStreet = parsed.specificAddress || savedUserAddress
+    setSpecificAddress(initialStreet)
+    onClearError?.('specificAddress')
+
+    let provs = provincesList
+    if (!provs || !provs.length) {
+      provs = await fetchProvinces()
+      setProvincesList(provs)
+    }
+
+    await autoSyncDistrictAndWard(savedUserAddress, uCoords, provs)
+  }
+
+  // Khi click "Vị trí của tôi" (GPS thiết bị)
+  const handleUseCurrentLocation = async () => {
+    setIsLocatingGps(true)
+    try {
+      const pos = await getCurrentDeviceLocation()
+      const uCoords = { lat: pos.lat, lng: pos.lng }
+      setCoords(uCoords)
+      setIsGeocodedDetail(true)
+
+      let provs = provincesList
+      if (!provs || !provs.length) {
+        provs = await fetchProvinces()
+        setProvincesList(provs)
+      }
+
+      const rev = await reverseGeocode(pos.lat, pos.lng)
+      const streetOrName =
+        rev?.road ||
+        rev?.displayName?.split(',')[0] ||
+        rev?.displayName ||
+        `Toạ độ (${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)})`
+
+      setSpecificAddress(streetOrName)
+      onClearError?.('specificAddress')
+
+      await autoSyncDistrictAndWard(rev?.displayName || streetOrName, uCoords, provs)
+    } catch (err) {
+      alert(
+        err.message ||
+          'Không thể lấy vị trí hiện tại. Vui lòng cho phép quyền truy cập vị trí trên trình duyệt.'
+      )
+    } finally {
+      setIsLocatingGps(false)
     }
   }
 
@@ -535,8 +726,13 @@ export default function AddressSelector({
     .filter(Boolean)
     .join(', ')
 
+  const hasAdminError = Boolean(errors.province || errors.district || errors.ward)
+  const isAreaResolved = Boolean(province && district)
+  const shouldShowDropdowns = isManualAreaOpen || hasAdminError || !isAreaResolved
+
   return (
     <div className="flex flex-col gap-4">
+      {/* 1. Tiêu đề & Các nút thao tác nhanh (Quick Action Pills) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {headerTitle ? (
           <div>
@@ -560,181 +756,60 @@ export default function AddressSelector({
             <span>Khu vực &amp; Vị trí địa chỉ</span>
           </span>
         )}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          icon="map"
-          onClick={() => setIsMapModalOpen(true)}
-          className="self-start sm:self-auto text-primary rounded-xl font-bold border-primary/30 hover:bg-primary-fixed/20 shadow-sm cursor-pointer"
-        >
-          Chọn trên bản đồ
-        </Button>
-      </div>
 
-      {/* 3 Cascading Dropdowns: Tỉnh -> Huyện -> Xã */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Tỉnh / Thành phố */}
-        <div>
-          <label
-            htmlFor="province-select"
-            className="block text-xs font-bold text-outline uppercase tracking-wider mb-1.5"
+        {/* 3 Quick Action Pills: Vị trí của tôi, Dùng địa chỉ đã lưu, Chọn trên bản đồ */}
+        <div className="flex items-center flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleUseCurrentLocation}
+            disabled={isLocatingGps}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all cursor-pointer disabled:opacity-60 shadow-xs"
+            title="Tự động lấy toạ độ GPS hiện tại của thiết bị"
           >
-            Tỉnh / Thành phố {required && <span className="text-error">*</span>}
-          </label>
-          <div className="relative">
-            <select
-              id="province-select"
-              value={province}
-              onChange={handleProvinceChange}
-              className={`w-full px-3.5 py-3 bg-surface-container-low rounded-xl text-on-surface font-label-md text-sm outline-none border transition-all cursor-pointer appearance-none ${
-                errors.province
-                  ? 'border-error ring-1 ring-error/20 focus:border-error'
-                  : 'border-surface-variant/40 focus:border-primary'
-              }`}
-            >
-              <option value="">-- Chọn Tỉnh / Thành phố --</option>
-              {provincesList.map((p) => (
-                <option key={p.id} value={p.full_name}>
-                  {p.full_name}
-                </option>
-              ))}
-            </select>
-            <Icon
-              name="expand_more"
-              size={20}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
-            />
-          </div>
-          {errors.province && (
-            <p className="mt-1 flex items-center gap-1 text-error font-body-sm text-xs font-semibold">
-              <Icon name="error" size={14} />
-              <span>{errors.province}</span>
-            </p>
-          )}
-        </div>
+            {isLocatingGps ? (
+              <span className="animate-spin text-primary">
+                <Icon name="progress_activity" size={14} />
+              </span>
+            ) : (
+              <Icon name="my_location" size={14} />
+            )}
+            <span>{isLocatingGps ? 'Đang định vị...' : 'Vị trí của tôi'}</span>
+          </button>
 
-        {/* Quận / Huyện */}
-        <div>
-          <label
-            htmlFor="district-select"
-            className="block text-xs font-bold text-outline uppercase tracking-wider mb-1.5"
-          >
-            Quận / Huyện {required && <span className="text-error">*</span>}
-          </label>
-          <div className="relative">
-            <select
-              id="district-select"
-              value={district}
-              onChange={handleDistrictChange}
-              disabled={!province || districtsList.length === 0}
-              className={`w-full px-3.5 py-3 bg-surface-container-low disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-on-surface font-label-md text-sm outline-none border transition-all cursor-pointer appearance-none ${
-                errors.district
-                  ? 'border-error ring-1 ring-error/20 focus:border-error'
-                  : 'border-surface-variant/40 focus:border-primary'
-              }`}
+          {savedUserAddress && (
+            <button
+              type="button"
+              onClick={handleUseSavedAddress}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/20 transition-all cursor-pointer shadow-xs"
+              title="Sử dụng địa chỉ đã lưu trong hồ sơ của bạn"
             >
-              <option value="">-- Chọn Quận / Huyện --</option>
-              {districtsList.map((d) => (
-                <option key={d.id} value={d.full_name}>
-                  {d.full_name}
-                </option>
-              ))}
-            </select>
-            <Icon
-              name="expand_more"
-              size={20}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
-            />
-          </div>
-          {errors.district && (
-            <p className="mt-1 flex items-center gap-1 text-error font-body-sm text-xs font-semibold">
-              <Icon name="error" size={14} />
-              <span>{errors.district}</span>
-            </p>
-          )}
-        </div>
-
-        {/* Phường / Xã */}
-        <div>
-          <label
-            htmlFor="ward-select"
-            className="block text-xs font-bold text-outline uppercase tracking-wider mb-1.5"
-          >
-            Phường / Xã {required && <span className="text-error">*</span>}
-          </label>
-          <div className="relative">
-            <select
-              id="ward-select"
-              value={ward}
-              onChange={handleWardChange}
-              disabled={!district || wardsList.length === 0}
-              className={`w-full px-3.5 py-3 bg-surface-container-low disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-on-surface font-label-md text-sm outline-none border transition-all cursor-pointer appearance-none ${
-                errors.ward
-                  ? 'border-error ring-1 ring-error/20 focus:border-error'
-                  : 'border-surface-variant/40 focus:border-primary'
-              }`}
-            >
-              <option value="">-- Chọn Phường / Xã --</option>
-              {wardsList.map((w) => (
-                <option key={w.id} value={w.full_name}>
-                  {w.full_name}
-                </option>
-              ))}
-            </select>
-            <Icon
-              name="expand_more"
-              size={20}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
-            />
-          </div>
-          {errors.ward && (
-            <p className="mt-1 flex items-center gap-1 text-error font-body-sm text-xs font-semibold">
-              <Icon name="error" size={14} />
-              <span>{errors.ward}</span>
-            </p>
+              <Icon name="bookmark" size={14} />
+              <span>Địa chỉ đã lưu</span>
+            </button>
           )}
         </div>
       </div>
 
-      {/* Số nhà, tên đường with Autocomplete */}
+      {/* 2. Số nhà, tên đường / Điểm đến (Smart Omnibox) */}
       <div className="relative" ref={addressContainerRef}>
         <div className="flex items-center justify-between mb-1.5">
           <label
             htmlFor="specific-address-input"
             className="block text-xs font-bold text-outline uppercase tracking-wider"
           >
-            Số nhà, tên đường, toà nhà / căn hộ{' '}
+            Số nhà, tên đường hoặc địa điểm{' '}
             {required && <span className="text-error">*</span>}
           </label>
           <div className="flex items-center gap-2">
-            {savedUserAddress && (
-              <button
-                type="button"
-                onClick={() => {
-                  let uCoords = coords
-                  if (savedUserCoords && savedUserCoords.lat && savedUserCoords.lng) {
-                    uCoords = savedUserCoords
-                    setCoords(uCoords)
-                    setIsGeocodedDetail(true)
-                  }
-                  autoSyncDistrictAndWard(savedUserAddress, uCoords)
-                }}
-                className="text-[11px] font-semibold text-primary bg-primary-fixed/30 hover:bg-primary-fixed/50 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                title="Sử dụng địa chỉ đã lưu trong hồ sơ của bạn"
-              >
-                <Icon name="bookmark" size={13} />
-                Dùng địa chỉ đã lưu của bạn
-              </button>
-            )}
             {isGeocodedDetail && (
               <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
                 <Icon name="check_circle" size={13} />
-                Đã ghim chi tiết
+                Đã ghim vị trí
               </span>
             )}
           </div>
         </div>
+
         <div className="relative flex items-center gap-2">
           <div className="relative flex-1">
             <Icon
@@ -770,7 +845,7 @@ export default function AddressSelector({
                   triggerGeocodeSpecificAddress()
                 }
               }}
-              placeholder="Ví dụ: Tiểu học Vĩnh Hưng, 53 Lĩnh Nam, Toà nhà Park 12..."
+              placeholder="Nhập số nhà, tên đường, chung cư, trường học (VD: 53 Lĩnh Nam, ĐH Luật...)"
               className={`w-full pl-11 pr-10 py-3 bg-surface-container-low rounded-xl text-on-surface font-label-md text-sm outline-none border focus:bg-surface-container-lowest transition-all ${
                 errors.specificAddress
                   ? 'border-error ring-1 ring-error/20 focus:border-error'
@@ -806,7 +881,7 @@ export default function AddressSelector({
             type="button"
             onClick={() => triggerGeocodeSpecificAddress()}
             disabled={!specificAddress.trim() || isSearchingAddress}
-            className="px-3.5 py-3 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl border border-primary/20 flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+            className="px-3.5 py-3 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl border border-primary/20 flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer shadow-xs"
             title="Định vị ngay địa chỉ này trên bản đồ"
           >
             <Icon name="my_location" size={16} />
@@ -849,6 +924,179 @@ export default function AddressSelector({
         )}
       </div>
 
+      {/* 3. Khu vực hành chính (Tỉnh / Thành phố - Quận / Huyện - Phường / Xã) */}
+      {!shouldShowDropdowns ? (
+        /* Collapsed Smart Badge khi đã nhận diện đầy đủ Tỉnh & Quận */
+        <div className="flex items-center justify-between p-3.5 bg-surface-container-low border border-primary/20 rounded-xl transition-all">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Icon name="verified" size={18} />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[11px] font-bold text-outline uppercase tracking-wider">
+                Khu vực phục vụ:
+              </span>
+              <p className="text-sm font-bold text-on-surface truncate">
+                {[ward, district, province].filter(Boolean).join(', ')}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsManualAreaOpen(true)}
+            className="text-xs font-bold text-primary hover:text-primary/80 bg-primary-fixed/20 hover:bg-primary-fixed/40 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors shrink-0 cursor-pointer"
+          >
+            <Icon name="tune" size={14} />
+            <span>Tuỳ chỉnh</span>
+          </button>
+        </div>
+      ) : (
+        /* 3 Cascading Dropdowns: Tỉnh -> Huyện -> Xã */
+        <div className="flex flex-col gap-2.5 p-3.5 bg-surface-container-low rounded-xl border border-surface-variant/30">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-outline uppercase tracking-wider flex items-center gap-1.5">
+              <Icon name="tune" size={14} className="text-primary" />
+              <span>Khu vực hành chính (Tỉnh / Quận / Phường)</span>
+              {required && <span className="text-error">*</span>}
+            </span>
+            {isAreaResolved && !hasAdminError && (
+              <button
+                type="button"
+                onClick={() => setIsManualAreaOpen(false)}
+                className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+              >
+                <span>Thu gọn</span>
+                <Icon name="expand_less" size={14} />
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Tỉnh / Thành phố */}
+            <div>
+              <label
+                htmlFor="province-select"
+                className="block text-[11px] font-semibold text-outline uppercase tracking-wider mb-1"
+              >
+                Tỉnh / Thành phố {required && <span className="text-error">*</span>}
+              </label>
+              <div className="relative">
+                <select
+                  id="province-select"
+                  value={province}
+                  onChange={handleProvinceChange}
+                  className={`w-full px-3.5 py-2.5 bg-surface-container-lowest rounded-xl text-on-surface font-label-md text-sm outline-none border transition-all cursor-pointer appearance-none ${
+                    errors.province
+                      ? 'border-error ring-1 ring-error/20 focus:border-error'
+                      : 'border-surface-variant/40 focus:border-primary'
+                  }`}
+                >
+                  <option value="">-- Chọn Tỉnh / TP --</option>
+                  {provincesList.map((p) => (
+                    <option key={p.id} value={p.full_name}>
+                      {p.full_name}
+                    </option>
+                  ))}
+                </select>
+                <Icon
+                  name="expand_more"
+                  size={20}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
+                />
+              </div>
+              {errors.province && (
+                <p className="mt-1 flex items-center gap-1 text-error font-body-sm text-xs font-semibold">
+                  <Icon name="error" size={14} />
+                  <span>{errors.province}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Quận / Huyện */}
+            <div>
+              <label
+                htmlFor="district-select"
+                className="block text-[11px] font-semibold text-outline uppercase tracking-wider mb-1"
+              >
+                Quận / Huyện {required && <span className="text-error">*</span>}
+              </label>
+              <div className="relative">
+                <select
+                  id="district-select"
+                  value={district}
+                  onChange={handleDistrictChange}
+                  disabled={!province || districtsList.length === 0}
+                  className={`w-full px-3.5 py-2.5 bg-surface-container-lowest disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-on-surface font-label-md text-sm outline-none border transition-all cursor-pointer appearance-none ${
+                    errors.district
+                      ? 'border-error ring-1 ring-error/20 focus:border-error'
+                      : 'border-surface-variant/40 focus:border-primary'
+                  }`}
+                >
+                  <option value="">-- Chọn Quận / Huyện --</option>
+                  {districtsList.map((d) => (
+                    <option key={d.id} value={d.full_name}>
+                      {d.full_name}
+                    </option>
+                  ))}
+                </select>
+                <Icon
+                  name="expand_more"
+                  size={20}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
+                />
+              </div>
+              {errors.district && (
+                <p className="mt-1 flex items-center gap-1 text-error font-body-sm text-xs font-semibold">
+                  <Icon name="error" size={14} />
+                  <span>{errors.district}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Phường / Xã */}
+            <div>
+              <label
+                htmlFor="ward-select"
+                className="block text-[11px] font-semibold text-outline uppercase tracking-wider mb-1"
+              >
+                Phường / Xã {required && <span className="text-error">*</span>}
+              </label>
+              <div className="relative">
+                <select
+                  id="ward-select"
+                  value={ward}
+                  onChange={handleWardChange}
+                  disabled={!district || wardsList.length === 0}
+                  className={`w-full px-3.5 py-2.5 bg-surface-container-lowest disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-on-surface font-label-md text-sm outline-none border transition-all cursor-pointer appearance-none ${
+                    errors.ward
+                      ? 'border-error ring-1 ring-error/20 focus:border-error'
+                      : 'border-surface-variant/40 focus:border-primary'
+                  }`}
+                >
+                  <option value="">-- Chọn Phường / Xã --</option>
+                  {wardsList.map((w) => (
+                    <option key={w.id} value={w.full_name}>
+                      {w.full_name}
+                    </option>
+                  ))}
+                </select>
+                <Icon
+                  name="expand_more"
+                  size={20}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
+                />
+              </div>
+              {errors.ward && (
+                <p className="mt-1 flex items-center gap-1 text-error font-body-sm text-xs font-semibold">
+                  <Icon name="error" size={14} />
+                  <span>{errors.ward}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Derived Full Address Preview */}
       {showDerivedPreview && (
         <div className="p-3.5 rounded-xl bg-surface-container-low border border-primary/20 flex items-start gap-3">
@@ -872,24 +1120,20 @@ export default function AddressSelector({
         </div>
       )}
 
-      {/* Live Interactive Map Preview */}
-      {showLiveMap && derivedFullAddress && (
+      {/* Live Interactive Map directly on the main screen */}
+      {showLiveMap && (
         <div className="rounded-2xl overflow-hidden border border-surface-variant/40 bg-surface-container-low shadow-sm">
           <div className="px-4 py-2.5 bg-surface-container flex items-center justify-between border-b border-surface-variant/30">
             <div className="flex items-center gap-2">
               <Icon name="map" size={18} className="text-primary" />
               <span className="font-label-sm text-xs font-bold text-on-surface">
-                Vị trí trên bản đồ (Click hoặc kéo ghim để định vị chính xác)
+                Vị trí trên bản đồ (Nhấp hoặc kéo ghim để định vị chính xác)
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsMapModalOpen(true)}
-              className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              <span>Phóng to bản đồ</span>
-              <Icon name="open_in_full" size={14} />
-            </button>
+            <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1">
+              <Icon name="touch_app" size={13} />
+              Chạm hoặc kéo ghim trực tiếp
+            </span>
           </div>
           <div className="relative w-full h-64 sm:h-72 bg-surface-container">
             <MapPicker
@@ -901,15 +1145,6 @@ export default function AddressSelector({
           </div>
         </div>
       )}
-
-      {/* Modal Google Map */}
-      <GoogleMapModal
-        isOpen={isMapModalOpen}
-        onClose={() => setIsMapModalOpen(false)}
-        initialCoords={coords}
-        initialQuery={derivedFullAddress || specificAddress}
-        onConfirm={handleMapConfirm}
-      />
     </div>
   )
 }

@@ -6,7 +6,7 @@ import Icon from '../components/common/Icon'
 import Badge from '../components/common/Badge'
 import { ROUTES } from '../routes/paths'
 import { FILTER_TASKERS_MOCK } from '../constants/mockData'
-import { filterTaskersByTaskId } from '../services/taskService'
+import { filterTaskersByTaskId, assignWorkerApi } from '../services/taskService'
 import { DEFAULT_AVATAR } from '../assets/constants'
 
 /**
@@ -27,6 +27,7 @@ export default function FilterTasker({ onNavigate }) {
   const [hasNoResults, setHasNoResults] = useState(false)
   const [selectedOfferTasker, setSelectedOfferTasker] = useState(null)
   const [retryToken, setRetryToken] = useState(0)
+  const [isAssigning, setIsAssigning] = useState(false)
 
   // Nếu có taskId thực tế từ Backend thì gọi API lọc & chấm điểm Tasker
   useEffect(() => {
@@ -153,6 +154,23 @@ export default function FilterTasker({ onNavigate }) {
 
   const handleQuickChat = (tasker) => {
     alert(`Đang mở cửa sổ chat nhanh với Tasker ${tasker.name}...`)
+  }
+
+  const handleSendOffer = async (tasker) => {
+    if (!taskData?.id || !tasker?.id) {
+      setSelectedOfferTasker(tasker)
+      return
+    }
+
+    try {
+      setIsAssigning(true)
+      await assignWorkerApi(taskData.id, tasker.id)
+      setSelectedOfferTasker(tasker)
+    } catch (err) {
+      alert(err.message || 'Không thể gửi đề xuất cho thợ.')
+    } finally {
+      setIsAssigning(false)
+    }
   }
 
   return (
@@ -561,10 +579,11 @@ export default function FilterTasker({ onNavigate }) {
                           <div className="flex flex-col gap-2">
                             <button
                               type="button"
-                              onClick={() => setSelectedOfferTasker(tasker)}
-                              className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container font-label-md text-label-md font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                              disabled={isAssigning}
+                              onClick={() => handleSendOffer(tasker)}
+                              className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container font-label-md text-label-md font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                             >
-                              <span>Gửi lời mời &amp; Offer</span>
+                              <span>{isAssigning ? 'Đang gửi đề xuất & cọc...' : 'Gửi lời mời & Offer'}</span>
                               <Icon name="send" size={18} />
                             </button>
                             <div className="grid grid-cols-2 gap-2">
@@ -788,7 +807,14 @@ export default function FilterTasker({ onNavigate }) {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedOfferTasker(null)}
+                  onClick={() => {
+                    setSelectedOfferTasker(null)
+                    if (onNavigate) {
+                      onNavigate('my-tasks')
+                    } else {
+                      window.location.href = ROUTES.TASK_MANAGER
+                    }
+                  }}
                   className="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-bold hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm cursor-pointer"
                 >
                   Xem tiến độ yêu cầu

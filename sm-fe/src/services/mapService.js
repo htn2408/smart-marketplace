@@ -183,6 +183,7 @@ export async function reverseGeocode(lat, lng, { signal } = {}) {
           displayName,
           road: rawStreet || p.name || '',
           district: p.district || p.city_district || '',
+          quarter: p.quarter || p.suburb || '',
           city: p.city || p.state || '',
           lat,
           lng,
