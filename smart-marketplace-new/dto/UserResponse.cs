@@ -13,6 +13,8 @@ public class UserResponse
     public string? Address { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+    public decimal Balance { get; set; }
+    public decimal HeldBalance { get; set; }
     public DateTime CreatedAt { get; set; }
     public WorkerProfileDto? WorkerProfile { get; set; }
 

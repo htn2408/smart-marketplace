@@ -60,3 +60,31 @@ export function formatHourSlot(startTime, expectedMinutes = 60) {
   const endM = String(end.getMinutes()).padStart(2, '0')
   return `${startH}:${startM} - ${endH}:${endM}`
 }
+
+/**
+ * Map service / category name to Material Symbols icon
+ * @param {string} categoryName
+ * @returns {string}
+ */
+export function getCategoryIcon(categoryName) {
+  if (!categoryName) return 'handyman'
+  const cat = categoryName.toLowerCase()
+  if (cat.includes('điện') && cat.includes('nước')) return 'plumbing'
+  if (cat.includes('điện') || cat.includes('quạt') || cat.includes('đèn') || cat.includes('aptomat'))
+    return 'electric_bolt'
+  if (cat.includes('nước') || cat.includes('ống') || cat.includes('bồn')) return 'plumbing'
+  if (
+    cat.includes('lắp') ||
+    cat.includes('nội thất') ||
+    cat.includes('bàn') ||
+    cat.includes('ghế') ||
+    cat.includes('tủ')
+  )
+    return 'shelves'
+  if (cat.includes('dọn') || cat.includes('vệ sinh')) return 'cleaning_services'
+  if (cat.includes('chuyển') || cat.includes('vận chuyển') || cat.includes('bốc'))
+    return 'local_shipping'
+  if (cat.includes('sơn') || cat.includes('sửa')) return 'build'
+  return 'handyman'
+}
+

@@ -1,15 +1,28 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import TaskerLayout from '../components/layout/TaskerLayout'
 import Icon from '../components/common/Icon'
 import Button from '../components/common/Button'
 import Badge from '../components/common/Badge'
 import { useAuth } from '../hooks/useAuth'
 import { updateWorkerProfileApi } from '../services/authService'
-import { TASKER_DASHBOARD_MOCK } from '../constants/mockData'
+import {
+  fetchTaskerTasks,
+  acceptTaskApi,
+  declineTaskApi,
+  startTaskApi,
+  completeTaskApi,
+} from '../services/taskService'
+import {
+  formatCurrency,
+  formatDateTime,
+  formatHourSlot,
+  getCategoryIcon,
+} from '../utils/formatters'
 
 /**
- * TaskersDashboard Page - Bảng điều khiển Thợ (Verdant Trust Theme)
- * Sử dụng chung khung TaskerLayout (Sidebar + Topbar có nút Chế độ Client).
+ * TaskersDashboard Component - Bảng điều khiển Tổng quan của Tasker
+ * Tích hợp 100% dữ liệu thật từ Backend ASP.NET Core & MySQL
+ * Tuân thủ chuẩn rule.md: Không mock data, dùng service layer & shared components
  */
 export default function TaskersDashboard({ onNavigate }) {
   const { user, token, updateUser } = useAuth()
@@ -17,15 +30,60 @@ export default function TaskersDashboard({ onNavigate }) {
   const [activeMenu, setActiveMenu] = useState('overview')
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [isOffersExpanded, setIsOffersExpanded] = useState(false)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState(null)
+  const [refreshToken, setRefreshToken] = useState(0)
+  const [toastMessage, setToastMessage] = useState(null)
 
-  // Danh sách công việc từ constant mock
-  const [availableTasks, setAvailableTasks] = useState(TASKER_DASHBOARD_MOCK.availableTasks)
-  const [, setAcceptedTasks] = useState(TASKER_DASHBOARD_MOCK.acceptedTasks)
+  const [data, setData] = useState({
+    stats: {
+      pendingCount: 0,
+      matchedCount: 0,
+      inProgressCount: 0,
+      awaitingApprovalCount: 0,
+      doneCount: 0,
+      cancelledCount: 0,
+    },
+    tasks: [],
+  })
+
+  // Hiển thị toast thông báo nhanh
+  const showToast = (message) => {
+    setToastMessage(message)
+    setTimeout(() => setToastMessage(null), 3500)
+  }
+
+  const handleRefresh = useCallback(() => {
+    setIsLoading(true)
+    setErrorMessage(null)
+    setRefreshToken((t) => t + 1)
+  }, [])
+
+  // Tải dữ liệu thật từ API Tasker
+  useEffect(() => {
+    const controller = new AbortController()
+
+    fetchTaskerTasks('all', { signal: controller.signal })
+      .then((res) => {
+        setData(res)
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return
+        setErrorMessage(err.message || 'Không thể tải dữ liệu bảng điều khiển.')
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [refreshToken])
 
   const wp = user?.workerProfile || null
   const isOnline = (wp?.status || 'ONLINE') === 'ONLINE'
   const serviceDistricts = wp?.serviceDistricts || []
 
+  // Bật/tắt trạng thái nhận việc
   const handleToggleOnline = async () => {
     if (!token || togglingStatus) return
     const nextStatus = isOnline ? 'OFFLINE' : 'ONLINE'
@@ -33,8 +91,11 @@ export default function TaskersDashboard({ onNavigate }) {
       setTogglingStatus(true)
       const updatedUser = await updateWorkerProfileApi(token, { status: nextStatus })
       updateUser(updatedUser)
+      showToast(
+        `Đã chuyển sang trạng thái: ${nextStatus === 'ONLINE' ? 'Sẵn sàng nhận việc' : 'Tạm nghỉ'}`
+      )
     } catch (err) {
-      alert(err.message || 'Không thể cập nhật trạng thái nhận việc.')
+      showToast(err.message || 'Không thể cập nhật trạng thái nhận việc.')
     } finally {
       setTogglingStatus(false)
     }
@@ -49,44 +110,200 @@ export default function TaskersDashboard({ onNavigate }) {
       onNavigate?.('tasker-requests')
       return
     }
+    if (menuId === 'messages') {
+      // User yêu cầu trừ tab nhắn tin để lên kế hoạch làm sau
+      showToast('Tính năng Tin nhắn đang được nâng cấp theo lộ trình.')
+      return
+    }
     setActiveMenu(menuId)
   }
 
-  const handleAcceptTask = (task) => {
-    setAvailableTasks((prev) => prev.filter((t) => t.id !== task.id))
-    setAcceptedTasks((prev) => [
-      {
-        id: task.id,
-        title: task.title,
-        category: task.category,
-        address: task.address,
-        scheduledTime: task.scheduledTime,
-        offeredPrice: task.offeredPrice,
-        clientName: task.clientName,
-        clientPhone: '0987 654 321',
-        status: 'ACCEPTED',
-      },
-      ...prev,
-    ])
+  // Thao tác: Chấp nhận offer (PENDING -> MATCHED)
+  const handleAcceptTask = async (task) => {
+    const taskId = task.id
+    const prevData = data
+    try {
+      setActionLoadingId(taskId)
+      // Optimistic update
+      setData((prev) => ({
+        stats: {
+          ...prev.stats,
+          pendingCount: Math.max(0, prev.stats.pendingCount - 1),
+          matchedCount: prev.stats.matchedCount + 1,
+        },
+        tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status: 'MATCHED' } : t)),
+      }))
+
+      const res = await acceptTaskApi(taskId)
+      showToast(res.message || 'Đã nhận việc thành công!')
+      handleRefresh()
+    } catch (err) {
+      setData(prevData)
+      showToast(err.message || 'Không thể nhận việc.')
+    } finally {
+      setActionLoadingId(null)
+    }
   }
 
-  const handleDeclineTask = (taskId) => {
-    setAvailableTasks((prev) => prev.filter((t) => t.id !== taskId))
+  // Thao tác: Từ chối offer
+  const handleDeclineTask = async (taskId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn từ chối công việc này?')) return
+    const prevData = data
+    try {
+      setActionLoadingId(taskId)
+      setData((prev) => ({
+        stats: {
+          ...prev.stats,
+          pendingCount: Math.max(0, prev.stats.pendingCount - 1),
+        },
+        tasks: prev.tasks.filter((t) => t.id !== taskId),
+      }))
+
+      const res = await declineTaskApi(taskId)
+      showToast(res.message || 'Đã từ chối công việc.')
+      handleRefresh()
+    } catch (err) {
+      setData(prevData)
+      showToast(err.message || 'Không thể từ chối công việc.')
+    } finally {
+      setActionLoadingId(null)
+    }
   }
 
-  const handleCompleteTask = (taskId) => {
-    setAcceptedTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: 'COMPLETED' } : t))
+  // Thao tác: Bắt đầu làm việc (MATCHED -> IN_PROGRESS)
+  const handleStartMoving = async (taskId) => {
+    const prevData = data
+    try {
+      setActionLoadingId(taskId)
+      setData((prev) => ({
+        stats: {
+          ...prev.stats,
+          matchedCount: Math.max(0, prev.stats.matchedCount - 1),
+          inProgressCount: prev.stats.inProgressCount + 1,
+        },
+        tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status: 'IN_PROGRESS' } : t)),
+      }))
+
+      const res = await startTaskApi(taskId)
+      showToast(res.message || 'Đã bắt đầu công việc!')
+      handleRefresh()
+    } catch (err) {
+      setData(prevData)
+      showToast(err.message || 'Không thể bắt đầu công việc.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // Thao tác: Báo hoàn thành việc (IN_PROGRESS -> AWAITING_APPROVAL)
+  const handleCompleteTask = async (taskId) => {
+    const prevData = data
+    try {
+      setActionLoadingId(taskId)
+      setData((prev) => ({
+        stats: {
+          ...prev.stats,
+          inProgressCount: Math.max(0, prev.stats.inProgressCount - 1),
+          awaitingApprovalCount: prev.stats.awaitingApprovalCount + 1,
+        },
+        tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status: 'AWAITING_APPROVAL' } : t)),
+      }))
+
+      const res = await completeTaskApi(taskId)
+      showToast(res.message || 'Đã báo hoàn thành việc, đang chờ khách duyệt giải ngân!')
+      handleRefresh()
+    } catch (err) {
+      setData(prevData)
+      showToast(err.message || 'Không thể báo hoàn thành công việc.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // Danh sách công việc PENDING (Yêu cầu mới)
+  const pendingOffers = useMemo(() => {
+    return data.tasks.filter((t) => t.status === 'PENDING')
+  }, [data.tasks])
+
+  // Ca làm việc tiếp theo: ưu tiên đơn đang làm (IN_PROGRESS) hoặc đơn đã chốt (MATCHED) sớm nhất
+  const upcomingTask = useMemo(() => {
+    const activeTasks = data.tasks.filter(
+      (t) => t.status === 'IN_PROGRESS' || t.status === 'MATCHED'
     )
-  }
+    if (activeTasks.length === 0) return null
+    return activeTasks.sort(
+      (a, b) => new Date(a.scheduledStartTime) - new Date(b.scheduledStartTime)
+    )[0]
+  }, [data.tasks])
 
-  const formatVND = (amount) => {
-    if (typeof amount === 'string') return amount
-    return Number(amount || 0).toLocaleString('vi-VN') + '₫'
-  }
+  // Tổng tiền Escrow đang tạm giữ của các ca làm chưa quyết toán
+  const escrowHoldAmount = useMemo(() => {
+    return data.tasks
+      .filter(
+        (t) =>
+          t.status === 'MATCHED' ||
+          t.status === 'IN_PROGRESS' ||
+          t.status === 'AWAITING_APPROVAL'
+      )
+      .reduce((sum, t) => sum + (Number(t.offeredPrice) || 0), 0)
+  }, [data.tasks])
 
-  const displayName = user?.name || 'Nguyễn Anh Tuấn'
-  const { upcomingSchedule, recentMessages, escrowSummary } = TASKER_DASHBOARD_MOCK
+  // Các công việc đã hoàn thành gần đây
+  const recentCompletedTasks = useMemo(() => {
+    return data.tasks
+      .filter((t) => t.status === 'DONE')
+      .sort((a, b) => new Date(b.actualEndTime || b.createdAt) - new Date(a.actualEndTime || a.createdAt))
+      .slice(0, 4)
+  }, [data.tasks])
+
+  const displayName = user?.name || 'Đối tác Thợ'
+  const ratingStr = wp?.rating ? Number(wp.rating).toFixed(1) : '5.0'
+  const completedTasksCount = wp?.completedTasks ?? data.stats.doneCount
+
+  // 4 Thẻ KPI Bento chuẩn
+  const statCards = [
+    {
+      id: 'pending',
+      label: 'Yêu cầu mới',
+      value: String(data.stats.pendingCount).padStart(2, '0'),
+      subtext: data.stats.pendingCount > 0 ? 'Ưu tiên phản hồi sớm' : 'Chưa có yêu cầu mới',
+      subtextIcon: data.stats.pendingCount > 0 ? 'mark_email_unread' : 'check',
+      subtextColor: data.stats.pendingCount > 0 ? 'text-amber-700' : 'text-outline',
+      icon: 'inbox',
+      iconBg: 'bg-amber-100 text-amber-800',
+      onClick: () => onNavigate?.('tasker-requests'),
+    },
+    {
+      id: 'matched',
+      label: 'Lịch hẹn sắp tới',
+      value: String(data.stats.matchedCount).padStart(2, '0'),
+      subtext: 'Đã khóa lịch & cọc Escrow',
+      subtextColor: 'text-primary',
+      icon: 'calendar_month',
+      iconBg: 'bg-primary-fixed/60 text-primary',
+      onClick: () => onNavigate?.('tasker-requests'),
+    },
+    {
+      id: 'in_progress',
+      label: 'Đang thực hiện',
+      value: String(data.stats.inProgressCount).padStart(2, '0'),
+      subtext: 'Tiến độ đang diễn ra',
+      subtextColor: 'text-primary',
+      icon: 'directions_run',
+      iconBg: 'bg-surface-container-high text-on-surface',
+      onClick: () => onNavigate?.('tasker-requests'),
+    },
+    {
+      id: 'done',
+      label: 'Đã hoàn thành',
+      value: String(data.stats.doneCount).padStart(2, '0'),
+      subtext: 'Đã quyết toán tiền công',
+      subtextColor: 'text-primary',
+      icon: 'task_alt',
+      iconBg: 'bg-primary/10 text-primary',
+      onClick: () => onNavigate?.('tasker-requests'),
+    },
+  ]
 
   return (
     <TaskerLayout
@@ -97,22 +314,47 @@ export default function TaskersDashboard({ onNavigate }) {
       onNavigate={onNavigate}
       title="Bảng điều khiển Thợ"
     >
-      {/* Welcome Hero Banner */}
+      {/* Toast Alert Notification */}
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="bg-surface-container-lowest border border-primary/30 rounded-2xl p-4 shadow-xl flex items-center gap-3">
+            <Icon name="check_circle" size={20} className="text-primary" />
+            <span className="font-label-md text-xs font-bold text-on-surface">
+              {toastMessage}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Icon name="error" size={18} />
+            <span>{errorMessage}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="rounded-xl text-xs">
+            Thử lại
+          </Button>
+        </div>
+      )}
+
+      {/* 1. Welcome Hero Banner */}
       <section className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-3 max-w-2xl">
           {/* Trust Badges Row */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/80 text-amber-900 text-xs font-extrabold">
-              <Icon name="military_tech" size={16} className="text-amber-700" />
-              Elite Tasker • Bạch Kim
+              <Icon name="star" size={16} className="text-amber-700" />
+              Đánh giá {ratingStr} ★
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed/50 text-primary text-xs font-bold">
-              <Icon name="bolt" size={15} />
-              Phản hồi 99% (&lt; 5 phút)
+              <Icon name="task_alt" size={15} />
+              {completedTasksCount} công việc đã hoàn thành
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-semibold border border-surface-variant/40">
               <Icon name="verified_user" size={15} className="text-primary" />
-              Đã xác minh CCCD &amp; Chứng chỉ nghề
+              Đối tác Thợ chuyên nghiệp
             </span>
           </div>
 
@@ -123,7 +365,7 @@ export default function TaskersDashboard({ onNavigate }) {
           <p className="font-body-sm text-sm text-on-surface-variant leading-relaxed">
             {serviceDistricts.length > 0 ? (
               <>
-                Bạn đang mở nhận việc tại{' '}
+                Bạn đang mở nhận việc tại khu vực{' '}
                 <span className="text-on-surface font-semibold">
                   {serviceDistricts.map((d) => d.districtName).join(', ')}
                 </span>
@@ -131,8 +373,8 @@ export default function TaskersDashboard({ onNavigate }) {
               </>
             ) : (
               <>
-                Bạn chưa đăng ký Quận/Huyện hoạt động nào. Hãy bổ sung khu vực hoạt động hoặc cập nhật mục{' '}
-                <strong className="text-primary">Hồ sơ &amp; Dịch vụ</strong> để bắt đầu nhận việc.
+                Bạn chưa đăng ký Quận/Huyện hoạt động nào. Hãy bổ sung khu vực hoạt động trong mục{' '}
+                <strong className="text-primary">Hồ sơ &amp; Dịch vụ</strong> để nhận việc hiệu quả nhất.
               </>
             )}
           </p>
@@ -141,9 +383,9 @@ export default function TaskersDashboard({ onNavigate }) {
         {/* Right Quick Control Box */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-surface-container-low/70 p-3.5 rounded-2xl border border-surface-variant/40 shrink-0">
           <div className="flex items-center gap-3 pr-3 border-r border-surface-variant/40">
-            <div className="text-xs leading-snug max-w-[110px]">
+            <div className="text-xs leading-snug max-w-[120px]">
               <p className="font-bold text-on-surface">
-                {isOnline ? 'Đang mở nhận việc trực tiếp' : 'Đang tạm dừng nhận việc'}
+                {isOnline ? 'Đang mở nhận việc' : 'Đang tạm dừng nhận việc'}
               </p>
               <p className="text-[11px] text-primary font-semibold truncate">
                 • {serviceDistricts[0]?.districtName || 'Chưa chọn quận'}
@@ -156,6 +398,7 @@ export default function TaskersDashboard({ onNavigate }) {
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
                 isOnline ? 'bg-primary' : 'bg-outline-variant'
               } ${togglingStatus ? 'opacity-60' : ''}`}
+              title="Gạt để chuyển trạng thái Online / Tạm nghỉ"
             >
               <span
                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -168,8 +411,8 @@ export default function TaskersDashboard({ onNavigate }) {
           <Button
             variant="outline"
             size="sm"
-            icon="visibility"
-            onClick={() => onNavigate && onNavigate('tasker-profile', { isOwnerView: true })}
+            icon="manage_accounts"
+            onClick={() => onNavigate?.('tasker-profile', { isOwnerView: true })}
             className="rounded-xl text-xs font-bold bg-surface-container-lowest"
           >
             Hồ sơ &amp; Dịch vụ
@@ -179,27 +422,28 @@ export default function TaskersDashboard({ onNavigate }) {
             variant="secondary"
             size="sm"
             icon="calendar_month"
-            onClick={() => setActiveMenu('requests')}
+            onClick={() => onNavigate?.('tasker-requests')}
             className="rounded-xl text-xs font-bold"
           >
-            Lịch bận
+            Lịch hẹn
           </Button>
         </div>
       </section>
 
-      {/* 4 Summary Stat Cards */}
+      {/* 2. 4 Summary Stat Cards (Bento KPIs) */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {TASKER_DASHBOARD_MOCK.stats.map((stat) => (
+        {statCards.map((stat) => (
           <div
             key={stat.id}
-            className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-variant/30 flex items-center justify-between gap-3 hover:border-primary/40 transition-all"
+            onClick={stat.onClick}
+            className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-variant/30 flex items-center justify-between gap-3 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
           >
             <div className="space-y-1.5">
               <span className="font-label-sm text-xs font-semibold text-on-surface-variant block">
                 {stat.label}
               </span>
               <div className="font-headline-lg text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight">
-                {stat.value}
+                {isLoading ? '--' : stat.value}
               </div>
               <div className={`inline-flex items-center gap-1 text-xs font-bold ${stat.subtextColor}`}>
                 {stat.subtextIcon && <Icon name={stat.subtextIcon} size={14} />}
@@ -215,7 +459,7 @@ export default function TaskersDashboard({ onNavigate }) {
         ))}
       </section>
 
-      {/* Collapsible / Quick Bar: Yêu cầu & Offer mới */}
+      {/* 3. Yêu cầu & Offer mới (Collapsible Quick Bar) */}
       <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm border border-surface-variant/30">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -224,99 +468,113 @@ export default function TaskersDashboard({ onNavigate }) {
             </div>
             <div className="flex items-center gap-2">
               <h3 className="font-headline-sm text-sm font-extrabold text-on-surface">
-                Yêu cầu &amp; Offer mới
+                Yêu cầu &amp; Đề xuất mới từ Khách hàng
               </h3>
               <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-extrabold">
-                ({availableTasks.length})
+                ({pendingOffers.length})
               </span>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsOffersExpanded(!isOffersExpanded)}
-            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline cursor-pointer"
-          >
-            <span>{isOffersExpanded ? 'Thu gọn danh sách' : 'Xem tất cả yêu cầu'}</span>
-            <Icon name={isOffersExpanded ? 'expand_less' : 'arrow_forward'} size={16} />
-          </button>
+          <div className="flex items-center gap-3">
+            {pendingOffers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsOffersExpanded(!isOffersExpanded)}
+                className="inline-flex items-center gap-1 text-xs font-extrabold text-primary hover:underline cursor-pointer"
+              >
+                <span>{isOffersExpanded ? 'Thu gọn' : 'Xem nhanh'}</span>
+                <Icon name={isOffersExpanded ? 'expand_less' : 'expand_more'} size={16} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onNavigate?.('tasker-requests')}
+              className="inline-flex items-center gap-1 text-xs font-extrabold text-primary hover:underline cursor-pointer"
+            >
+              <span>Vào trang Yêu cầu</span>
+              <Icon name="arrow_forward" size={16} />
+            </button>
+          </div>
         </div>
 
-        {(isOffersExpanded || activeMenu === 'requests') && (
+        {/* Danh sách yêu cầu mới */}
+        {(isOffersExpanded || pendingOffers.length > 0) && (
           <div className="mt-4 pt-4 border-t border-surface-variant/30 space-y-3">
-            {availableTasks.length === 0 ? (
+            {pendingOffers.length === 0 ? (
               <p className="text-xs text-on-surface-variant text-center py-4">
-                Hiện không còn yêu cầu mới nào đang chờ duyệt.
+                Hiện không có yêu cầu mới nào đang chờ duyệt.
               </p>
             ) : (
-              availableTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="bg-surface-container-low/60 rounded-2xl p-4 border border-surface-variant/40 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="primary" size="sm">
-                        {task.category}
-                      </Badge>
-                      {task.urgent && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">
-                          Cần gấp
+              pendingOffers.map((task) => {
+                const isBusy = actionLoadingId === task.id
+                return (
+                  <div
+                    key={task.id}
+                    className="bg-surface-container-low/60 rounded-2xl p-4 border border-surface-variant/40 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="primary" size="sm">
+                          {task.category || task.skillName}
+                        </Badge>
+                        <span className="text-xs text-outline font-semibold">
+                          Mã #{task.id.slice(0, 8).toUpperCase()} • {task.client?.name || 'Khách hàng'}
                         </span>
-                      )}
-                      <span className="text-xs text-outline font-semibold">
-                        Mã #{task.id} • {task.postedAgo}
-                      </span>
+                      </div>
+                      <h4 className="font-headline-sm text-base font-extrabold text-on-surface truncate">
+                        {task.title}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-on-surface-variant">
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="location_on" size={15} className="text-primary" />
+                          {task.district}, {task.city}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="schedule" size={15} className="text-primary" />
+                          {formatDateTime(task.scheduledStartTime)} ({task.expectedTime} phút)
+                        </span>
+                      </div>
                     </div>
-                    <h4 className="font-headline-sm text-base font-extrabold text-on-surface">
-                      {task.title}
-                    </h4>
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-on-surface-variant">
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="location_on" size={15} className="text-primary" />
-                        {task.address} ({task.distance})
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="schedule" size={15} className="text-primary" />
-                        {task.scheduledTime}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                    <div className="text-right mr-2">
-                      <span className="text-[11px] text-outline block">Thù lao đề xuất</span>
-                      <span className="font-headline-sm text-base font-extrabold text-primary">
-                        {formatVND(task.offeredPrice)}
-                      </span>
+                    <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                      <div className="text-right mr-2">
+                        <span className="text-[11px] text-outline block">Thù lao đề xuất</span>
+                        <span className="font-headline-sm text-base font-extrabold text-primary">
+                          {formatCurrency(task.offeredPrice)}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isBusy}
+                        onClick={() => handleDeclineTask(task.id)}
+                        className="rounded-xl text-xs text-red-600 hover:bg-red-50 border-red-200"
+                      >
+                        Từ chối
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon="check_circle"
+                        disabled={isBusy}
+                        onClick={() => handleAcceptTask(task)}
+                        className="rounded-xl text-xs"
+                      >
+                        {isBusy ? 'Đang xử lý...' : 'Nhận việc'}
+                      </Button>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeclineTask(task.id)}
-                      className="rounded-xl text-xs"
-                    >
-                      Từ chối
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      icon="check_circle"
-                      onClick={() => handleAcceptTask(task)}
-                      className="rounded-xl text-xs"
-                    >
-                      Nhận việc
-                    </Button>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         )}
       </section>
 
-      {/* Two-Column Grid: Lịch hẹn tiếp theo (Left) & Tin nhắn gần đây (Right) */}
+      {/* 4. Two-Column Grid: Ca làm việc tiếp theo & Ví Thu nhập Escrow */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Left Column: Ca làm việc tiếp theo */}
         <div className="lg:col-span-6 bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between space-y-5">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -328,144 +586,118 @@ export default function TaskersDashboard({ onNavigate }) {
                   <h3 className="font-headline-sm text-base font-extrabold text-on-surface">
                     Lịch hẹn tiếp theo
                   </h3>
-                  <p className="text-xs text-on-surface-variant">Sắp diễn ra hôm nay</p>
+                  <p className="text-xs text-on-surface-variant">Ca làm sắp diễn ra gần nhất</p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full bg-primary-fixed/60 text-primary text-xs font-extrabold">
-                {upcomingSchedule.status}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-container-low/70 border border-surface-variant/30">
-              <div className="flex items-center gap-3">
-                <img
-                  src={upcomingSchedule.clientAvatar}
-                  alt={upcomingSchedule.clientName}
-                  className="w-11 h-11 rounded-full object-cover border border-primary/20"
-                />
-                <div>
-                  <h4 className="font-label-md text-sm font-extrabold text-on-surface">
-                    {upcomingSchedule.clientName}
-                  </h4>
-                  <p className="text-xs text-primary font-semibold">
-                    Đơn {upcomingSchedule.id} • {upcomingSchedule.escrowStatus}
-                  </p>
-                </div>
-              </div>
-              <span className="font-headline-sm text-base font-extrabold text-primary">
-                {formatVND(upcomingSchedule.price)}
-              </span>
-            </div>
-
-            <div className="space-y-2.5 bg-surface-container-low/40 p-4 rounded-2xl border border-surface-variant/30">
-              <h5 className="font-headline-sm text-sm font-extrabold text-on-surface">
-                {upcomingSchedule.title}
-              </h5>
-              <div className="space-y-1.5 text-xs text-on-surface-variant">
-                <div className="flex items-center gap-2">
-                  <Icon name="event" size={16} className="text-primary" />
-                  <span>{upcomingSchedule.time}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon name="location_on" size={16} className="text-primary" />
-                  <span>{upcomingSchedule.address}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <Button
-              variant="primary"
-              size="sm"
-              icon="check"
-              onClick={() => handleCompleteTask('TM-89250')}
-              className="flex-1 rounded-xl justify-center py-2.5 text-xs font-bold"
-            >
-              Bắt đầu / Nghiệm thu
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon="call"
-              onClick={() => alert('Đang kết nối cuộc gọi tới khách hàng Phạm Quang Huy...')}
-              className="rounded-xl py-2.5 text-xs font-bold"
-            >
-              Gọi khách
-            </Button>
-          </div>
-        </div>
-
-        <div className="lg:col-span-6 bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between space-y-5">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                  <Icon name="forum" size={20} />
-                </div>
-                <div>
-                  <h3 className="font-headline-sm text-base font-extrabold text-on-surface">
-                    Tin nhắn gần đây
-                  </h3>
-                  <p className="text-xs text-on-surface-variant">
-                    Phản hồi nhanh để nhận đơn nhanh hơn
-                  </p>
-                </div>
-              </div>
-              <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-extrabold">
-                2 chưa đọc
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {recentMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="p-3.5 rounded-2xl bg-surface-container-low/60 hover:bg-surface-container-low border border-surface-variant/30 flex items-start justify-between gap-3 transition-colors cursor-pointer"
+              {upcomingTask && (
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-extrabold ${
+                    upcomingTask.status === 'IN_PROGRESS'
+                      ? 'bg-amber-100 text-amber-900 animate-pulse'
+                      : 'bg-primary-fixed/60 text-primary'
+                  }`}
                 >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="relative shrink-0">
-                      <img
-                        src={msg.avatar}
-                        alt={msg.senderName}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      {msg.unread && (
-                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white" />
-                      )}
+                  {upcomingTask.status === 'IN_PROGRESS' ? '• Đang thực hiện' : 'Đã chốt lịch'}
+                </span>
+              )}
+            </div>
+
+            {upcomingTask ? (
+              <>
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-container-low/70 border border-surface-variant/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-base">
+                      <Icon name={getCategoryIcon(upcomingTask.category || upcomingTask.skillName)} size={22} />
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="font-label-md text-sm font-extrabold text-on-surface truncate">
-                        {msg.senderName}
+                    <div>
+                      <h4 className="font-label-md text-sm font-extrabold text-on-surface">
+                        {upcomingTask.client?.name || 'Khách hàng'}
                       </h4>
-                      <p className="text-xs text-on-surface-variant truncate mt-0.5">
-                        {msg.preview}
+                      <p className="text-xs text-primary font-semibold">
+                        SĐT: {upcomingTask.client?.phoneNumber || 'Đã liên kết hệ thống'}
                       </p>
                     </div>
                   </div>
-                  <span className="text-[11px] text-outline font-semibold shrink-0">
-                    {msg.time}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-headline-sm text-base font-extrabold text-primary block">
+                      {formatCurrency(upcomingTask.offeredPrice)}
+                    </span>
+                    <span className="text-[10px] text-outline">Đã cọc Escrow</span>
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="space-y-2.5 bg-surface-container-low/40 p-4 rounded-2xl border border-surface-variant/30">
+                  <h5 className="font-headline-sm text-sm font-extrabold text-on-surface">
+                    {upcomingTask.title}
+                  </h5>
+                  <div className="space-y-1.5 text-xs text-on-surface-variant">
+                    <div className="flex items-center gap-2">
+                      <Icon name="event" size={16} className="text-primary" />
+                      <span>
+                        {formatDateTime(upcomingTask.scheduledStartTime)} (
+                        {formatHourSlot(upcomingTask.scheduledStartTime, upcomingTask.expectedTime)})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Icon name="location_on" size={16} className="text-primary" />
+                      <span>
+                        {upcomingTask.address || `${upcomingTask.district}, ${upcomingTask.city}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-8 text-center bg-surface-container-low/40 rounded-2xl border border-surface-variant/30 space-y-2">
+                <Icon name="event_available" size={36} className="text-outline mx-auto" />
+                <p className="font-headline-sm text-sm font-bold text-on-surface">
+                  Hiện không có ca làm việc nào sắp tới
+                </p>
+                <p className="text-xs text-on-surface-variant">
+                  Khi khách hàng đặt hẹn hoặc bạn nhận việc, lịch trình sẽ xuất hiện tại đây.
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="pt-2 text-right">
-            <button
-              type="button"
-              onClick={() => setActiveMenu('messages')}
-              className="inline-flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline cursor-pointer"
+          <div className="flex items-center gap-3 pt-2">
+            {upcomingTask?.status === 'MATCHED' && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon="directions_run"
+                disabled={actionLoadingId === upcomingTask.id}
+                onClick={() => handleStartMoving(upcomingTask.id)}
+                className="flex-1 rounded-xl justify-center py-2.5 text-xs font-bold"
+              >
+                {actionLoadingId === upcomingTask.id ? 'Đang cập nhật...' : 'Bắt đầu làm việc'}
+              </Button>
+            )}
+            {upcomingTask?.status === 'IN_PROGRESS' && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon="check_circle"
+                disabled={actionLoadingId === upcomingTask.id}
+                onClick={() => handleCompleteTask(upcomingTask.id)}
+                className="flex-1 rounded-xl justify-center py-2.5 text-xs font-bold"
+              >
+                {actionLoadingId === upcomingTask.id ? 'Đang cập nhật...' : 'Báo hoàn thành'}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              icon="calendar_month"
+              onClick={() => onNavigate?.('tasker-requests')}
+              className="rounded-xl py-2.5 text-xs font-bold"
             >
-              <span>Mở hộp thư tin nhắn</span>
-              <Icon name="arrow_forward" size={15} />
-            </button>
+              Mở lịch chi tiết
+            </Button>
           </div>
         </div>
-      </section>
 
-      {/* Bottom Row: Ví Thu nhập & Escrow + Biến động số dư */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Right Column: Ví Thu nhập & Bảo chứng Escrow */}
         <div className="lg:col-span-6 bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between space-y-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -482,7 +714,7 @@ export default function TaskersDashboard({ onNavigate }) {
               </div>
             </div>
             <Badge variant="primary" size="sm" icon="lock">
-              An toàn 100%
+              Bảo chứng 100%
             </Badge>
           </div>
 
@@ -492,10 +724,10 @@ export default function TaskersDashboard({ onNavigate }) {
                 Số dư khả dụng (Rút ngay)
               </span>
               <div className="font-headline-md text-2xl font-extrabold text-primary mt-1">
-                {escrowSummary.availableBalance}
+                {formatCurrency(user?.balance || 0)}
               </div>
               <span className="text-[11px] text-primary font-semibold mt-1 block">
-                • Đã sẵn sàng rút về ngân hàng
+                • Tiền thật trong ví tài khoản
               </span>
             </div>
 
@@ -504,80 +736,95 @@ export default function TaskersDashboard({ onNavigate }) {
                 Escrow đang tạm giữ an toàn
               </span>
               <div className="font-headline-md text-2xl font-extrabold text-amber-900 mt-1">
-                {escrowSummary.escrowHold}
+                {formatCurrency(escrowHoldAmount)}
               </div>
               <span className="text-[11px] text-amber-800 font-medium mt-1 block">
-                • Chờ nghiệm thu 2 công việc
+                • Tiền cọc các ca làm đang tiến hành
               </span>
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-1">
             <span className="text-xs text-outline">
-              Liên kết: <strong>Vietcombank •••• 8829</strong>
+              Đối soát: <strong>Tự động quyết toán theo ca làm</strong>
             </span>
-            <Button variant="primary" size="sm" icon="payments" className="rounded-xl text-xs">
-              Rút tiền nhanh
+            <Button
+              variant="outline"
+              size="sm"
+              icon="arrow_forward"
+              onClick={() => onNavigate?.('tasker-requests')}
+              className="rounded-xl text-xs font-bold"
+            >
+              Xem danh sách việc
             </Button>
           </div>
         </div>
+      </section>
 
-        <div className="lg:col-span-6 bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-headline-sm text-base font-extrabold text-on-surface">
-                Biến động số dư mới nhất
-              </h3>
-              <p className="text-xs text-on-surface-variant">
-                Tách bạch rõ ràng giữa Đã vào ví và Escrow tạm giữ
-              </p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-primary text-on-primary text-xs font-bold">
-              Rút tiền nhanh
-            </span>
+      {/* 5. Section: Lịch sử công việc hoàn thành gần nhất */}
+      <section className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-headline-sm text-base font-extrabold text-on-surface">
+              Công việc đã hoàn thành gần nhất
+            </h3>
+            <p className="text-xs text-on-surface-variant">
+              Các ca làm đã được khách hàng nghiệm thu và giải ngân tiền công
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.('tasker-requests')}
+            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline cursor-pointer"
+          >
+            <span>Tất cả lịch sử</span>
+            <Icon name="arrow_forward" size={15} />
+          </button>
+        </div>
 
-          <div className="space-y-2.5">
-            {escrowSummary.recentTransactions.map((tx) => (
+        {recentCompletedTasks.length === 0 ? (
+          <div className="p-8 text-center bg-surface-container-low/30 rounded-2xl border border-surface-variant/30">
+            <Icon name="history_edu" size={36} className="text-outline mx-auto mb-2" />
+            <p className="font-headline-sm text-sm font-bold text-on-surface">
+              Chưa có công việc nào hoàn thành gần đây
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1">
+              Sau khi khách hàng duyệt nghiệm thu ca làm, lịch sử quyết toán sẽ lưu trữ tại đây.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {recentCompletedTasks.map((t) => (
               <div
-                key={tx.id}
-                className="p-3.5 rounded-2xl bg-surface-container-low/60 border border-surface-variant/30 flex items-center justify-between gap-3"
+                key={t.id}
+                className="p-4 rounded-2xl bg-surface-container-low/60 border border-surface-variant/30 flex items-center justify-between gap-3 hover:bg-surface-container-low transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                      tx.type === 'released'
-                        ? 'bg-primary-fixed/60 text-primary'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    <Icon
-                      name={tx.type === 'released' ? 'south_west' : 'hourglass_top'}
-                      size={18}
-                    />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Icon name={getCategoryIcon(t.category || t.skillName)} size={20} />
                   </div>
-                  <div>
-                    <h4 className="font-label-md text-xs sm:text-sm font-extrabold text-on-surface">
-                      {tx.title}{' '}
-                      <span className="text-primary font-extrabold">{tx.amount}</span>
+                  <div className="min-w-0">
+                    <h4 className="font-label-md text-sm font-extrabold text-on-surface truncate">
+                      {t.title}
                     </h4>
-                    <p className="text-[11px] text-outline">{tx.date}</p>
+                    <p className="text-xs text-on-surface-variant truncate">
+                      Khách hàng: {t.client?.name || 'Khách hàng'} • #{t.id.slice(0, 8).toUpperCase()}
+                    </p>
                   </div>
                 </div>
 
-                <span
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold shrink-0 ${
-                    tx.type === 'released'
-                      ? 'bg-primary-fixed/60 text-primary'
-                      : 'bg-amber-100 text-amber-900'
-                  }`}
-                >
-                  {tx.status}
-                </span>
+                <div className="text-right shrink-0">
+                  <span className="font-headline-sm text-sm font-extrabold text-primary block">
+                    +{formatCurrency(t.offeredPrice)}
+                  </span>
+                  <span className="text-[11px] text-outline">
+                    {formatDateTime(t.actualEndTime || t.scheduledStartTime).split('•')[0]}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        )}
       </section>
     </TaskerLayout>
   )

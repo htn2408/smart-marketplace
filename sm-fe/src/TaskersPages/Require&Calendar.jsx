@@ -3,7 +3,7 @@ import TaskerLayout from '../components/layout/TaskerLayout'
 import Icon from '../components/common/Icon'
 import Button from '../components/common/Button'
 import Badge from '../components/common/Badge'
-import { formatCurrency, formatDateTime, formatHourSlot } from '../utils/formatters'
+import { formatCurrency, formatDateTime, formatHourSlot, getCategoryIcon } from '../utils/formatters'
 import {
   fetchTaskerTasks,
   acceptTaskApi,
@@ -11,31 +11,6 @@ import {
   startTaskApi,
   completeTaskApi,
 } from '../services/taskService'
-
-/**
- * Map ngành nghề sang Material Symbols icon tương ứng
- */
-function getCategoryIcon(categoryName) {
-  if (!categoryName) return 'handyman'
-  const cat = categoryName.toLowerCase()
-  if (cat.includes('điện') && cat.includes('nước')) return 'plumbing'
-  if (cat.includes('điện') || cat.includes('quạt') || cat.includes('đèn') || cat.includes('aptomat'))
-    return 'electric_bolt'
-  if (cat.includes('nước') || cat.includes('ống') || cat.includes('bồn')) return 'plumbing'
-  if (
-    cat.includes('lắp') ||
-    cat.includes('nội thất') ||
-    cat.includes('bàn') ||
-    cat.includes('ghế') ||
-    cat.includes('tủ')
-  )
-    return 'shelves'
-  if (cat.includes('dọn') || cat.includes('vệ sinh')) return 'cleaning_services'
-  if (cat.includes('chuyển') || cat.includes('vận chuyển') || cat.includes('bốc'))
-    return 'local_shipping'
-  if (cat.includes('sơn') || cat.includes('sửa')) return 'build'
-  return 'handyman'
-}
 
 /**
  * Tính toán danh sách 7 ngày trong tuần hiện tại và đếm số việc thực tế

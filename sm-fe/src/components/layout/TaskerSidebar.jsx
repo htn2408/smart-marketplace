@@ -1,5 +1,12 @@
 import Icon from '../common/Icon'
-import { TASKER_DASHBOARD_MOCK } from '../../constants/mockData'
+
+const TASKER_SIDEBAR_NAV = [
+  { id: 'overview', label: 'Tổng quan', icon: 'grid_view' },
+  { id: 'requests', label: 'Yêu cầu & Lịch hẹn', icon: 'calendar_month' },
+  { id: 'messages', label: 'Tin nhắn', icon: 'chat_bubble' },
+  { id: 'earnings', label: 'Thu nhập & Thù lao', icon: 'account_balance_wallet' },
+  { id: 'profile_services', label: 'Hồ sơ & Dịch vụ', icon: 'manage_accounts' },
+]
 
 /**
  * TaskerSidebar Component - Thanh điều hướng bên trái cho Bảng điều khiển Thợ (Verdant Trust Theme)
@@ -65,7 +72,7 @@ export default function TaskerSidebar({
 
         {/* Navigation Menu */}
         <nav className="space-y-1.5">
-          {TASKER_DASHBOARD_MOCK.sidebarNav.map((item) => {
+          {TASKER_SIDEBAR_NAV.map((item) => {
             const isActive = activeMenu === item.id
             return (
               <button

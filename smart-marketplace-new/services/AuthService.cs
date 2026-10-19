@@ -195,6 +195,8 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
             Address = user.Address,
             Latitude = user.Latitude,
             Longitude = user.Longitude,
+            Balance = user.Balance,
+            HeldBalance = user.HeldBalance,
             CreatedAt = user.CreatedAt,
             WorkerProfile = user.WorkerProfile is null
                 ? null
