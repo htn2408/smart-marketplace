@@ -62,6 +62,18 @@ public static class JwtAuthSetup
 
                 options.Events = new JwtBearerEvents
                 {
+                    // Lấy JWT token từ Query string khi client kết nối WebSocket SignalR
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
+                        {
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    },
+
                     // Trả body JSON tiếng Việt thay vì 401/403 rỗng,
                     // đúng các thông báo của authenticate.js / authorize.js
                     OnChallenge = async context =>

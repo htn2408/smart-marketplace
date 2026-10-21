@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { TASKMATE_LOGO_URL } from '../assets/constants'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import { useAuth } from '../hooks/useAuth'
-import { validateLoginForm, validateRegisterForm } from '../utils/validation'
-import { ROUTES } from '../routes/paths'
+import { TASKMATE_LOGO_URL } from '../../assets/constants'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import { useAuth } from '../../hooks/useAuth'
+import { validateLoginForm, validateRegisterForm } from '../../utils/validation'
+import { ROUTES } from '../../routes/paths'
 
 /**
  * TaskMate Login & Registration Page
@@ -510,3 +510,4 @@ export default function Login() {
     </div>
   )
 }
+

@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import Icon from '../components/common/Icon'
-import Badge from '../components/common/Badge'
-import { ROUTES } from '../routes/paths'
-import { FILTER_TASKERS_MOCK } from '../constants/mockData'
-import { filterTaskersByTaskId, assignWorkerApi } from '../services/taskService'
-import { DEFAULT_AVATAR } from '../assets/constants'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import Icon from '../../components/common/Icon'
+import Badge from '../../components/common/Badge'
+import { ROUTES } from '../../routes/paths'
+import { FILTER_TASKERS_MOCK } from '../../constants/mockData'
+import { filterTaskersByTaskId, assignWorkerApi } from '../../services/taskService'
+import { DEFAULT_AVATAR } from '../../assets/constants'
 
 /**
  * FilterTasker Page (Bước 2: Xem đề xuất từ thợ)
@@ -153,7 +153,10 @@ export default function FilterTasker({ onNavigate }) {
   }
 
   const handleQuickChat = (tasker) => {
-    alert(`Đang mở cửa sổ chat nhanh với Tasker ${tasker.name}...`)
+    const targetUserId = tasker.userId || tasker.id
+    if (onNavigate) {
+      onNavigate('messages', { targetUserId, targetName: tasker.name })
+    }
   }
 
   const handleSendOffer = async (tasker) => {

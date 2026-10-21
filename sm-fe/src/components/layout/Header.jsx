@@ -42,6 +42,7 @@ export default function Header({ activePath, onNavigate }) {
           },
         ]
       : []),
+    { label: 'Tin nhắn', path: 'messages', to: ROUTES.MESSAGES },
   ]
 
   // Auto-detect active route if activePath isn't explicitly passed
@@ -64,6 +65,12 @@ export default function Header({ activePath, onNavigate }) {
       return 'search'
     if (p.startsWith('/client/tasks') || p.startsWith('/my-tasks')) return 'my-tasks'
     if (p.startsWith('/client/profile') || p.startsWith('/user-profile')) return 'profile'
+    if (
+      p.startsWith('/messages') ||
+      p.startsWith('/client/messages') ||
+      p.startsWith('/tasker/messages')
+    )
+      return 'messages'
     return ''
   }
 
@@ -230,6 +237,15 @@ export default function Header({ activePath, onNavigate }) {
                       <Icon name="post_add" size={18} className="text-outline" />
                       <span>Đăng công việc mới</span>
                     </Link>
+
+                    <Link
+                      to={ROUTES.MESSAGES}
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors"
+                    >
+                      <Icon name="chat" size={18} className="text-outline" />
+                      <span>Tin nhắn</span>
+                    </Link>
                   </div>
 
                   <div className="border-t border-surface-variant/30 pt-1">
@@ -246,6 +262,18 @@ export default function Header({ activePath, onNavigate }) {
               )}
             </div>
           )}
+
+          {/* Quick Messages icon */}
+          <Link
+            to={ROUTES.MESSAGES}
+            aria-label="Tin nhắn"
+            className={`relative p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-full transition-colors ${
+              currentActive === 'messages' ? 'text-primary bg-primary/10' : ''
+            }`}
+            title="Tin nhắn"
+          >
+            <Icon name="chat" size={22} className="block" />
+          </Link>
 
           {/* Notifications button */}
           <button

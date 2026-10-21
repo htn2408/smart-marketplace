@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import Badge from '../components/common/Badge'
-import { fetchServiceCategories } from '../services/servicesService'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import Badge from '../../components/common/Badge'
+import { fetchServiceCategories } from '../../services/servicesService'
 
 /**
  * TaskMate Services Page - Modeled after TaskRabbit /services
@@ -523,3 +523,4 @@ export default function Services({ onNavigate }) {
     </div>
   )
 }
+

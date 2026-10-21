@@ -50,13 +50,19 @@ export default function TaskerLayout({
       onNavigate?.('tasker-requests')
     } else if (menuId === 'overview') {
       onNavigate?.('tasker-dashboard')
+    } else if (menuId === 'messages') {
+      onNavigate?.('messages')
     } else {
       onNavigate?.('tasker-dashboard', { tab: menuId })
     }
   }
 
   return (
-    <div className="bg-surface font-body-md text-on-surface antialiased min-h-screen flex">
+    <div
+      className={`bg-surface font-body-md text-on-surface antialiased flex ${
+        activeMenu === 'messages' ? 'h-screen overflow-hidden' : 'min-h-screen'
+      }`}
+    >
       {/* 1. Shared Left Sidebar */}
       <TaskerSidebar
         activeMenu={activeMenu}
@@ -67,9 +73,13 @@ export default function TaskerLayout({
       />
 
       {/* 2. Right Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-surface">
-        {/* Shared Top Header Bar (Search bar replaced with "Chế độ Client" button) */}
-        <header className="sticky top-0 z-30 bg-surface-container-lowest/95 backdrop-blur-md border-b border-surface-variant/30 px-6 py-3.5 flex items-center justify-between gap-4">
+      <div
+        className={`flex-1 flex flex-col min-w-0 bg-surface ${
+          activeMenu === 'messages' ? 'h-full overflow-hidden' : ''
+        }`}
+      >
+        {/* Shared Top Header Bar */}
+        <header className="shrink-0 z-30 bg-surface-container-lowest/95 backdrop-blur-md border-b border-surface-variant/30 px-6 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h1 className="font-headline-md text-lg font-extrabold text-on-surface tracking-tight">
               {title}
@@ -129,7 +139,13 @@ export default function TaskerLayout({
         </header>
 
         {/* Page Inner Content */}
-        <main className="p-6 max-w-[1200px] w-full mx-auto space-y-6 flex-1">
+        <main
+          className={
+            activeMenu === 'messages'
+              ? 'p-2 sm:p-4 lg:p-5 w-full flex-1 min-h-0 flex flex-col overflow-hidden'
+              : 'p-6 max-w-[1200px] w-full mx-auto space-y-6 flex-1'
+          }
+        >
           {children}
         </main>
       </div>

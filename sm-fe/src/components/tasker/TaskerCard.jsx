@@ -302,14 +302,27 @@ export default function TaskerCard({
             {priceSubtext || '/h (Thương lượng)'}
           </span>
         </div>
-        <Button
-          variant="primaryContainer"
-          size="sm"
-          icon="assignment_turned_in"
-          onClick={() => onSelect && onSelect(tasker)}
-        >
-          Gửi đề xuất việc
-        </Button>
+        <div className="flex items-center gap-2">
+          {onMessage && (
+            <Button
+              variant="tonal"
+              size="sm"
+              icon="chat"
+              onClick={() => onMessage(tasker)}
+              title="Nhắn tin với thợ"
+            >
+              Nhắn tin
+            </Button>
+          )}
+          <Button
+            variant="primaryContainer"
+            size="sm"
+            icon="assignment_turned_in"
+            onClick={() => onSelect && onSelect(tasker)}
+          >
+            Gửi đề xuất việc
+          </Button>
+        </div>
       </div>
     </div>
   )

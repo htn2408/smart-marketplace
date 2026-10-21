@@ -16,6 +16,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
             DuplicateResourceException dup => (StatusCodes.Status409Conflict, dup.Message),
             InvalidCredentialsException auth => (StatusCodes.Status401Unauthorized, auth.Message),
             NotFoundException notFound => (StatusCodes.Status404NotFound, notFound.Message),
+            ForbiddenException forbidden => (StatusCodes.Status403Forbidden, forbidden.Message),
             BusinessValidationException validation => (StatusCodes.Status400BadRequest, validation.Message),
 
             // Lỗi không lường trước: log đầy đủ, trả thông báo chung (không lộ chi tiết)

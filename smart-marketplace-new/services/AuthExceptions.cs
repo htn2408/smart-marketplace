@@ -6,3 +6,6 @@ namespace smart_marketplace_new.services;
 public class DuplicateResourceException(string message) : Exception(message);
 
 public class InvalidCredentialsException(string message) : Exception(message);
+
+public class ForbiddenException(string message) : Exception(message);
+

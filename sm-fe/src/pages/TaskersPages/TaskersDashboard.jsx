@@ -1,23 +1,25 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import TaskerLayout from '../components/layout/TaskerLayout'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import Badge from '../components/common/Badge'
-import { useAuth } from '../hooks/useAuth'
-import { updateWorkerProfileApi } from '../services/authService'
+import { useLocation } from 'react-router-dom'
+import TaskerLayout from '../../components/layout/TaskerLayout'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import Badge from '../../components/common/Badge'
+import ChatWorkspace from '../../components/messages/ChatWorkspace'
+import { useAuth } from '../../hooks/useAuth'
+import { updateWorkerProfileApi } from '../../services/authService'
 import {
   fetchTaskerTasks,
   acceptTaskApi,
   declineTaskApi,
   startTaskApi,
   completeTaskApi,
-} from '../services/taskService'
+} from '../../services/taskService'
 import {
   formatCurrency,
   formatDateTime,
   formatHourSlot,
   getCategoryIcon,
-} from '../utils/formatters'
+} from '../../utils/formatters'
 
 /**
  * TaskersDashboard Component - Bảng điều khiển Tổng quan của Tasker
@@ -25,9 +27,11 @@ import {
  * Tuân thủ chuẩn rule.md: Không mock data, dùng service layer & shared components
  */
 export default function TaskersDashboard({ onNavigate }) {
+  const location = useLocation()
   const { user, token, updateUser } = useAuth()
 
-  const [activeMenu, setActiveMenu] = useState('overview')
+  const [userSelectedTab, setUserSelectedTab] = useState(null)
+  const activeMenu = userSelectedTab ?? location?.state?.tab ?? 'overview'
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [isOffersExpanded, setIsOffersExpanded] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState(null)
@@ -110,12 +114,7 @@ export default function TaskersDashboard({ onNavigate }) {
       onNavigate?.('tasker-requests')
       return
     }
-    if (menuId === 'messages') {
-      // User yêu cầu trừ tab nhắn tin để lên kế hoạch làm sau
-      showToast('Tính năng Tin nhắn đang được nâng cấp theo lộ trình.')
-      return
-    }
-    setActiveMenu(menuId)
+    setUserSelectedTab(menuId)
   }
 
   // Thao tác: Chấp nhận offer (PENDING -> MATCHED)
@@ -312,7 +311,7 @@ export default function TaskersDashboard({ onNavigate }) {
       isOnline={isOnline}
       onToggleOnline={handleToggleOnline}
       onNavigate={onNavigate}
-      title="Bảng điều khiển Thợ"
+      title={activeMenu === 'messages' ? 'Hộp thư tin nhắn' : 'Bảng điều khiển Thợ'}
     >
       {/* Toast Alert Notification */}
       {toastMessage && (
@@ -326,18 +325,22 @@ export default function TaskersDashboard({ onNavigate }) {
         </div>
       )}
 
-      {/* Error Banner */}
-      {errorMessage && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Icon name="error" size={18} />
-            <span>{errorMessage}</span>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="rounded-xl text-xs">
-            Thử lại
-          </Button>
-        </div>
-      )}
+      {activeMenu === 'messages' ? (
+        <ChatWorkspace onNavigate={onNavigate} role="tasker" />
+      ) : (
+        <>
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Icon name="error" size={18} />
+                <span>{errorMessage}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleRefresh} className="rounded-xl text-xs">
+                Thử lại
+              </Button>
+            </div>
+          )}
 
       {/* 1. Welcome Hero Banner */}
       <section className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -544,6 +547,23 @@ export default function TaskersDashboard({ onNavigate }) {
                           {formatCurrency(task.offeredPrice)}
                         </span>
                       </div>
+                      {task.client?.id && (
+                        <Button
+                          variant="tonal"
+                          size="sm"
+                          icon="chat"
+                          onClick={() =>
+                            onNavigate?.('messages', {
+                              targetUserId: task.client.id,
+                              targetName: task.client.name,
+                            })
+                          }
+                          className="rounded-xl text-xs font-bold text-primary hover:bg-primary-fixed/40"
+                          title="Nhắn tin với khách"
+                        >
+                          Nhắn tin
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -683,6 +703,23 @@ export default function TaskersDashboard({ onNavigate }) {
                 className="flex-1 rounded-xl justify-center py-2.5 text-xs font-bold"
               >
                 {actionLoadingId === upcomingTask.id ? 'Đang cập nhật...' : 'Báo hoàn thành'}
+              </Button>
+            )}
+            {upcomingTask?.client?.id && (
+              <Button
+                variant="tonal"
+                size="sm"
+                icon="chat"
+                onClick={() =>
+                  onNavigate?.('messages', {
+                    targetUserId: upcomingTask.client.id,
+                    targetName: upcomingTask.client.name,
+                  })
+                }
+                className="rounded-xl py-2.5 text-xs font-bold text-primary hover:bg-primary-fixed/40"
+                title="Nhắn tin với khách hàng"
+              >
+                Nhắn tin
               </Button>
             )}
             <Button
@@ -826,6 +863,9 @@ export default function TaskersDashboard({ onNavigate }) {
           </div>
         )}
       </section>
+        </>
+      )}
     </TaskerLayout>
   )
 }
+

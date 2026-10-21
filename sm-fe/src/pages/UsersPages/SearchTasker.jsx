@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import StepNavigation from '../components/search/StepNavigation'
-import JobBriefCard from '../components/search/JobBriefCard'
-import TrustSidebar from '../components/search/TrustSidebar'
-import TaskerCard from '../components/tasker/TaskerCard'
-import { SEARCH_TASKERS } from '../constants/mockData'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import StepNavigation from '../../components/search/StepNavigation'
+import JobBriefCard from '../../components/search/JobBriefCard'
+import TrustSidebar from '../../components/search/TrustSidebar'
+import TaskerCard from '../../components/tasker/TaskerCard'
+import { SEARCH_TASKERS } from '../../constants/mockData'
 
 /**
  * TaskMate SearchTasker - Standardized JSX Component
@@ -63,7 +63,10 @@ export default function SearchTasker({ onNavigate }) {
   }
 
   const handleMessage = (tasker) => {
-    alert(`Mở hộp thoại tin nhắn với ${tasker.name}`)
+    const targetUserId = tasker.userId || tasker.id
+    if (onNavigate) {
+      onNavigate('messages', { targetUserId, targetName: tasker.name })
+    }
   }
 
   return (

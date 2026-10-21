@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import TaskerLayout from '../components/layout/TaskerLayout'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import TaskerHeader from '../components/profile/TaskerHeader'
-import AboutTasker from '../components/profile/AboutTasker'
-import ServicesRates from '../components/profile/ServicesRates'
-import WorkGallery from '../components/profile/WorkGallery'
-import ServiceArea from '../components/profile/ServiceArea'
-import ReviewsList from '../components/profile/ReviewsList'
-import BookingSidebar from '../components/profile/BookingSidebar'
-import { useAuth } from '../hooks/useAuth'
-import { updateWorkerProfileApi } from '../services/authService'
-import { fetchWorkerProfileById } from '../services/workerService'
-import { DEFAULT_AVATAR } from '../assets/constants'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import TaskerLayout from '../../components/layout/TaskerLayout'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import TaskerHeader from '../../components/profile/TaskerHeader'
+import AboutTasker from '../../components/profile/AboutTasker'
+import ServicesRates from '../../components/profile/ServicesRates'
+import WorkGallery from '../../components/profile/WorkGallery'
+import ServiceArea from '../../components/profile/ServiceArea'
+import ReviewsList from '../../components/profile/ReviewsList'
+import BookingSidebar from '../../components/profile/BookingSidebar'
+import { useAuth } from '../../hooks/useAuth'
+import { updateWorkerProfileApi } from '../../services/authService'
+import { fetchWorkerProfileById } from '../../services/workerService'
+import { DEFAULT_AVATAR } from '../../assets/constants'
 
 /**
  * TaskMate TaskerProfile - Standardized JSX Component
@@ -185,7 +185,10 @@ export default function TaskerProfile({ onNavigate }) {
   }
 
   const handleMessage = () => {
-    alert(`Mở cửa sổ chat với ${displayName}`)
+    const targetId = paramTaskerId || viewedTasker?.userId || location.state?.tasker?.userId || location.state?.tasker?.id
+    if (onNavigate) {
+      onNavigate('messages', { targetUserId: targetId, targetName: displayName })
+    }
   }
 
   // Nội dung các khối CV dùng chung cho cả 2 chế độ

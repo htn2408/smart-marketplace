@@ -1,19 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import Badge from '../components/common/Badge'
-import HeroSearch from '../components/home/HeroSearch'
-import ServiceCard from '../components/home/ServiceCard'
-import FaqAccordion from '../components/home/FaqAccordion'
-import TaskerCard from '../components/tasker/TaskerCard'
-import { fetchServiceCategories } from '../services/servicesService'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import Badge from '../../components/common/Badge'
+import HeroSearch from '../../components/home/HeroSearch'
+import ServiceCard from '../../components/home/ServiceCard'
+import FaqAccordion from '../../components/home/FaqAccordion'
+import TaskerCard from '../../components/tasker/TaskerCard'
+import { fetchServiceCategories } from '../../services/servicesService'
 import {
   POPULAR_SERVICES,
   HOME_TASKERS,
   TESTIMONIALS,
-} from '../constants/mockData'
+} from '../../constants/mockData'
 
 /**
  * TaskMate Homepage - Standardized JSX Component
@@ -392,6 +392,15 @@ export default function Homepage({ onNavigate }) {
                   tasker={tasker}
                   variant="home"
                   onSelect={handleSelectTasker}
+                  onMessage={(t) => {
+                    const targetId = t.userId || t.id
+                    if (targetId && onNavigate) {
+                      onNavigate('messages', {
+                        targetUserId: targetId,
+                        targetName: t.name,
+                      })
+                    }
+                  }}
                 />
               ))}
             </div>

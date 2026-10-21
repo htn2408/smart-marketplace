@@ -1,16 +1,16 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import TaskerLayout from '../components/layout/TaskerLayout'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import Badge from '../components/common/Badge'
-import { formatCurrency, formatDateTime, formatHourSlot, getCategoryIcon } from '../utils/formatters'
+import TaskerLayout from '../../components/layout/TaskerLayout'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import Badge from '../../components/common/Badge'
+import { formatCurrency, formatDateTime, formatHourSlot, getCategoryIcon } from '../../utils/formatters'
 import {
   fetchTaskerTasks,
   acceptTaskApi,
   declineTaskApi,
   startTaskApi,
   completeTaskApi,
-} from '../services/taskService'
+} from '../../services/taskService'
 
 /**
  * Tính toán danh sách 7 ngày trong tuần hiện tại và đếm số việc thực tế
@@ -668,13 +668,30 @@ export default function RequireAndCalendar({ onNavigate }) {
                     {/* Action Toolbar */}
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-surface-variant/20">
                       <div className="flex items-center gap-2">
+                        {task.client?.id && (
+                          <Button
+                            type="button"
+                            variant="tonal"
+                            size="sm"
+                            icon="chat"
+                            onClick={() =>
+                              onNavigate?.('messages', {
+                                targetUserId: task.client.id,
+                                targetName: task.client.name,
+                              })
+                            }
+                            className="rounded-xl text-xs font-bold text-primary hover:bg-primary-fixed/40"
+                          >
+                            Nhắn tin
+                          </Button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setSelectedTaskDetail(task)}
                           className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
                           title="Xem ghi chú & vị trí chi tiết"
                         >
-                          <Icon name="chat_bubble_outline" size={18} />
+                          <Icon name="info" size={18} />
                         </button>
                         <button
                           type="button"
@@ -1059,22 +1076,43 @@ export default function RequireAndCalendar({ onNavigate }) {
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-surface-variant/20">
-              {selectedTaskDetail.client?.phoneNumber ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  icon="phone"
-                  onClick={() => window.open(`tel:${selectedTaskDetail.client.phoneNumber}`, '_self')}
-                  className="rounded-xl text-xs"
-                >
-                  Gọi cho khách
-                </Button>
-              ) : (
-                <span className="text-xs text-on-surface-variant italic">
-                  SĐT sẽ hiện khi đơn được xác nhận
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {selectedTaskDetail.client?.id && (
+                  <Button
+                    type="button"
+                    variant="tonal"
+                    size="sm"
+                    icon="chat"
+                    onClick={() => {
+                      const client = selectedTaskDetail.client
+                      setSelectedTaskDetail(null)
+                      onNavigate?.('messages', {
+                        targetUserId: client.id,
+                        targetName: client.name,
+                      })
+                    }}
+                    className="rounded-xl text-xs font-bold text-primary hover:bg-primary-fixed/40"
+                  >
+                    Nhắn tin cho khách
+                  </Button>
+                )}
+                {selectedTaskDetail.client?.phoneNumber ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    icon="phone"
+                    onClick={() => window.open(`tel:${selectedTaskDetail.client.phoneNumber}`, '_self')}
+                    className="rounded-xl text-xs"
+                  >
+                    Gọi cho khách
+                  </Button>
+                ) : (
+                  <span className="text-xs text-on-surface-variant italic">
+                    SĐT sẽ hiện khi đơn được xác nhận
+                  </span>
+                )}
+              </div>
               <Button
                 variant="primary"
                 size="sm"

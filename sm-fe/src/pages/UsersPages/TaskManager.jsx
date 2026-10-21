@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import Badge from '../components/common/Badge'
-import { formatCurrency, formatDateTime } from '../utils/formatters'
-import { ROUTES } from '../routes/paths'
-import { fetchClientTasks, approveTaskApi, cancelTaskApi } from '../services/taskService'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import Badge from '../../components/common/Badge'
+import { formatCurrency, formatDateTime } from '../../utils/formatters'
+import { ROUTES } from '../../routes/paths'
+import { fetchClientTasks, approveTaskApi, cancelTaskApi } from '../../services/taskService'
 
 /**
  * Map tên chuyên môn sang Material Symbols icon tương ứng
@@ -598,6 +598,23 @@ export default function TaskManager({ onNavigate }) {
                                   </div>
 
                                   <div className="flex items-center gap-2">
+                                    {(task.worker.userId || task.worker.id) && (
+                                      <Button
+                                        variant="tonal"
+                                        size="sm"
+                                        icon="chat"
+                                        onClick={() =>
+                                          onNavigate?.('messages', {
+                                            targetUserId: task.worker.userId || task.worker.id,
+                                            targetName: task.worker.name,
+                                          })
+                                        }
+                                        className="text-xs"
+                                        title="Nhắn tin với thợ"
+                                      >
+                                        Nhắn tin
+                                      </Button>
+                                    )}
                                     {task.worker.phoneNumber && (
                                       <Button
                                         variant="outline"
@@ -986,3 +1003,4 @@ export default function TaskManager({ onNavigate }) {
     </div>
   )
 }
+

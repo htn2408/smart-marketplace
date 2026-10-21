@@ -88,3 +88,42 @@ export function getCategoryIcon(categoryName) {
   return 'handyman'
 }
 
+/**
+ * Format chat timestamp to localized Vietnamese display (e.g. 10:45, Hôm qua, 21/10)
+ * @param {string|Date} dateInput
+ * @returns {string}
+ */
+export function formatChatTimestamp(dateInput) {
+  if (!dateInput) return ''
+  const date = new Date(dateInput)
+  if (isNaN(date.getTime())) return String(dateInput)
+
+  const now = new Date()
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear()
+
+  if (isToday) {
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+  }
+
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear()
+
+  if (isYesterday) {
+    return 'Hôm qua'
+  }
+
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${day}/${month}`
+}
+
+

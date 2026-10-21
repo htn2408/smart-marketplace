@@ -1,9 +1,9 @@
-import { useNavigate } from 'react-router-dom'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import { ROUTES } from '../routes/paths'
+﻿import { useNavigate } from 'react-router-dom'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import { ROUTES } from '../../routes/paths'
 
 export default function NotFound() {
   const navigate = useNavigate()
@@ -34,3 +34,4 @@ export default function NotFound() {
     </div>
   )
 }
+

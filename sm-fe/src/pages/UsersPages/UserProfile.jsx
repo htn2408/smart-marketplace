@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
-import Icon from '../components/common/Icon'
-import Button from '../components/common/Button'
-import AddressSelector from '../components/common/AddressSelector'
-import { useAuth } from '../hooks/useAuth'
-import { updateProfileApi, changePasswordApi } from '../services/authService'
+﻿import { useState } from 'react'
+import Header from '../../components/layout/Header'
+import Footer from '../../components/layout/Footer'
+import Icon from '../../components/common/Icon'
+import Button from '../../components/common/Button'
+import AddressSelector from '../../components/common/AddressSelector'
+import { useAuth } from '../../hooks/useAuth'
+import { updateProfileApi, changePasswordApi } from '../../services/authService'
 
 /**
  * UserProfile Page - Quản lý thông tin cá nhân, địa chỉ và đổi mật khẩu
@@ -383,3 +383,4 @@ export default function UserProfile({ onNavigate }) {
     </div>
   )
 }
+
