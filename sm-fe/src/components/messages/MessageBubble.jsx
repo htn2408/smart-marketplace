@@ -4,7 +4,13 @@ import Icon from '../common/Icon'
  * MessageBubble Component
  * Renders an individual message item (sent or received) with time and read receipt
  */
-export default function MessageBubble({ message, partnerAvatar, partnerName }) {
+export default function MessageBubble({
+  message,
+  partnerAvatar,
+  partnerName,
+  onViewProfile,
+  canViewProfile = false,
+}) {
   const { content, createdAt, isOwn, isRead } = message
 
   if (isOwn) {
@@ -33,7 +39,13 @@ export default function MessageBubble({ message, partnerAvatar, partnerName }) {
       <img
         src={partnerAvatar}
         alt={partnerName || 'Đối tác'}
-        className="w-8 h-8 rounded-full object-cover flex-none mb-1 border border-surface-variant/40"
+        onClick={canViewProfile ? onViewProfile : undefined}
+        title={canViewProfile ? `Xem trang cá nhân của ${partnerName}` : undefined}
+        className={`w-8 h-8 rounded-full object-cover flex-none mb-1 border border-surface-variant/40 ${
+          canViewProfile
+            ? 'cursor-pointer hover:ring-2 hover:ring-primary hover:scale-105 transition-all shadow-xs'
+            : ''
+        }`}
       />
       <div className="min-w-0">
         <span className="text-[11px] text-outline font-medium ml-1.5 mb-0.5 block truncate">

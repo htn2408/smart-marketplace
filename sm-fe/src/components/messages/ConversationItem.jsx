@@ -4,7 +4,13 @@ import Icon from '../common/Icon'
  * ConversationItem Component
  * Renders an individual conversation snippet in the left sidebar list
  */
-export default function ConversationItem({ conversation, isActive = false, onClick }) {
+export default function ConversationItem({
+  conversation,
+  isActive = false,
+  onClick,
+  onViewProfile,
+  canViewProfile = false,
+}) {
   const { partner, lastMessage, lastMessageTime, unreadCount, taskTitle } = conversation
 
   return (
@@ -26,13 +32,22 @@ export default function ConversationItem({ conversation, isActive = false, onCli
     >
       <div className="flex items-start gap-3">
         {/* Partner Avatar + Online Indicator */}
-        <div className="relative flex-none">
+        <div
+          onClick={(e) => {
+            if (canViewProfile && onViewProfile) {
+              e.stopPropagation()
+              onViewProfile(partner)
+            }
+          }}
+          title={canViewProfile ? `Xem trang cá nhân của ${partner.name}` : undefined}
+          className={`relative flex-none ${canViewProfile ? 'cursor-pointer group' : ''}`}
+        >
           <img
             src={partner.avatar}
             alt={partner.name}
             className={`w-12 h-12 rounded-full object-cover transition-all ${
               isActive ? 'ring-2 ring-primary/40' : 'border border-surface-variant/40'
-            }`}
+            } ${canViewProfile ? 'group-hover:ring-2 group-hover:ring-primary group-hover:scale-105 shadow-xs' : ''}`}
           />
           {partner.isOnline ? (
             <span

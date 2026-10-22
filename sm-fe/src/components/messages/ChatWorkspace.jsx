@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom'
 import Icon from '../common/Icon'
 import ConversationList from './ConversationList'
 import ChatHeader from './ChatHeader'
@@ -22,6 +22,7 @@ import { useChatWebSocket } from '../../hooks/useChatWebSocket'
  * Extracted according to rule.md for maximum reusability (DRY)
  */
 export default function ChatWorkspace({ onNavigate, role = 'client', className = '' }) {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const currentUserId = user?.id
 
@@ -298,6 +299,31 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
     showToast(`Đang kết nối cuộc gọi tới ${activeConversation?.partner?.name || 'đối tác'}...`)
   }
 
+  const isClientRole = role === 'client'
+
+  const isPartnerTasker = useCallback((partner) => {
+    if (!partner) return false
+    const roleStr = (partner.rawRole || partner.role || '').toLowerCase()
+    return roleStr.includes('tasker')
+  }, [])
+
+  const handleViewTaskerProfile = useCallback(
+    (partnerToView) => {
+      const target = partnerToView || activeConversation?.partner
+      if (!target) return
+      const partnerId = target.id || target.userId
+      if (!partnerId) return
+
+      const targetRoute = `/tasker/${partnerId}`
+      if (onNavigate) {
+        onNavigate(targetRoute, { isOwnerView: false, tasker: target })
+      } else {
+        navigate(targetRoute, { state: { isOwnerView: false, tasker: target } })
+      }
+    },
+    [activeConversation, onNavigate, navigate]
+  )
+
   const handleReport = () => {
     showToast('Cảm ơn bạn. Yêu cầu báo cáo đã được chuyển tới ban quản trị TaskMate.')
   }
@@ -341,6 +367,8 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
           activeTab={filterTab}
           onTabChange={setFilterTab}
           onMarkAllRead={handleMarkAllRead}
+          onViewProfile={handleViewTaskerProfile}
+          isClientRole={isClientRole}
         />
       </div>
 
@@ -359,6 +387,8 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
               onCall={handleCall}
               onReport={handleReport}
               onViewTask={handleViewTask}
+              onViewProfile={handleViewTaskerProfile}
+              canViewProfile={isClientRole && isPartnerTasker(activeConversation.partner)}
             />
 
             {/* Chat History Area (Scrollable) */}
@@ -388,6 +418,8 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
                   message={msg}
                   partnerAvatar={activeConversation.partner.avatar}
                   partnerName={activeConversation.partner.name}
+                  onViewProfile={() => handleViewTaskerProfile(activeConversation.partner)}
+                  canViewProfile={isClientRole && isPartnerTasker(activeConversation.partner)}
                 />
               ))}
             </div>

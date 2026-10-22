@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.SignalR;
 using smart_marketplace_new.dto;
+using smart_marketplace_new.hubs;
 using smart_marketplace_new.models;
 using smart_marketplace_new.repositories;
 
@@ -11,7 +13,10 @@ namespace smart_marketplace_new.services;
 //   - ScheduledStartTime phải ở tương lai (biên độ 1 phút cho lệch đồng hồ)
 //   - upload ảnh TRƯỚC khi save, nhưng save thất bại thì destroy ảnh vừa upload
 //     (bản Node để lại ảnh mồ côi trên Cloudinary)
-public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : ITaskService
+public class TaskService(
+    ITaskRepository tasks,
+    IImageStorage imageStorage,
+    IHubContext<ChatHub> hubContext) : ITaskService
 {
     private const int MaxImages = 10;
     private const long MaxImageBytes = 5 * 1024 * 1024; // 5 MB
@@ -375,6 +380,18 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         task.UpdatedAt = DateTime.UtcNow;
 
         await tasks.SaveAsync(ct);
+
+        try
+        {
+            await hubContext.Clients.Group($"user_{task.ClientId}").SendAsync("TaskAccepted", new
+            {
+                taskId = task.Id,
+                title = task.Title,
+                workerName = workerProfile.User.Name,
+                message = $"Thợ {workerProfile.User.Name} đã nhận yêu cầu \"{task.Title}\"!"
+            }, ct);
+        }
+        catch { }
     }
 
     public async Task DeclineTaskAsync(string workerUserId, string taskId, CancellationToken ct = default)
@@ -405,6 +422,19 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         task.UpdatedAt = DateTime.UtcNow;
 
         await tasks.SaveAsync(ct);
+
+        try
+        {
+            await hubContext.Clients.Group($"user_{task.ClientId}").SendAsync("TaskDeclined", new
+            {
+                taskId = task.Id,
+                title = task.Title,
+                workerName = workerProfile.User.Name,
+                refundedAmount = task.OfferedPrice,
+                message = $"Thợ {workerProfile.User.Name} đã từ chối yêu cầu \"{task.Title}\". Tiền cọc {task.OfferedPrice:N0} đ đã được hoàn về ví của bạn."
+            }, ct);
+        }
+        catch { }
     }
 
     public async Task StartTaskAsync(string workerUserId, string taskId, CancellationToken ct = default)
@@ -430,6 +460,18 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         task.UpdatedAt = DateTime.UtcNow;
 
         await tasks.SaveAsync(ct);
+
+        try
+        {
+            await hubContext.Clients.Group($"user_{task.ClientId}").SendAsync("TaskStarted", new
+            {
+                taskId = task.Id,
+                title = task.Title,
+                workerName = workerProfile.User.Name,
+                message = $"Thợ {workerProfile.User.Name} đã bắt đầu thực hiện công việc \"{task.Title}\"!"
+            }, ct);
+        }
+        catch { }
     }
 
     public async Task CompleteTaskAsync(string workerUserId, string taskId, CancellationToken ct = default)
@@ -475,6 +517,18 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         }
 
         await tasks.SaveAsync(ct);
+
+        try
+        {
+            await hubContext.Clients.Group($"user_{task.ClientId}").SendAsync("TaskCompleted", new
+            {
+                taskId = task.Id,
+                title = task.Title,
+                workerName = workerProfile.User.Name,
+                message = $"Thợ {workerProfile.User.Name} đã báo hoàn thành công việc \"{task.Title}\". Vui lòng nghiệm thu và giải ngân!"
+            }, ct);
+        }
+        catch { }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -522,6 +576,20 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         task.UpdatedAt = DateTime.UtcNow;
 
         await tasks.SaveAsync(ct);
+
+        try
+        {
+            await hubContext.Clients.Group($"user_{worker.UserId}").SendAsync("TaskAssigned", new
+            {
+                taskId = task.Id,
+                title = task.Title,
+                clientName = task.Client.Name,
+                offeredPrice = task.OfferedPrice,
+                scheduledStartTime = task.ScheduledStartTime,
+                message = $"Bạn vừa nhận được một đề xuất công việc mới \"{task.Title}\" từ khách hàng {task.Client.Name}!"
+            }, ct);
+        }
+        catch { }
     }
 
     public async Task ApproveTaskAsync(string clientUserId, string taskId, CancellationToken ct = default)
@@ -667,6 +735,8 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
             throw new BusinessValidationException($"Chỉ có thể hủy khi công việc đang chờ nhận hoặc đã xác nhận. Trạng thái hiện tại: {task.Status}.");
         }
 
+        var assignedWorkerUserId = task.WorkerProfile?.UserId;
+
         // Nếu đã gán thợ và đã cọc tiền -> hoàn cọc cho khách
         if (!string.IsNullOrEmpty(task.WorkerProfileId))
         {
@@ -678,5 +748,19 @@ public class TaskService(ITaskRepository tasks, IImageStorage imageStorage) : IT
         task.UpdatedAt = DateTime.UtcNow;
 
         await tasks.SaveAsync(ct);
+
+        if (!string.IsNullOrEmpty(assignedWorkerUserId))
+        {
+            try
+            {
+                await hubContext.Clients.Group($"user_{assignedWorkerUserId}").SendAsync("TaskCancelled", new
+                {
+                    taskId = task.Id,
+                    title = task.Title,
+                    message = $"Khách hàng {task.Client.Name} đã hủy yêu cầu \"{task.Title}\"."
+                }, ct);
+            }
+            catch { }
+        }
     }
 }

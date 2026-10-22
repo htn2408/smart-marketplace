@@ -14,6 +14,7 @@ export function ChatWebSocketProvider({ children }) {
   const messageListenersRef = useRef(new Set())
   const readListenersRef = useRef(new Set())
   const typingListenersRef = useRef(new Set())
+  const taskEventListenersRef = useRef(new Set())
 
   // Khởi tạo và quản lý vòng đời kết nối SignalR
   useEffect(() => {
@@ -67,6 +68,20 @@ export function ChatWebSocketProvider({ children }) {
         } catch (err) {
           console.warn('Lỗi trong bộ xử lý UserTyping:', err)
         }
+      })
+    })
+
+    // Đăng ký nhận sự kiện cập nhật công việc thời gian thực (Thợ nhận, từ chối, làm việc, hoàn thành)
+    const taskEvents = ['TaskDeclined', 'TaskAccepted', 'TaskStarted', 'TaskCompleted', 'TaskAssigned', 'TaskCancelled']
+    taskEvents.forEach((eventName) => {
+      connection.on(eventName, (data) => {
+        taskEventListenersRef.current.forEach((handler) => {
+          try {
+            handler({ type: eventName, data })
+          } catch (err) {
+            console.warn(`Lỗi trong bộ xử lý ${eventName}:`, err)
+          }
+        })
       })
     })
 
@@ -125,6 +140,13 @@ export function ChatWebSocketProvider({ children }) {
     typingListenersRef.current.add(handler)
     return () => {
       typingListenersRef.current.delete(handler)
+    }
+  }, [])
+
+  const subscribeTaskEvent = useCallback((handler) => {
+    taskEventListenersRef.current.add(handler)
+    return () => {
+      taskEventListenersRef.current.delete(handler)
     }
   }, [])
 
@@ -198,6 +220,7 @@ export function ChatWebSocketProvider({ children }) {
     subscribeMessage,
     subscribeRead,
     subscribeTyping,
+    subscribeTaskEvent,
   }
 
   return (

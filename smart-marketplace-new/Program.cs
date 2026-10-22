@@ -48,6 +48,12 @@ if (!string.IsNullOrEmpty(jwtSecret) && string.IsNullOrEmpty(Environment.GetEnvi
     Environment.SetEnvironmentVariable("Jwt__Key", jwtSecret);
 }
 
+var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+if (!Directory.Exists(webRoot))
+{
+    Directory.CreateDirectory(webRoot);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Đảm bảo biến môi trường và .env được ưu tiên nạp đè lên appsettings.json
@@ -89,9 +95,15 @@ builder.Services.AddScoped<IServiceCategoryRepository, ServiceCategoryRepository
 builder.Services.AddScoped<IServiceCategoryService, ServiceCategoryService>();
 builder.Services.AddScoped<IWorkerService, WorkerService>();
 
-// Ảnh: bản dev giả lập (chưa có Cloudinary credentials).
-// Khi có account: thay bằng CloudinaryImageStorage (xem LocalImageStorage.cs)
-builder.Services.AddSingleton<IImageStorage, LocalImageStorage>();
+// Lưu trữ ảnh trên Cloudinary CDN (Production Storage duy nhất)
+var cloudName = Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME")
+    ?? throw new InvalidOperationException("Thiếu biến môi trường CLOUDINARY_CLOUD_NAME trong file .env.");
+var apiKey = Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY")
+    ?? throw new InvalidOperationException("Thiếu biến môi trường CLOUDINARY_API_KEY trong file .env.");
+var apiSecret = Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET")
+    ?? throw new InvalidOperationException("Thiếu biến môi trường CLOUDINARY_API_SECRET trong file .env.");
+
+builder.Services.AddSingleton<IImageStorage>(new CloudinaryImageStorage(cloudName, apiKey, apiSecret));
 
 // JWT auth (port của middlewares/authenticate.js) + authorization
 builder.Services.AddJwtAuth(builder.Configuration);

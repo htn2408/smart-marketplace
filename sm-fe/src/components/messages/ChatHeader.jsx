@@ -11,6 +11,8 @@ export default function ChatHeader({
   onCall,
   onReport,
   onViewTask,
+  onViewProfile,
+  canViewProfile = false,
 }) {
   if (!conversation) return null
 
@@ -30,11 +32,19 @@ export default function ChatHeader({
         </button>
 
         {/* Partner Avatar + Active Status Dot */}
-        <div className="relative flex-none">
+        <div
+          onClick={canViewProfile ? () => onViewProfile?.(partner) : undefined}
+          title={canViewProfile ? `Xem trang cá nhân của ${partner.name}` : undefined}
+          className={`relative flex-none ${
+            canViewProfile ? 'cursor-pointer group' : ''
+          }`}
+        >
           <img
             src={partner.avatar}
             alt={partner.name}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-primary/20"
+            className={`w-10 h-10 rounded-full object-cover ring-2 ring-primary/20 transition-all ${
+              canViewProfile ? 'group-hover:ring-primary group-hover:scale-105 shadow-xs' : ''
+            }`}
           />
           {partner.isOnline && (
             <span
@@ -47,12 +57,25 @@ export default function ChatHeader({
         {/* Partner Info Details */}
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="font-headline-sm text-sm sm:text-base font-bold text-on-surface truncate">
+            <h2
+              onClick={canViewProfile ? () => onViewProfile?.(partner) : undefined}
+              title={canViewProfile ? `Xem trang cá nhân của ${partner.name}` : undefined}
+              className={`font-headline-sm text-sm sm:text-base font-bold text-on-surface truncate ${
+                canViewProfile ? 'cursor-pointer hover:text-primary transition-colors' : ''
+              }`}
+            >
               {partner.name}
             </h2>
 
             {partner.role && (
-              <Badge variant="primary" size="xs" icon="verified">
+              <Badge
+                variant="primary"
+                size="xs"
+                icon="verified"
+                onClick={canViewProfile ? () => onViewProfile?.(partner) : undefined}
+                className={canViewProfile ? 'cursor-pointer hover:opacity-85' : ''}
+                title={canViewProfile ? `Xem trang cá nhân của ${partner.name}` : undefined}
+              >
                 {partner.role}
               </Badge>
             )}

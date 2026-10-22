@@ -128,6 +128,13 @@ export default function FilterTasker({ onNavigate }) {
   const offeredPrice = Number(taskData?.offeredPrice || 250000)
   const formattedPrice = `${offeredPrice.toLocaleString('vi-VN')}₫`
 
+  const taskImagesList =
+    Array.isArray(taskData?.taskImages) && taskData.taskImages.length > 0
+      ? taskData.taskImages
+      : Array.isArray(taskData?.images) && taskData.images.length > 0
+      ? taskData.images
+      : []
+
   const handleEditRequest = () => {
     if (onNavigate) {
       onNavigate('task-detail', {
@@ -274,6 +281,29 @@ export default function FilterTasker({ onNavigate }) {
                     <span>{fullAddress}</span>
                   </div>
                 </div>
+
+                {/* Thumbnail danh sách ảnh đính kèm (nếu có) */}
+                {taskImagesList.length > 0 && (
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    <span className="font-caption text-caption text-on-surface-variant font-medium flex items-center gap-1">
+                      <Icon name="image" size={15} className="text-primary" />
+                      <span>{taskImagesList.length} ảnh hiện trạng:</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                      {taskImagesList.map((img, idx) => {
+                        const src = typeof img === 'string' ? img : img.previewUrl || img.imageUrl
+                        return (
+                          <img
+                            key={idx}
+                            src={src}
+                            alt={`Ảnh hiện trạng ${idx + 1}`}
+                            className="w-9 h-9 rounded-lg object-cover border border-outline-variant/40 shadow-xs"
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Budget & Escrow & Edit Actions */}

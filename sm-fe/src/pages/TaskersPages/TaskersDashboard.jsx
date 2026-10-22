@@ -6,6 +6,7 @@ import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
 import ChatWorkspace from '../../components/messages/ChatWorkspace'
 import { useAuth } from '../../hooks/useAuth'
+import { useChatWebSocket } from '../../hooks/useChatWebSocket'
 import { updateWorkerProfileApi } from '../../services/authService'
 import {
   fetchTaskerTasks,
@@ -82,6 +83,23 @@ export default function TaskersDashboard({ onNavigate }) {
 
     return () => controller.abort()
   }, [refreshToken])
+
+  const chatWs = useChatWebSocket()
+  const subscribeTaskEvent = chatWs?.subscribeTaskEvent
+
+  useEffect(() => {
+    if (!subscribeTaskEvent) return
+    const unsubscribe = subscribeTaskEvent((evt) => {
+      if (evt.type === 'TaskAssigned') {
+        showToast(evt.data?.message || 'Bạn vừa nhận được một đề xuất công việc mới!')
+        handleRefresh()
+      } else if (evt.type === 'TaskCancelled') {
+        showToast(evt.data?.message || 'Khách hàng đã hủy công việc.')
+        handleRefresh()
+      }
+    })
+    return unsubscribe
+  }, [subscribeTaskEvent, handleRefresh])
 
   const wp = user?.workerProfile || null
   const isOnline = (wp?.status || 'ONLINE') === 'ONLINE'

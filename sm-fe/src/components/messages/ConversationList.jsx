@@ -14,6 +14,8 @@ export default function ConversationList({
   activeTab = 'all',
   onTabChange,
   onMarkAllRead,
+  onViewProfile,
+  isClientRole = false,
 }) {
   const totalCount = conversations.length
   const unreadTotal = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0)
@@ -148,14 +150,24 @@ export default function ConversationList({
             </p>
           </div>
         ) : (
-          conversations.map((conv) => (
-            <ConversationItem
-              key={conv.id}
-              conversation={conv}
-              isActive={conv.id === selectedId}
-              onClick={() => onSelect?.(conv.id)}
-            />
-          ))
+          conversations.map((conv) => {
+            const isPartnerTasker = (
+              conv.partner?.rawRole === 'TASKER' ||
+              conv.partner?.role === 'Tasker' ||
+              conv.partner?.role === 'TASKER' ||
+              (conv.partner?.role || '').toLowerCase().includes('tasker')
+            )
+            return (
+              <ConversationItem
+                key={conv.id}
+                conversation={conv}
+                isActive={conv.id === selectedId}
+                onClick={() => onSelect?.(conv.id)}
+                onViewProfile={onViewProfile}
+                canViewProfile={isClientRole && isPartnerTasker}
+              />
+            )
+          })
         )}
       </div>
     </aside>

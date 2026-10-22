@@ -35,8 +35,10 @@ export function formatConversation(conv, currentUserId) {
     id: conv.id,
     partner: {
       id: partner.userId,
+      userId: partner.userId,
       name: partner.name,
       role: partner.role === 'TASKER' ? 'Tasker' : 'Khách hàng',
+      rawRole: partner.role,
       avatar: partnerAvatar,
       isOnline: Boolean(partner.isOnline),
       responseSpeed: partner.responseSpeed || 'Phản hồi nhanh',

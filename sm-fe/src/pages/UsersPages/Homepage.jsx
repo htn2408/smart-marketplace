@@ -189,59 +189,10 @@ export default function Homepage({ onNavigate }) {
                 <div className="relative w-full max-w-[440px] aspect-[4/5] rounded-xl overflow-hidden shadow-xl bg-surface-container-high">
                   <img
                     className="w-full h-full object-cover"
-                    alt="Handyman"
-                    src="/images/banners/hero-handyman.jpg"
+                    alt="Homepage Banner"
+                    src="/images/banners/matt-adams-7PiboaUAB_0-unsplash.jpg"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/80 via-transparent to-transparent" />
 
-                  {/* Tasker In-Action Overlay Badge */}
-                  <div className="absolute bottom-4 left-4 right-4 p-4 rounded-lg bg-surface-container-lowest/95 backdrop-blur-md shadow-lg flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <img
-                          className="w-11 h-11 rounded-full object-cover"
-                          alt="Minh Hằng"
-                          src="/images/avatars/minh-hang.jpg"
-                        />
-                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-primary rounded-full flex items-center justify-center">
-                          <Icon
-                            name="check"
-                            size={10}
-                            className="text-on-primary font-bold"
-                          />
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-label-md text-label-md font-bold text-on-surface">
-                            Minh Hằng
-                          </span>
-                          <Badge variant="secondary" size="xs">
-                            Top 1%
-                          </Badge>
-                        </div>
-                        <span className="font-caption text-caption text-on-surface-variant">
-                          Vừa hoàn thành: Dọn nhà 3PN (Quận 2)
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center text-secondary">
-                        <Icon
-                          name="star"
-                          size={16}
-                          filled={true}
-                          className="text-secondary"
-                        />
-                        <span className="font-label-md text-label-md font-bold text-on-surface ml-0.5">
-                          5.0
-                        </span>
-                      </div>
-                      <span className="font-caption text-[11px] text-outline font-semibold">
-                        184 việc
-                      </span>
-                    </div>
-                  </div>
 
                   {/* Floating Trust Metric Pill */}
                   <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-surface-container-lowest/95 backdrop-blur-md shadow-md flex items-center gap-2">

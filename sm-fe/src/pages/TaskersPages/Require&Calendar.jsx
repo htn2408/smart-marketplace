@@ -11,6 +11,7 @@ import {
   startTaskApi,
   completeTaskApi,
 } from '../../services/taskService'
+import { useChatWebSocket } from '../../hooks/useChatWebSocket'
 
 /**
  * Tính toán danh sách 7 ngày trong tuần hiện tại và đếm số việc thực tế
@@ -85,6 +86,7 @@ export default function RequireAndCalendar({ onNavigate }) {
 
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false)
   const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
+  const [previewImage, setPreviewImage] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
 
   // Hiển thị toast thông báo nhanh
@@ -117,6 +119,23 @@ export default function RequireAndCalendar({ onNavigate }) {
 
     return () => controller.abort()
   }, [filterTab, refreshToken])
+
+  const chatWs = useChatWebSocket()
+  const subscribeTaskEvent = chatWs?.subscribeTaskEvent
+
+  useEffect(() => {
+    if (!subscribeTaskEvent) return
+    const unsubscribe = subscribeTaskEvent((evt) => {
+      if (evt.type === 'TaskAssigned') {
+        showToast(evt.data?.message || 'Bạn vừa nhận được một đề xuất công việc mới!')
+        handleRefresh()
+      } else if (evt.type === 'TaskCancelled') {
+        showToast(evt.data?.message || 'Khách hàng đã hủy công việc.')
+        handleRefresh()
+      }
+    })
+    return unsubscribe
+  }, [subscribeTaskEvent, handleRefresh])
 
   // Thao tác: Chấp nhận việc (PENDING -> MATCHED)
   const handleAccept = async (taskId) => {
@@ -1063,12 +1082,22 @@ export default function RequireAndCalendar({ onNavigate }) {
                   </span>
                   <div className="grid grid-cols-3 gap-2">
                     {selectedTaskDetail.images.map((imgUrl, i) => (
-                      <img
+                      <button
                         key={i}
-                        src={imgUrl}
-                        alt="Hiện trường"
-                        className="w-full h-24 object-cover rounded-xl border border-surface-variant/30"
-                      />
+                        type="button"
+                        onClick={() => setPreviewImage(imgUrl)}
+                        className="relative w-full h-24 rounded-xl overflow-hidden border border-surface-variant/30 hover:opacity-90 hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer group"
+                        title="Bấm để xem ảnh phóng to"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Hiện trường ${i + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <Icon name="zoom_in" size={22} />
+                        </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1122,6 +1151,31 @@ export default function RequireAndCalendar({ onNavigate }) {
                 Đóng chi tiết
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: Xem ảnh phóng to */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-10 right-0 text-white/90 hover:text-white p-2 rounded-full cursor-pointer"
+            >
+              <Icon name="close" size={24} />
+            </button>
+            <img
+              src={previewImage}
+              alt="Ảnh phóng to"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+            />
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
@@ -48,15 +48,42 @@ export default function TaskDetail({ onNavigate }) {
   // State for Section 2: Description (empty by default)
   const [description, setDescription] = useState(taskDraft?.description || '')
 
-  // State for Section 3: Images — file thật, upload qua POST /api/tasks (multipart)
-  const [taskImages, setTaskImages] = useState([])
+  // State for Section 3: Images — khôi phục từ taskDraft (nếu quay lại từ FilterTasker) hoặc khởi tạo rỗng
+  const [taskImages, setTaskImages] = useState(() => {
+    if (Array.isArray(taskDraft?.taskImages) && taskDraft.taskImages.length > 0) {
+      return taskDraft.taskImages
+    }
+    if (Array.isArray(taskDraft?.images) && taskDraft.images.length > 0) {
+      return taskDraft.images
+        .map((img, idx) => {
+          const url = typeof img === 'string' ? img : img?.imageUrl || ''
+          if (!url) return null
+          return {
+            id: `draft-server-img-${idx}-${Date.now()}`,
+            file: null,
+            previewUrl: url,
+            label: `Ảnh đính kèm ${idx + 1}`,
+            existingUrl: url,
+          }
+        })
+        .filter(Boolean)
+    }
+    return []
+  })
   const [imageError, setImageError] = useState('')
   const imageInputRef = useRef(null)
 
   const removeImage = (id) => {
     setTaskImages((prev) => {
       const found = prev.find((img) => img.id === id)
-      if (found?.previewUrl) URL.revokeObjectURL(found.previewUrl)
+      if (
+        found?.previewUrl &&
+        found.file &&
+        typeof found.previewUrl === 'string' &&
+        found.previewUrl.startsWith('blob:')
+      ) {
+        URL.revokeObjectURL(found.previewUrl)
+      }
       return prev.filter((img) => img.id !== id)
     })
   }
@@ -306,9 +333,37 @@ export default function TaskDetail({ onNavigate }) {
     setSubmitting(true)
     setSubmitError('')
     try {
+      // Chuẩn bị danh sách File để gửi API:
+      // - Nếu là File thật (từ input người dùng): giữ nguyên
+      // - Nếu là ảnh server (URL từ Cloudinary): tải blob và tạo File để đính kèm lại vào request
+      const filesToUpload = (
+        await Promise.all(
+          taskImages.map(async (img) => {
+            if (img.file instanceof File) return img.file
+            const remoteUrl = img.existingUrl || img.previewUrl
+            if (remoteUrl && typeof remoteUrl === 'string') {
+              try {
+                const res = await fetch(remoteUrl)
+                const blob = await res.blob()
+                const ext = (blob.type?.split('/')[1] || 'jpg').replace('jpeg', 'jpg')
+                const filename =
+                  img.label && img.label.includes('.')
+                    ? img.label
+                    : `task-image-${Date.now()}.${ext}`
+                return new File([blob], filename, { type: blob.type || 'image/jpeg' })
+              } catch (fetchErr) {
+                console.warn('Không thể tải lại ảnh cũ từ server:', fetchErr)
+                return null
+              }
+            }
+            return null
+          })
+        )
+      ).filter(Boolean)
+
       const res = await createTaskApi(
         taskPayload,
-        taskImages.map((img) => img.file)
+        filesToUpload
       )
       const created = res.task || {}
 
@@ -333,7 +388,14 @@ export default function TaskDetail({ onNavigate }) {
         scheduledStartTime: created.scheduledStartTime || scheduledDate.toISOString(),
         expectedTime: created.expectedTime ?? durationInfo.totalMinutes,
         scheduledText: `${dateLabel} • ${startTime} - ${endTime}`,
+        provinceCode,
+        districtCode,
+        selectedDate,
+        customDate,
+        startTime,
+        endTime,
         images: created.images?.map((img) => img.imageUrl) || [],
+        taskImages: taskImages, // Giữ lại mảng ảnh và file thật cho các bước tiếp theo/chỉnh sửa
       }
 
       if (onNavigate) {

@@ -8,6 +8,7 @@ import Badge from '../../components/common/Badge'
 import { formatCurrency, formatDateTime } from '../../utils/formatters'
 import { ROUTES } from '../../routes/paths'
 import { fetchClientTasks, approveTaskApi, cancelTaskApi } from '../../services/taskService'
+import { useChatWebSocket } from '../../hooks/useChatWebSocket'
 
 /**
  * Map tên chuyên môn sang Material Symbols icon tương ứng
@@ -61,6 +62,7 @@ export default function TaskManager({ onNavigate }) {
   const [refreshToken, setRefreshToken] = useState(0)
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [activeModal, setActiveModal] = useState(null) // { type: 'escrow' | 'cancel' | 'report' | 'detail', task }
+  const [previewImage, setPreviewImage] = useState(null)
   const [toastMessage, setToastMessage] = useState('')
 
   // Hiển thị toast thông báo nhanh
@@ -95,6 +97,49 @@ export default function TaskManager({ onNavigate }) {
 
     return () => controller.abort()
   }, [activeTab, refreshToken])
+
+  const chatWs = useChatWebSocket()
+  const subscribeTaskEvent = chatWs?.subscribeTaskEvent
+
+  // Lắng nghe sự kiện SignalR thời gian thực từ Backend
+  useEffect(() => {
+    if (!subscribeTaskEvent) return
+    const unsubscribe = subscribeTaskEvent((evt) => {
+      if (evt.type === 'TaskDeclined') {
+        showToast(evt.data?.message || 'Thợ đã từ chối yêu cầu. Tiền cọc đã được hoàn về ví.')
+        handleRefresh()
+      } else if (evt.type === 'TaskAccepted') {
+        showToast(evt.data?.message || 'Thợ đã nhận yêu cầu công việc!')
+        handleRefresh()
+      } else if (evt.type === 'TaskStarted') {
+        showToast(evt.data?.message || 'Thợ đã bắt đầu di chuyển / làm việc!')
+        handleRefresh()
+      } else if (evt.type === 'TaskCompleted') {
+        showToast(evt.data?.message || 'Thợ đã hoàn thành công việc. Vui lòng nghiệm thu!')
+        handleRefresh()
+      }
+    })
+    return unsubscribe
+  }, [subscribeTaskEvent, handleRefresh])
+
+  // Tự động làm mới định kỳ ngầm khi có công việc đang chờ thợ phản hồi hoặc đang thi công
+  useEffect(() => {
+    const hasActiveTasks = data.tasks.some(
+      (t) => (t.status === 'PENDING' && t.worker) || t.status === 'IN_PROGRESS' || t.status === 'AWAITING_APPROVAL'
+    )
+    if (!hasActiveTasks) return
+
+    const intervalId = setInterval(() => {
+      const statusParam = activeTab === 'ALL' ? undefined : activeTab
+      fetchClientTasks(statusParam)
+        .then((res) => {
+          setData(res)
+        })
+        .catch(() => {})
+    }, 12000)
+
+    return () => clearInterval(intervalId)
+  }, [data.tasks, activeTab])
 
   // Lọc theo từ khóa tìm kiếm
   const filteredTasks = useMemo(() => {
@@ -151,6 +196,9 @@ export default function TaskManager({ onNavigate }) {
         scheduledText: formatDateTime(task.scheduledStartTime),
         fullAddress: task.address || `${task.district}, ${task.city}`,
         district: task.district,
+        images: task.images || [],
+        description: task.description || '',
+        skillId: task.requiredSkillId || '',
       },
       fromTaskDetail: true,
     }
@@ -655,6 +703,36 @@ export default function TaskManager({ onNavigate }) {
                                 </p>
                               )}
 
+                              {/* Attached photos if any */}
+                              {Array.isArray(task.images) && task.images.length > 0 && (
+                                <div className="space-y-1.5 pt-1">
+                                  <span className="font-caption text-[11px] font-bold text-on-surface-variant flex items-center gap-1">
+                                    <Icon name="photo_camera" size={14} className="text-primary" />
+                                    Ảnh hiện trường ({task.images.length}):
+                                  </span>
+                                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                                    {task.images.map((imgUrl, i) => (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setPreviewImage(imgUrl)}
+                                        className="relative w-16 h-16 rounded-xl overflow-hidden border border-surface-variant/40 shrink-0 hover:opacity-90 hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer group"
+                                        title="Bấm để xem ảnh phóng to"
+                                      >
+                                        <img
+                                          src={imgUrl}
+                                          alt={`Hiện trường ${i + 1}`}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                        />
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                          <Icon name="zoom_in" size={18} />
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Action Footer */}
                               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                                 <div className="flex items-center gap-2">
@@ -997,6 +1075,32 @@ export default function TaskManager({ onNavigate }) {
                 Gửi báo cáo ngay
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Xem ảnh phóng to */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-10 right-0 text-white/90 hover:text-white p-2 rounded-full cursor-pointer"
+            >
+              <Icon name="close" size={24} />
+            </button>
+            <img
+              src={previewImage}
+              alt="Ảnh phóng to"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+            />
           </div>
         </div>
       )}
