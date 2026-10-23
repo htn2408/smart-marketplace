@@ -79,7 +79,12 @@ export function AuthProvider({ children }) {
   /**
    * Update current user in memory
    */
-  const updateUser = (updatedData) => {
+  const updateUser = (updatedData, newToken) => {
+    const tokenToSave = newToken || updatedData?.token
+    if (tokenToSave) {
+      saveToken(tokenToSave)
+      setToken(tokenToSave)
+    }
     setUser((prev) => (prev ? { ...prev, ...updatedData } : updatedData))
   }
 

@@ -13,6 +13,7 @@ public class WorkerPublicProfileResponse
     public DateTime? MemberSince { get; set; }
     public List<SkillDto> Skills { get; set; } = new();
     public List<DistrictDto> ServiceDistricts { get; set; } = new();
+    public List<WorkerImageResponse> GalleryImages { get; set; } = new();
 
     public class SkillDto
     {

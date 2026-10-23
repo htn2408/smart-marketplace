@@ -12,6 +12,7 @@ import {
   completeTaskApi,
 } from '../../services/taskService'
 import { useChatWebSocket } from '../../hooks/useChatWebSocket'
+import Pagination from '../../components/common/Pagination'
 
 /**
  * Tính toán danh sách 7 ngày trong tuần hiện tại và đếm số việc thực tế
@@ -79,6 +80,8 @@ export default function RequireAndCalendar({ onNavigate }) {
 
   // all, pending, matched, in_progress, awaiting_approval, done, cancelled
   const [filterTab, setFilterTab] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState(null)
   const [actionLoadingId, setActionLoadingId] = useState(null)
@@ -210,6 +213,16 @@ export default function RequireAndCalendar({ onNavigate }) {
       (t) => t.status === 'MATCHED' || t.status === 'IN_PROGRESS' || t.status === 'AWAITING_APPROVAL'
     )
   }, [data.tasks])
+
+  // Tổng số trang tính theo số việc của tab hiện tại
+  const totalPages = Math.max(1, Math.ceil(data.tasks.length / pageSize))
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+
+  // Danh sách công việc phân trang của trang hiện tại
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * pageSize
+    return data.tasks.slice(startIndex, startIndex + pageSize)
+  }, [data.tasks, safeCurrentPage, pageSize])
 
   // Danh sách các tab lọc
   const filterTabs = [
@@ -445,7 +458,10 @@ export default function RequireAndCalendar({ onNavigate }) {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setFilterTab(tab.id)}
+                  onClick={() => {
+                    setFilterTab(tab.id)
+                    setCurrentPage(1)
+                  }}
                   className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full font-label-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                     isActive
                       ? 'bg-primary text-on-primary shadow-sm'
@@ -511,7 +527,10 @@ export default function RequireAndCalendar({ onNavigate }) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setFilterTab('all')}
+                    onClick={() => {
+                      setFilterTab('all')
+                      setCurrentPage(1)
+                    }}
                     className="mt-2 text-xs"
                   >
                     Xem tất cả yêu cầu
@@ -519,7 +538,7 @@ export default function RequireAndCalendar({ onNavigate }) {
                 )}
               </div>
             ) : (
-              data.tasks.map((task) => {
+              paginatedTasks.map((task) => {
                 const isPending = task.status === 'PENDING'
                 const isMatched = task.status === 'MATCHED'
                 const isInProgress = task.status === 'IN_PROGRESS'
@@ -878,6 +897,27 @@ export default function RequireAndCalendar({ onNavigate }) {
               })
             )}
           </div>
+        )}
+
+        {/* Phân trang danh sách yêu cầu của thợ */}
+        {!isLoading && data.tasks.length > 0 && (
+          <Pagination
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            totalItems={data.tasks.length}
+            pageSize={pageSize}
+            onPageChange={(page) => {
+              setCurrentPage(page)
+              window.scrollTo({ top: 380, behavior: 'smooth' })
+            }}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize)
+              setCurrentPage(1)
+            }}
+            pageSizeOptions={[5, 10, 15, 20]}
+            itemName="yêu cầu"
+            className="mt-6"
+          />
         )}
       </section>
 

@@ -13,8 +13,12 @@ import ServiceArea from '../../components/profile/ServiceArea'
 import ReviewsList from '../../components/profile/ReviewsList'
 import BookingSidebar from '../../components/profile/BookingSidebar'
 import { useAuth } from '../../hooks/useAuth'
-import { updateWorkerProfileApi } from '../../services/authService'
-import { fetchWorkerProfileById } from '../../services/workerService'
+import { updateWorkerProfileApi, uploadAvatarApi } from '../../services/authService'
+import {
+  fetchWorkerProfileById,
+  addWorkerGalleryImageApi,
+  deleteWorkerGalleryImageApi,
+} from '../../services/workerService'
 import { DEFAULT_AVATAR } from '../../assets/constants'
 
 /**
@@ -44,8 +48,27 @@ export default function TaskerProfile({ onNavigate }) {
       : !paramTaskerId && Boolean(isUserTasker)
 
   const [saving, setSaving] = useState(false)
+  const [updatingAvatar, setUpdatingAvatar] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
+
+  const handleAvatarChange = async (file) => {
+    if (!token) {
+      setSaveError('Vui lòng đăng nhập để đổi ảnh đại diện.')
+      return
+    }
+    try {
+      setUpdatingAvatar(true)
+      setSaveError('')
+      const res = await uploadAvatarApi(token, file)
+      updateUser(res)
+      showFeedback('Đã cập nhật ảnh đại diện thành công!')
+    } catch (err) {
+      setSaveError(err.message || 'Không thể cập nhật ảnh đại diện.')
+    } finally {
+      setUpdatingAvatar(false)
+    }
+  }
 
   const wp = user?.workerProfile || null
 
@@ -76,6 +99,7 @@ export default function TaskerProfile({ onNavigate }) {
   const [draftDescription, setDraftDescription] = useState(null)
   const [draftSkills, setDraftSkills] = useState(null)
   const [draftDistricts, setDraftDistricts] = useState(null)
+  const [draftGalleryImages, setDraftGalleryImages] = useState(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   const description = isViewingOther
@@ -95,6 +119,44 @@ export default function TaskerProfile({ onNavigate }) {
     : draftDistricts !== null
     ? draftDistricts
     : wp?.serviceDistricts || []
+
+  const effectiveGalleryImages = isViewingOther
+    ? viewedTasker?.galleryImages || []
+    : draftGalleryImages !== null
+    ? draftGalleryImages
+    : wp?.galleryImages || []
+
+  const handleAddGalleryImage = async (payload) => {
+    const newImage = await addWorkerGalleryImageApi(payload)
+    const nextList = [newImage, ...(draftGalleryImages || wp?.galleryImages || [])]
+    setDraftGalleryImages(nextList)
+    if (user?.workerProfile) {
+      updateUser({
+        ...user,
+        workerProfile: {
+          ...user.workerProfile,
+          galleryImages: nextList,
+        },
+      })
+    }
+    showFeedback('Đã thêm ảnh công trình vào hồ sơ thành công!')
+  }
+
+  const handleDeleteGalleryImage = async (imageId) => {
+    await deleteWorkerGalleryImageApi(imageId)
+    const nextList = (draftGalleryImages || wp?.galleryImages || []).filter((img) => img.id !== imageId)
+    setDraftGalleryImages(nextList)
+    if (user?.workerProfile) {
+      updateUser({
+        ...user,
+        workerProfile: {
+          ...user.workerProfile,
+          galleryImages: nextList,
+        },
+      })
+    }
+    showFeedback('Đã xoá ảnh công trình khỏi hồ sơ.')
+  }
 
   const completedTasks = isViewingOther
     ? viewedTasker?.completedTasks ?? 0
@@ -252,12 +314,18 @@ export default function TaskerProfile({ onNavigate }) {
       {/* Tasker Identity Header Card */}
       <TaskerHeader
         name={displayName}
-        avatar={DEFAULT_AVATAR}
+        avatar={
+          isViewingOther
+            ? viewedTasker?.avatarUrl || DEFAULT_AVATAR
+            : user?.avatarUrl || DEFAULT_AVATAR
+        }
         profession={professionText}
         completedTasks={completedTasks}
         rating={rating}
         onMessage={handleMessage}
         isOwnerView={isOwnerCVView}
+        onAvatarChange={handleAvatarChange}
+        isUpdatingAvatar={updatingAvatar}
       />
 
       {/* About Me Section */}
@@ -278,7 +346,12 @@ export default function TaskerProfile({ onNavigate }) {
       />
 
       {/* Past Work Gallery Section */}
-      <WorkGallery />
+      <WorkGallery
+        images={effectiveGalleryImages}
+        editable={isOwnerCVView}
+        onAddImage={handleAddGalleryImage}
+        onDeleteImage={handleDeleteGalleryImage}
+      />
 
       {/* Service Area & Coverage Map Section (with Province & District Picker in owner mode) */}
       <ServiceArea

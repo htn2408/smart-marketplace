@@ -29,6 +29,10 @@ public class User
     [Column("phone_number")]
     public string? PhoneNumber { get; set; }
 
+    [MaxLength(500)]
+    [Column("avatar_url")]
+    public string? AvatarUrl { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

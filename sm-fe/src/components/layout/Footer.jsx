@@ -19,7 +19,7 @@ export default function Footer({ onNavigate }) {
         home: ROUTES.HOME,
         services: ROUTES.SERVICES,
         search: ROUTES.CLIENT_FILTER_TASKER,
-        'become-tasker': ROUTES.TASKER_DASHBOARD,
+        'become-tasker': ROUTES.TASKER_REGISTER,
         'task-detail': ROUTES.CLIENT_TASK_DETAIL,
         'my-tasks': ROUTES.CLIENT_TASKS,
         profile: ROUTES.CLIENT_PROFILE,

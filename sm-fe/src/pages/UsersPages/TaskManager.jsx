@@ -9,6 +9,7 @@ import { formatCurrency, formatDateTime } from '../../utils/formatters'
 import { ROUTES } from '../../routes/paths'
 import { fetchClientTasks, approveTaskApi, cancelTaskApi } from '../../services/taskService'
 import { useChatWebSocket } from '../../hooks/useChatWebSocket'
+import Pagination from '../../components/common/Pagination'
 
 /**
  * Map tên chuyên môn sang Material Symbols icon tương ứng
@@ -57,6 +58,8 @@ export default function TaskManager({ onNavigate }) {
   // ALL, PENDING, MATCHED, IN_PROGRESS, AWAITING_APPROVAL, DONE, CANCELLED
   const [activeTab, setActiveTab] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [refreshToken, setRefreshToken] = useState(0)
@@ -153,6 +156,16 @@ export default function TaskManager({ onNavigate }) {
       return matchCode || matchTitle || matchCategory || matchWorker
     })
   }, [data.tasks, searchQuery])
+
+  // Tổng số trang tính theo danh sách đã lọc
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize))
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+
+  // Danh sách công việc phân trang của trang hiện tại
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * pageSize
+    return filteredTasks.slice(startIndex, startIndex + pageSize)
+  }, [filteredTasks, safeCurrentPage, pageSize])
 
   // Thao tác: Nghiệm thu & giải ngân Escrow (AWAITING_APPROVAL -> DONE)
   const handleReleaseEscrow = async (taskId) => {
@@ -433,7 +446,10 @@ export default function TaskManager({ onNavigate }) {
                           <button
                             key={tab.id}
                             type="button"
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => {
+                              setActiveTab(tab.id)
+                              setCurrentPage(1)
+                            }}
                             className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-label-md text-label-md transition-all whitespace-nowrap cursor-pointer ${
                               isActive
                                 ? 'bg-primary text-on-primary font-bold shadow-xs'
@@ -444,40 +460,46 @@ export default function TaskManager({ onNavigate }) {
                             <span
                               className={`px-1.5 py-0.2 rounded-full text-[11px] font-bold ${
                                 isActive
-                                  ? 'bg-white/20 text-white'
-                                  : tab.color || 'bg-surface-container-high text-on-surface-variant'
-                              }`}
-                            >
-                              {tab.count}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {/* Search Input */}
-                    <div className="relative w-full">
-                      <Icon
-                        name="search"
-                        size={18}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Tìm kiếm theo mã đơn, tiêu đề, chuyên môn hoặc tên thợ..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-surface-variant/40 bg-surface-container-lowest text-body-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
-                      />
-                      {searchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setSearchQuery('')}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface cursor-pointer p-1"
-                        >
-                          <Icon name="close" size={16} />
+                                ? 'bg-white/20 text-white'
+                                : tab.color || 'bg-surface-container-high text-on-surface-variant'
+                            }`}
+                          >
+                            {tab.count}
+                          </span>
                         </button>
-                      )}
+                      )
+                    })}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative w-full">
+                    <Icon
+                      name="search"
+                      size={18}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm theo mã đơn, tiêu đề, chuyên môn hoặc tên thợ..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value)
+                        setCurrentPage(1)
+                      }}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-surface-variant/40 bg-surface-container-lowest text-body-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setCurrentPage(1)
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface cursor-pointer p-1"
+                      >
+                        <Icon name="close" size={16} />
+                      </button>
+                    )}
                     </div>
                   </div>
 
@@ -532,7 +554,7 @@ export default function TaskManager({ onNavigate }) {
                           </Button>
                         </div>
                       ) : (
-                        filteredTasks.map((task) => {
+                        paginatedTasks.map((task) => {
                           const isPending = task.status === 'PENDING'
                           const isMatched = task.status === 'MATCHED'
                           const isInProgress = task.status === 'IN_PROGRESS'
@@ -831,6 +853,27 @@ export default function TaskManager({ onNavigate }) {
                         })
                       )}
                     </div>
+                  )}
+
+                  {/* Phân trang công việc */}
+                  {!isLoading && filteredTasks.length > 0 && (
+                    <Pagination
+                      currentPage={safeCurrentPage}
+                      totalPages={totalPages}
+                      totalItems={filteredTasks.length}
+                      pageSize={pageSize}
+                      onPageChange={(page) => {
+                        setCurrentPage(page)
+                        window.scrollTo({ top: 350, behavior: 'smooth' })
+                      }}
+                      onPageSizeChange={(newSize) => {
+                        setPageSize(newSize)
+                        setCurrentPage(1)
+                      }}
+                      pageSizeOptions={[5, 10, 15, 20]}
+                      itemName="công việc"
+                      className="mt-6"
+                    />
                   )}
                 </div>
 

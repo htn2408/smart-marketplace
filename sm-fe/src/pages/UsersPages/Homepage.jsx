@@ -7,11 +7,9 @@ import Badge from '../../components/common/Badge'
 import HeroSearch from '../../components/home/HeroSearch'
 import ServiceCard from '../../components/home/ServiceCard'
 import FaqAccordion from '../../components/home/FaqAccordion'
-import TaskerCard from '../../components/tasker/TaskerCard'
 import { fetchServiceCategories } from '../../services/servicesService'
 import {
   POPULAR_SERVICES,
-  HOME_TASKERS,
   TESTIMONIALS,
 } from '../../constants/mockData'
 
@@ -19,7 +17,6 @@ import {
  * TaskMate Homepage - Standardized JSX Component
  */
 export default function Homepage({ onNavigate }) {
-  const [activeCategory, setActiveCategory] = useState('all')
   const [categories, setCategories] = useState([])
 
   useEffect(() => {
@@ -118,18 +115,6 @@ export default function Homepage({ onNavigate }) {
     })
   }, [categories])
 
-  const filterTabs = [
-    { id: 'all', label: 'Tất cả' },
-    { id: 'assembly', label: 'Lắp ráp' },
-    { id: 'cleaning', label: 'Dọn dẹp' },
-    { id: 'plumbing', label: 'Điện nước' },
-  ]
-
-  const filteredTaskers =
-    activeCategory === 'all'
-      ? HOME_TASKERS
-      : HOME_TASKERS.filter((t) => t.category === activeCategory)
-
   const handleHeroSearch = (searchData) => {
     if (onNavigate) {
       onNavigate('task-detail', {
@@ -137,12 +122,6 @@ export default function Homepage({ onNavigate }) {
           title: searchData?.taskQuery,
         },
       })
-    }
-  }
-
-  const handleSelectTasker = () => {
-    if (onNavigate) {
-      onNavigate('profile')
     }
   }
 
@@ -294,64 +273,6 @@ export default function Homepage({ onNavigate }) {
                   onClick={() =>
                     onNavigate && onNavigate('services', { categoryId: service.id })
                   }
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* TOP RATED TASKERS SECTION */}
-        <section className="w-full py-16 bg-surface-container-low">
-          <div className="max-w-[1240px] mx-auto px-6">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-              <div>
-                <span className="font-label-sm text-label-sm font-bold text-primary uppercase tracking-wider">
-                  Nhân lực chất lượng
-                </span>
-                <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface mt-1">
-                  Tasker xuất sắc quanh bạn
-                </h2>
-              </div>
-
-              {/* Category Filter Tabs */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {filterTabs.map((tab) => {
-                  const isActive = activeCategory === tab.id
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setActiveCategory(tab.id)}
-                      className={`px-4 py-2 rounded-full font-label-md text-label-md font-semibold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-primary text-on-primary shadow-sm'
-                          : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface shadow-sm'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Tasker Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTaskers.map((tasker) => (
-                <TaskerCard
-                  key={tasker.id}
-                  tasker={tasker}
-                  variant="home"
-                  onSelect={handleSelectTasker}
-                  onMessage={(t) => {
-                    const targetId = t.userId || t.id
-                    if (targetId && onNavigate) {
-                      onNavigate('messages', {
-                        targetUserId: targetId,
-                        targetName: t.name,
-                      })
-                    }
-                  }}
                 />
               ))}
             </div>
@@ -605,7 +526,7 @@ export default function Homepage({ onNavigate }) {
                     <Button
                       variant="secondary"
                       size="lg"
-                      onClick={() => onNavigate && onNavigate('profile')}
+                      onClick={() => onNavigate && onNavigate('become-tasker')}
                     >
                       Đăng ký nhận việc ngay
                     </Button>
@@ -614,7 +535,7 @@ export default function Homepage({ onNavigate }) {
                       href="#tasker-benefits"
                       onClick={(e) => {
                         e.preventDefault()
-                        if (onNavigate) onNavigate('profile')
+                        if (onNavigate) onNavigate('become-tasker')
                       }}
                     >
                       <span>Tìm hiểu thêm về quyền lợi Tasker</span>

@@ -8,6 +8,7 @@ public class UserResponse
     public string Email { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? PhoneNumber { get; set; }
+    public string? AvatarUrl { get; set; }
     public string Role { get; set; } = null!;
     public List<string> Roles { get; set; } = new();
     public string? Address { get; set; }
@@ -16,6 +17,7 @@ public class UserResponse
     public decimal Balance { get; set; }
     public decimal HeldBalance { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? Token { get; set; }
     public WorkerProfileDto? WorkerProfile { get; set; }
 
     public class WorkerProfileDto
@@ -27,6 +29,7 @@ public class UserResponse
         public int CompletedTasks { get; set; }
         public List<WorkerSkillDto> Skills { get; set; } = new();
         public List<WorkerDistrictDto> ServiceDistricts { get; set; } = new();
+        public List<WorkerImageResponse> GalleryImages { get; set; } = new();
     }
 
     public class WorkerSkillDto

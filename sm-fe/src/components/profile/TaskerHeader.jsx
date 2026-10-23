@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import Icon from '../common/Icon'
 import Button from '../common/Button'
 import Badge from '../common/Badge'
@@ -14,13 +15,17 @@ export default function TaskerHeader({
   rating = 5.0,
   onMessage,
   isOwnerView = false,
+  onAvatarChange,
+  isUpdatingAvatar = false,
 }) {
+  const avatarInputRef = useRef(null)
+
   return (
     <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-start sm:items-center gap-5">
           {/* Avatar Profile with Online Indicator & Gold Badge */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 group">
             <img
               alt={`Chân dung ${name}`}
               className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-md ring-4 ring-primary/10"
@@ -37,6 +42,36 @@ export default function TaskerHeader({
                 Elite
               </Badge>
             </div>
+
+            {/* Nút cập nhật Avatar khi ở chế độ thợ tự quản lý hồ sơ */}
+            {isOwnerView && onAvatarChange && (
+              <>
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) onAvatarChange(f)
+                    e.target.value = ''
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  title="Thay đổi ảnh đại diện"
+                  disabled={isUpdatingAvatar}
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute bottom-0 left-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-md ring-2 ring-surface-container-lowest hover:bg-primary/90 transition-all cursor-pointer"
+                >
+                  <Icon
+                    name={isUpdatingAvatar ? 'sync' : 'photo_camera'}
+                    size={16}
+                    className={isUpdatingAvatar ? 'animate-spin' : ''}
+                  />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Main Name & Trust Verifications */}

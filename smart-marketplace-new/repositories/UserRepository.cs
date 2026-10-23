@@ -14,6 +14,8 @@ public class UserRepository(AppDbContext db) : IUserRepository
                         .ThenInclude(s => s.Category)
             .Include(u => u.WorkerProfile)
                 .ThenInclude(wp => wp!.ServiceDistricts)
+            .Include(u => u.WorkerProfile)
+                .ThenInclude(wp => wp!.GalleryImages)
             .FirstOrDefaultAsync(u => u.Email == email, ct);
 
     public Task<User?> FindByIdAsync(string id, CancellationToken ct = default) =>
@@ -25,6 +27,8 @@ public class UserRepository(AppDbContext db) : IUserRepository
                         .ThenInclude(s => s.Category)
             .Include(u => u.WorkerProfile)
                 .ThenInclude(wp => wp!.ServiceDistricts)
+            .Include(u => u.WorkerProfile)
+                .ThenInclude(wp => wp!.GalleryImages)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
 
     public Task<WorkerProfile?> FindWorkerProfileByUserIdAsync(string userId, CancellationToken ct = default) =>
@@ -33,6 +37,7 @@ public class UserRepository(AppDbContext db) : IUserRepository
             .Include(wp => wp.Skills)
                 .ThenInclude(ws => ws.Skill)
             .Include(wp => wp.ServiceDistricts)
+            .Include(wp => wp.GalleryImages)
             .AsNoTracking()
             .FirstOrDefaultAsync(wp => wp.UserId == userId, ct);
 

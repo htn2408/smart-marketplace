@@ -8,7 +8,7 @@ import { ROUTES } from '../../routes/paths'
  * - Role-based authorization: redirects to home if role mismatch
  * - Displays loading screen while checking token with backend /api/auth/me
  */
-export default function ProtectedRoute({ allowedRoles, children }) {
+export default function ProtectedRoute({ allowedRoles, redirectTo, children }) {
   const { isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()
 
@@ -29,13 +29,27 @@ export default function ProtectedRoute({ allowedRoles, children }) {
     return <Navigate to={ROUTES.LOGIN || '/login'} state={{ from: location }} replace />
   }
 
-  // 3. Kiểm tra phân quyền theo vai trò (Role Authorization)
+  // 3. Kiểm tra phân quyền theo vai trò (Role Authorization: hỗ trợ cả user.role và mảng user.roles)
   if (allowedRoles && allowedRoles.length > 0) {
-    const userRole = user?.role?.toUpperCase()
-    const isAllowed = allowedRoles.some((role) => role.toUpperCase() === userRole)
+    const userRoles = [user?.role, ...(user?.roles || [])]
+      .filter(Boolean)
+      .map((r) => r.toUpperCase())
+
+    const isAllowed = allowedRoles.some((role) =>
+      userRoles.includes(role.toUpperCase())
+    )
 
     if (!isAllowed) {
-      return <Navigate to={ROUTES.HOME} replace />
+      // Nếu người dùng là Client cố vào trang dành riêng cho Thợ, tự động chuyển sang trang đăng ký Thợ
+      const isTaskerRestricted = allowedRoles.some((r) =>
+        ['TASKER', 'WORKER'].includes(r.toUpperCase())
+      )
+
+      if (isTaskerRestricted) {
+        return <Navigate to={ROUTES.TASKER_REGISTER} replace />
+      }
+
+      return <Navigate to={redirectTo || ROUTES.HOME} replace />
     }
   }
 

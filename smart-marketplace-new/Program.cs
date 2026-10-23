@@ -93,6 +93,7 @@ builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IServiceCategoryRepository, ServiceCategoryRepository>();
 builder.Services.AddScoped<IServiceCategoryService, ServiceCategoryService>();
+builder.Services.AddScoped<IWorkerImageRepository, WorkerImageRepository>();
 builder.Services.AddScoped<IWorkerService, WorkerService>();
 
 // Lưu trữ ảnh trên Cloudinary CDN (Production Storage duy nhất)

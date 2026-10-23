@@ -226,6 +226,44 @@ export async function updateWorkerProfileApi(token, payload) {
     throw new Error(message)
   }
 
+  if (data?.token) {
+    setToken(data.token)
+  }
+
+  return data
+}
+
+/**
+ * Upload ảnh đại diện người dùng lên Cloudinary và lưu vào CSDL (POST /api/auth/avatar)
+ * @param {string} token
+ * @param {File} file
+ * @returns {Promise<{ id: string, name: string, email: string, avatarUrl: string }>}
+ */
+export async function uploadAvatarApi(token, file) {
+  if (!token) throw new Error('Vui lòng đăng nhập.')
+  if (!file) throw new Error('Vui lòng chọn file hình ảnh.')
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${API_BASE_URL}/auth/avatar`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message =
+      data.error ||
+      data.message ||
+      data.title ||
+      'Không thể cập nhật ảnh đại diện.'
+    throw new Error(message)
+  }
+
   return data
 }
 

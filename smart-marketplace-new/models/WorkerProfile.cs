@@ -35,4 +35,6 @@ public class WorkerProfile
 
     [InverseProperty("WorkerProfile")]
     public ICollection<TaskItem> TasksAccepted { get; set; } = new List<TaskItem>();
+
+    public ICollection<WorkerImage> GalleryImages { get; set; } = new List<WorkerImage>();
 }

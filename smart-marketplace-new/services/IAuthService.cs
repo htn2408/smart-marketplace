@@ -8,6 +8,7 @@ public interface IAuthService
     Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
     Task<UserResponse> GetProfileAsync(string userId, CancellationToken ct = default);
     Task<UserResponse> UpdateProfileAsync(string userId, UpdateProfileRequest request, CancellationToken ct = default);
+    Task<UserResponse> UpdateAvatarAsync(string userId, Microsoft.AspNetCore.Http.IFormFile file, CancellationToken ct = default);
     Task<UserResponse> UpdateWorkerProfileAsync(string userId, UpdateWorkerProfileRequest request, CancellationToken ct = default);
     Task ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct = default);
 }

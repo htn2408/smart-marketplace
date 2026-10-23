@@ -9,6 +9,7 @@ import Login from '../pages/UsersPages/Login'
 import NotFound from '../pages/UsersPages/NotFound'
 import TaskersDashboard from '../pages/TaskersPages/TaskersDashboard'
 import RequireAndCalendar from '../pages/TaskersPages/Require&Calendar'
+import Register from '../pages/TaskersPages/Register'
 import TaskManager from '../pages/UsersPages/TaskManager'
 import Message from '../pages/Message'
 import ProtectedRoute from '../components/common/ProtectedRoute'
@@ -30,7 +31,8 @@ export default function AppRoutes() {
       search: ROUTES.CLIENT_FILTER_TASKER,
       'filter-tasker': ROUTES.CLIENT_FILTER_TASKER,
       'filter-taskers': ROUTES.CLIENT_FILTER_TASKER,
-      'become-tasker': ROUTES.TASKER_DASHBOARD,
+      'become-tasker': ROUTES.TASKER_REGISTER,
+      'tasker-register': ROUTES.TASKER_REGISTER,
       'tasker-dashboard': ROUTES.TASKER_DASHBOARD,
       'tasker-requests': ROUTES.TASKER_REQUESTS,
       requests: ROUTES.TASKER_REQUESTS,
@@ -111,7 +113,7 @@ export default function AppRoutes() {
       <Route
         path={ROUTES.TASKER_DASHBOARD}
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['TASKER', 'WORKER']}>
             <TaskersDashboard onNavigate={handleNavigate} />
           </ProtectedRoute>
         }
@@ -119,7 +121,7 @@ export default function AppRoutes() {
       <Route
         path={ROUTES.TASKER_REQUESTS}
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['TASKER', 'WORKER']}>
             <RequireAndCalendar onNavigate={handleNavigate} />
           </ProtectedRoute>
         }
@@ -140,8 +142,17 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path={ROUTES.TASKER_REGISTER}
+        element={
+          <ProtectedRoute>
+            <Register onNavigate={handleNavigate} />
+          </ProtectedRoute>
+        }
+      />
 
       {/* 4. Backward-Compatible Redirects */}
+      <Route path="/become-tasker" element={<Navigate to={ROUTES.TASKER_REGISTER} replace />} />
       <Route path="/my-tasks" element={<Navigate to={ROUTES.CLIENT_TASKS} replace />} />
       <Route path="/task-detail" element={<Navigate to={ROUTES.CLIENT_TASK_DETAIL} replace />} />
       <Route path="/tasks/:id" element={<Navigate to={ROUTES.CLIENT_TASK_DETAIL} replace />} />

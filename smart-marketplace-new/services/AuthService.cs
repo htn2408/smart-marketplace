@@ -7,7 +7,7 @@ using smart_marketplace_new.repositories;
 namespace smart_marketplace_new.services;
 
 // Business logic của auth — hỗ trợ đa role qua bảng user_roles (JOIN từ UserRepository).
-public class AuthService(IUserRepository users, IJwtTokenService tokenService) : IAuthService
+public class AuthService(IUserRepository users, IJwtTokenService tokenService, IImageStorage imageStorage) : IAuthService
 {
     // Hash dummy để so khi email không tồn tại — thời gian phản hồi như bcrypt thật,
     // chặn dò email tồn tại qua timing (side-channel).
@@ -117,8 +117,51 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
         if (request.Latitude.HasValue) user.Latitude = request.Latitude;
         if (request.Longitude.HasValue) user.Longitude = request.Longitude;
 
+        if (request.AvatarUrl != null)
+        {
+            user.AvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
+        }
+
         user.UpdatedAt = DateTime.UtcNow;
         await users.SaveAsync(ct);
+
+        return ToResponse(user);
+    }
+
+    public async Task<UserResponse> UpdateAvatarAsync(string userId, Microsoft.AspNetCore.Http.IFormFile file, CancellationToken ct = default)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw new BusinessValidationException("Vui lòng chọn file hình ảnh đại diện.");
+        }
+
+        if (file.Length > 5 * 1024 * 1024)
+        {
+            throw new BusinessValidationException($"Ảnh \"{file.FileName}\" vượt quá giới hạn 5 MB.");
+        }
+
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BusinessValidationException("Chỉ chấp nhận file hình ảnh (image/*).");
+        }
+
+        var user = await users.FindByIdAsync(userId, ct)
+            ?? throw new InvalidCredentialsException("Người dùng không tồn tại.");
+
+        await using var stream = file.OpenReadStream();
+        var uploadResult = await imageStorage.UploadAsync(stream, file.FileName, file.ContentType, ct);
+
+        var oldAvatarUrl = user.AvatarUrl;
+        user.AvatarUrl = uploadResult.Url;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await users.SaveAsync(ct);
+
+        // Best-effort cleanup ảnh avatar cũ trên Cloudinary
+        if (!string.IsNullOrEmpty(oldAvatarUrl))
+        {
+            try { await imageStorage.DestroyAsync(oldAvatarUrl, ct); } catch { }
+        }
 
         return ToResponse(user);
     }
@@ -138,7 +181,10 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
         var updatedUser = await users.FindByIdAsync(userId, ct)
             ?? throw new InvalidCredentialsException("Người dùng không tồn tại.");
 
-        return ToResponse(updatedUser);
+        var roleNames = GetRoleNames(updatedUser);
+        var response = ToResponse(updatedUser);
+        response.Token = tokenService.CreateToken(updatedUser.Id, roleNames);
+        return response;
     }
 
     public async Task ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct = default)
@@ -190,6 +236,7 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
             Email = user.Email,
             Name = user.Name,
             PhoneNumber = user.PhoneNumber,
+            AvatarUrl = user.AvatarUrl,
             Role = GetPrimaryRole(roleNames),
             Roles = roleNames,
             Address = user.Address,
@@ -224,6 +271,18 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService) :
                             ProvinceName = wd.ProvinceName,
                             DistrictCode = wd.DistrictCode,
                             DistrictName = wd.DistrictName,
+                        })
+                        .ToList(),
+                    GalleryImages = user.WorkerProfile.GalleryImages
+                        .OrderByDescending(gi => gi.CreatedAt)
+                        .Select(gi => new WorkerImageResponse
+                        {
+                            Id = gi.Id,
+                            ImageUrl = gi.ImageUrl,
+                            Title = gi.Title,
+                            Tag = gi.Tag,
+                            Location = gi.Location,
+                            CreatedAt = gi.CreatedAt,
                         })
                         .ToList(),
                 },

@@ -54,6 +54,21 @@ public class AuthController(IAuthService auth) : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("avatar")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<UserResponse>> UpdateAvatar(IFormFile file, CancellationToken ct)
+    {
+        var id = User.FindFirst("id")?.Value;
+        if (id is null)
+        {
+            return Unauthorized(new { error = "Token không hợp lệ." });
+        }
+
+        var result = await auth.UpdateAvatarAsync(id, file, ct);
+        return Ok(result);
+    }
+
     [HttpPut("worker-profile")]
     [Authorize]
     public async Task<ActionResult<UserResponse>> UpdateWorkerProfile(UpdateWorkerProfileRequest request, CancellationToken ct)

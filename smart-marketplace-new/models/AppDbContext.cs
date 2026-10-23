@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<WorkerDistrict> WorkerDistricts => Set<WorkerDistrict>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<TaskImage> TaskImages => Set<TaskImage>();
+    public DbSet<WorkerImage> WorkerImages => Set<WorkerImage>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -141,6 +142,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         // ---- task_images ----
         // (quan hệ + FK đã khai báo trong TaskItem)
+
+        // ---- worker_images ----
+        modelBuilder.Entity<WorkerImage>(e =>
+        {
+            e.HasOne(wi => wi.WorkerProfile)
+                .WithMany(wp => wp.GalleryImages)
+                .HasForeignKey(wi => wi.WorkerProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // ---- invoices ----
         modelBuilder.Entity<Invoice>(e =>

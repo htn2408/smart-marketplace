@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import TaskerLayout from '../../components/layout/TaskerLayout'
 import Icon from '../../components/common/Icon'
 import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
+import { ROUTES } from '../../routes/paths'
 import ChatWorkspace from '../../components/messages/ChatWorkspace'
 import { useAuth } from '../../hooks/useAuth'
 import { useChatWebSocket } from '../../hooks/useChatWebSocket'
@@ -29,6 +30,7 @@ import {
  */
 export default function TaskersDashboard({ onNavigate }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const { user, token, updateUser } = useAuth()
 
   const [userSelectedTab, setUserSelectedTab] = useState(null)
@@ -349,14 +351,26 @@ export default function TaskersDashboard({ onNavigate }) {
         <>
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center justify-between gap-3">
+            <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Icon name="error" size={18} />
+                <Icon name="error" size={18} className="shrink-0" />
                 <span>{errorMessage}</span>
               </div>
-              <Button variant="outline" size="sm" onClick={handleRefresh} className="rounded-xl text-xs">
-                Thử lại
-              </Button>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                {errorMessage.includes('quyền') && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => (onNavigate ? onNavigate('become-tasker') : navigate(ROUTES.TASKER_REGISTER))}
+                    className="rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    Đăng ký Thợ ngay
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={handleRefresh} className="rounded-xl text-xs cursor-pointer">
+                  Thử lại
+                </Button>
+              </div>
             </div>
           )}
 

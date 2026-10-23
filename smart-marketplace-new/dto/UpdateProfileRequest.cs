@@ -15,6 +15,9 @@ public class UpdateProfileRequest
     public decimal? Latitude { get; set; }
 
     public decimal? Longitude { get; set; }
+
+    [MaxLength(500)]
+    public string? AvatarUrl { get; set; }
 }
 
 public class ChangePasswordRequest

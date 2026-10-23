@@ -18,6 +18,7 @@ function App() {
     if (p.startsWith('/services')) return 'services'
     if (p.startsWith('/client/filter-tasker') || p.startsWith('/search')) return 'search'
     if (p.startsWith('/client/profile') || p.startsWith('/user-profile')) return 'user-profile'
+    if (p.startsWith('/tasker/register') || p.startsWith('/become-tasker')) return 'tasker-register'
     if (p.startsWith('/tasker/dashboard') || p.startsWith('/tasker-dashboard')) return 'tasker-dashboard'
     if (p.startsWith('/tasker/requests') || p.startsWith('/tasker-requests')) return 'tasker-requests'
     if (p.startsWith('/tasker/profile') || p.startsWith('/tasker')) return 'profile'

@@ -20,6 +20,7 @@ export const ROUTES = {
   TASKER_DASHBOARD: '/tasker/dashboard',
   TASKER_REQUESTS: '/tasker/requests',
   TASKER_PROFILE: '/tasker/profile',
+  TASKER_REGISTER: '/tasker/register',
   TASKER_PUBLIC_PROFILE: '/tasker/:id',
   TASKER_MESSAGES: '/messages',
 
@@ -30,4 +31,5 @@ export const ROUTES = {
   FILTER_TASKER: '/client/filter-tasker',
   USER_PROFILE: '/client/profile',
   PROFILE: '/tasker/profile',
+  BECOME_TASKER: '/tasker/register',
 }

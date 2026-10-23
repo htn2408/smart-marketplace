@@ -5,6 +5,7 @@ import Icon from '../common/Icon'
 import Button from '../common/Button'
 import { ROUTES } from '../../routes/paths'
 import { useAuth } from '../../hooks/useAuth'
+import { formatCurrency } from '../../utils/formatters'
 
 /**
  * Standardized Global Header for TaskMate
@@ -153,7 +154,7 @@ export default function Header({ activePath, onNavigate }) {
                   handleLinkClick(
                     e,
                     isTasker ? 'tasker-dashboard' : 'become-tasker',
-                    isTasker ? ROUTES.TASKER_DASHBOARD : ROUTES.SEARCH
+                    isTasker ? ROUTES.TASKER_DASHBOARD : ROUTES.TASKER_REGISTER
                   )
                 }
               >
@@ -263,27 +264,25 @@ export default function Header({ activePath, onNavigate }) {
             </div>
           )}
 
-          {/* Quick Messages icon */}
-          <Link
-            to={ROUTES.MESSAGES}
-            aria-label="Tin nhắn"
-            className={`relative p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-full transition-colors ${
-              currentActive === 'messages' ? 'text-primary bg-primary/10' : ''
-            }`}
-            title="Tin nhắn"
-          >
-            <Icon name="chat" size={22} className="block" />
-          </Link>
-
-          {/* Notifications button */}
-          <button
-            aria-label="Thông báo"
-            className="relative p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-full transition-colors"
-            type="button"
-          >
-            <Icon name="notifications" size={22} className="block" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-secondary-container" />
-          </button>
+          {/* Số dư tài khoản ví (thay thế 2 icon bên phải) */}
+          {isAuthenticated && (
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs hover:border-primary/40 transition-all select-none"
+              title={`Số dư khả dụng: ${formatCurrency(user?.balance ?? 0)}`}
+            >
+              <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                <Icon name="account_balance_wallet" size={15} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] uppercase font-bold text-on-surface-variant leading-none tracking-wider">
+                  Số dư
+                </span>
+                <span className="font-label-md text-xs sm:text-sm font-extrabold text-primary leading-tight">
+                  {formatCurrency(user?.balance ?? 0)}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
