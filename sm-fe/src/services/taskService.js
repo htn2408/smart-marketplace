@@ -1,7 +1,7 @@
 /**
  * Task Service for API communication with Backend
  */
-import { getToken } from './authService'
+import { getToken, handleUnauthorized } from './authService'
 
 // Port 5236 is the default ASP.NET Core URL configured in smart-marketplace-new launchSettings.json
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5236/api'
@@ -12,6 +12,16 @@ function authHeaders(extra = {}) {
   return {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extra,
+  }
+}
+
+// Kiểm tra mã 401 Unauthorized và tự động out ra trang đăng nhập
+function checkUnauthorized(response) {
+  if (response?.status === 401) {
+    handleUnauthorized()
+    const err = new Error('Phiên đăng nhập đã hết hạn hoặc không có token. Vui lòng đăng nhập lại.')
+    err.status = 401
+    throw err
   }
 }
 
@@ -185,6 +195,14 @@ export async function createTaskApi(taskForm, images = [], { signal } = {}) {
     formData.append('images', image)
   }
 
+  const token = getToken()
+  if (!token) {
+    handleUnauthorized()
+    const err = new Error('Không có token. Vui lòng đăng nhập.')
+    err.status = 401
+    throw err
+  }
+
   // KHÔNG set Content-Type thủ công — trình duyệt tự thêm boundary của multipart
   const response = await fetch(`${API_BASE_URL}/tasks`, {
     method: 'POST',
@@ -192,6 +210,8 @@ export async function createTaskApi(taskForm, images = [], { signal } = {}) {
     headers: authHeaders({ Accept: 'application/json' }),
     body: formData,
   })
+
+  checkUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {
@@ -220,6 +240,8 @@ export async function fetchTaskerTasks(status, { signal } = {}) {
     headers: authHeaders({ Accept: 'application/json' }),
   })
 
+  checkUnauthorized(response)
+
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể tải danh sách yêu cầu công việc.')
@@ -238,6 +260,7 @@ export async function acceptTaskApi(taskId, { signal } = {}) {
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể nhận việc.')
@@ -256,6 +279,7 @@ export async function declineTaskApi(taskId, { signal } = {}) {
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể từ chối công việc.')
@@ -274,6 +298,7 @@ export async function startTaskApi(taskId, { signal } = {}) {
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể bắt đầu công việc.')
@@ -292,6 +317,7 @@ export async function completeTaskApi(taskId, { signal } = {}) {
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể báo hoàn thành công việc.')
@@ -310,6 +336,7 @@ export async function approveTaskApi(taskId, { signal } = {}) {
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể xác nhận nghiệm thu.')
@@ -329,6 +356,7 @@ export async function assignWorkerApi(taskId, workerProfileId, { signal } = {}) 
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể gán công việc cho thợ.')
@@ -348,6 +376,7 @@ export async function fetchClientTasks(status, { signal } = {}) {
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {
@@ -367,6 +396,7 @@ export async function cancelTaskApi(taskId, { signal } = {}) {
     signal,
     headers: authHeaders({ Accept: 'application/json' }),
   })
+  checkUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {

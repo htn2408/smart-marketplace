@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import Icon from '../../components/common/Icon'
@@ -43,6 +43,7 @@ function getCategoryIcon(categoryName) {
  */
 export default function TaskManager({ onNavigate }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [data, setData] = useState({
     stats: {
       pendingCount: 0,
@@ -66,13 +67,18 @@ export default function TaskManager({ onNavigate }) {
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [activeModal, setActiveModal] = useState(null) // { type: 'escrow' | 'cancel' | 'report' | 'detail', task }
   const [previewImage, setPreviewImage] = useState(null)
-  const [toastMessage, setToastMessage] = useState('')
+    const [toastMessage, setToastMessage] = useState(() => location.state?.alertMessage || '')
 
   // Hiển thị toast thông báo nhanh
-  const showToast = (msg) => {
+  const showToast = useCallback((msg) => {
     setToastMessage(msg)
-    setTimeout(() => setToastMessage(''), 3500)
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!toastMessage) return
+    const timer = setTimeout(() => setToastMessage(''), 3500)
+    return () => clearTimeout(timer)
+  }, [toastMessage])
 
   // Làm mới dữ liệu từ server
   const handleRefresh = useCallback(() => {
@@ -123,7 +129,7 @@ export default function TaskManager({ onNavigate }) {
       }
     })
     return unsubscribe
-  }, [subscribeTaskEvent, handleRefresh])
+  }, [subscribeTaskEvent, handleRefresh, showToast])
 
   // Tự động làm mới định kỳ ngầm khi có công việc đang chờ thợ phản hồi hoặc đang thi công
   useEffect(() => {
@@ -673,27 +679,48 @@ export default function TaskManager({ onNavigate }) {
                                         variant="tonal"
                                         size="sm"
                                         icon="chat"
-                                        onClick={() =>
-                                          onNavigate?.('messages', {
-                                            targetUserId: task.worker.userId || task.worker.id,
+                                        onClick={() => {
+                                          const targetUserId = task.worker.userId || task.worker.id
+                                          const state = {
+                                            targetUserId,
                                             targetName: task.worker.name,
-                                          })
-                                        }
+                                          }
+                                          if (onNavigate) {
+                                            onNavigate('messages', state)
+                                          } else {
+                                            navigate(ROUTES.MESSAGES, { state })
+                                          }
+                                        }}
                                         className="text-xs"
                                         title="Nhắn tin với thợ"
                                       >
                                         Nhắn tin
                                       </Button>
                                     )}
-                                    {task.worker.phoneNumber && (
+                                    {(task.worker.userId || task.worker.id) && (
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        icon="phone"
-                                        onClick={() => window.open(`tel:${task.worker.phoneNumber}`, '_self')}
+                                        icon="person"
+                                        onClick={() => {
+                                          const state = { isOwnerView: false, tasker: task.worker }
+                                          if (onNavigate) {
+                                            if (task.worker.userId) {
+                                              onNavigate(`/tasker/${task.worker.userId}`, state)
+                                            } else {
+                                              onNavigate('tasker-profile', state)
+                                            }
+                                          } else {
+                                            const route = task.worker.userId
+                                              ? `/tasker/${task.worker.userId}`
+                                              : ROUTES.TASKER_PROFILE
+                                            navigate(route, { state })
+                                          }
+                                        }}
                                         className="text-xs"
+                                        title="Xem hồ sơ thợ & đặt lại công việc"
                                       >
-                                        Gọi thợ
+                                        Xem trang cá nhân
                                       </Button>
                                     )}
                                   </div>

@@ -2,9 +2,18 @@
  * Worker Service — giao tiếp với Backend GET /api/workers/{userId}
  * Hồ sơ public của Tasker (không chứa PII: email/phone đã bị loại khỏi response)
  */
-import { getToken } from './authService'
+import { getToken, handleUnauthorized } from './authService'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5236/api'
+
+function checkUnauthorized(response) {
+  if (response?.status === 401) {
+    handleUnauthorized()
+    const err = new Error('Phiên đăng nhập đã hết hạn hoặc không có token. Vui lòng đăng nhập lại.')
+    err.status = 401
+    throw err
+  }
+}
 
 /**
  * Lấy hồ sơ public của một Tasker theo userId của họ
@@ -41,7 +50,12 @@ export async function fetchWorkerProfileById(userId, { signal } = {}) {
  */
 export async function addWorkerGalleryImageApi(payload) {
   const token = getToken()
-  if (!token) throw new Error('Vui lòng đăng nhập.')
+  if (!token) {
+    handleUnauthorized()
+    const err = new Error('Vui lòng đăng nhập.')
+    err.status = 401
+    throw err
+  }
 
   let body
   const headers = {
@@ -61,6 +75,8 @@ export async function addWorkerGalleryImageApi(payload) {
     body,
   })
 
+  checkUnauthorized(response)
+
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || data.title || 'Không thể tải ảnh công trình lên.')
@@ -75,7 +91,12 @@ export async function addWorkerGalleryImageApi(payload) {
  */
 export async function deleteWorkerGalleryImageApi(imageId) {
   const token = getToken()
-  if (!token) throw new Error('Vui lòng đăng nhập.')
+  if (!token) {
+    handleUnauthorized()
+    const err = new Error('Vui lòng đăng nhập.')
+    err.status = 401
+    throw err
+  }
 
   const response = await fetch(`${API_BASE_URL}/workers/gallery/${encodeURIComponent(imageId)}`, {
     method: 'DELETE',
@@ -83,6 +104,8 @@ export async function deleteWorkerGalleryImageApi(imageId) {
       Authorization: `Bearer ${token}`,
     },
   })
+
+  checkUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {

@@ -112,7 +112,7 @@ public class TaskRepository(AppDbContext db) : ITaskRepository
     public Task<WorkerProfile?> FindWorkerProfileByIdAsync(string workerProfileId, CancellationToken ct = default) =>
         db.WorkerProfiles
             .Include(wp => wp.User)
-            .FirstOrDefaultAsync(wp => wp.Id == workerProfileId, ct);
+            .FirstOrDefaultAsync(wp => wp.Id == workerProfileId || wp.UserId == workerProfileId, ct);
 
     public async Task<bool> HasOverlappingTaskAsync(
         string workerProfileId,

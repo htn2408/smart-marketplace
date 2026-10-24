@@ -19,7 +19,7 @@ export default function Button({
   ...props
 }) {
   const baseStyles =
-    'inline-flex items-center justify-center font-bold transition-all select-none rounded-lg active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none'
+    'inline-flex items-center justify-center font-bold transition-all select-none rounded-lg active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap'
 
   const sizeStyles = {
     sm: 'px-3 py-1.5 text-label-sm gap-1.5 rounded-md',

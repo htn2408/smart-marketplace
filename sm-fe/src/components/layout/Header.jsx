@@ -98,13 +98,13 @@ export default function Header({ activePath, onNavigate }) {
 
   return (
     <header className="fixed top-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-      <div className="h-20 max-w-[1240px] mx-auto px-6 flex items-center justify-between gap-6">
+      <div className="h-20 max-w-[1240px] mx-auto px-6 flex items-center justify-between gap-4">
         {/* Logo & Navigation */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6 xl:gap-8 min-w-0">
           <Link
             to={ROUTES.HOME}
             onClick={(e) => handleLinkClick(e, 'home', ROUTES.HOME)}
-            className="flex items-center gap-3 group"
+            className="flex items-center gap-3 group shrink-0"
           >
             <img
               alt="TaskMate Brand Logo"
@@ -114,7 +114,7 @@ export default function Header({ activePath, onNavigate }) {
             <span className="sr-only">TaskMate</span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-5 xl:gap-6 shrink-0">
             {navLinks.map((link) => {
               const isActive = currentActive === link.path
               return (
@@ -122,7 +122,7 @@ export default function Header({ activePath, onNavigate }) {
                   key={link.path}
                   to={link.to}
                   onClick={(e) => handleLinkClick(e, link.path, link.to)}
-                  className={`font-label-md text-label-md transition-colors ${
+                  className={`font-label-md text-label-md whitespace-nowrap transition-colors ${
                     isActive
                       ? 'text-primary font-bold'
                       : 'text-on-surface-variant hover:text-on-surface'
@@ -136,7 +136,7 @@ export default function Header({ activePath, onNavigate }) {
         </div>
 
         {/* Right Action Controls */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-3.5 shrink-0">
           {(() => {
             const isTasker =
               user?.roles?.includes('TASKER') ||
@@ -149,7 +149,7 @@ export default function Header({ activePath, onNavigate }) {
                 variant="outline"
                 size="sm"
                 icon={isTasker ? 'swap_horiz' : undefined}
-                className="hidden sm:inline-flex rounded-full text-primary"
+                className="hidden sm:inline-flex rounded-full text-primary shrink-0 whitespace-nowrap"
                 onClick={(e) =>
                   handleLinkClick(
                     e,
@@ -163,38 +163,60 @@ export default function Header({ activePath, onNavigate }) {
             )
           })()}
 
-          {/* Authentication State Display */}
+          {/* Số dư tài khoản ví (hiển thị trước thông tin tài khoản cá nhân) */}
+          {isAuthenticated && (
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs hover:border-primary/40 transition-all select-none shrink-0"
+              title={`Số dư khả dụng: ${formatCurrency(user?.balance ?? 0)}`}
+            >
+              <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                <Icon name="account_balance_wallet" size={15} />
+              </div>
+              <div className="flex flex-col text-left whitespace-nowrap">
+                <span className="text-[10px] uppercase font-bold text-on-surface-variant leading-none tracking-wider">
+                  Số dư
+                </span>
+                <span className="font-label-md text-xs sm:text-sm font-extrabold text-primary leading-tight">
+                  {formatCurrency(user?.balance ?? 0)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Authentication State Display: User Profile & Dropdown (Luôn nằm ngoài cùng bên phải) */}
           {!isAuthenticated ? (
             <Link
               to={ROUTES.LOGIN}
-              className="font-label-md text-label-md font-semibold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-lg hover:bg-primary-fixed/20"
+              className="font-label-md text-label-md font-semibold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-lg hover:bg-primary-fixed/20 shrink-0 whitespace-nowrap"
             >
               Đăng nhập
             </Link>
           ) : (
-            <div className="relative flex items-center gap-3" ref={userMenuRef}>
+            <div className="relative flex items-center gap-2.5 shrink-0" ref={userMenuRef}>
               {/* "Xin chào {name}" */}
-              <span className="hidden md:inline-block font-label-md text-sm font-bold text-on-surface">
+              <span className="hidden md:inline-block font-label-md text-sm font-bold text-on-surface whitespace-nowrap">
                 Xin chào{' '}
-                <span className="text-primary">{user?.name || 'bạn'}</span>
+                <span className="text-primary truncate max-w-[130px] inline-block align-bottom">
+                  {user?.name || 'bạn'}
+                </span>
               </span>
 
               {/* User Avatar with Dropdown Toggle */}
               <button
                 type="button"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-1.5 p-1 rounded-full hover:bg-surface-container-high transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 p-1 rounded-full hover:bg-surface-container-high transition-colors cursor-pointer shrink-0"
                 title="Hồ sơ tài khoản"
               >
                 <img
                   alt={user?.name || 'User Profile'}
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/20"
-                  src={DEFAULT_AVATAR}
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/20 shrink-0"
+                  src={user?.avatar || DEFAULT_AVATAR}
                 />
                 <Icon
                   name="expand_more"
                   size={18}
-                  className={`text-on-surface-variant transition-transform ${
+                  className={`text-on-surface-variant transition-transform shrink-0 ${
                     isUserMenuOpen ? 'rotate-180' : ''
                   }`}
                 />
@@ -261,26 +283,6 @@ export default function Header({ activePath, onNavigate }) {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Số dư tài khoản ví (thay thế 2 icon bên phải) */}
-          {isAuthenticated && (
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs hover:border-primary/40 transition-all select-none"
-              title={`Số dư khả dụng: ${formatCurrency(user?.balance ?? 0)}`}
-            >
-              <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
-                <Icon name="account_balance_wallet" size={15} />
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="text-[10px] uppercase font-bold text-on-surface-variant leading-none tracking-wider">
-                  Số dư
-                </span>
-                <span className="font-label-md text-xs sm:text-sm font-extrabold text-primary leading-tight">
-                  {formatCurrency(user?.balance ?? 0)}
-                </span>
-              </div>
             </div>
           )}
         </div>

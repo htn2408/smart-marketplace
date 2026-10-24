@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { TASKMATE_LOGO_URL } from '../../assets/constants'
 import Icon from '../../components/common/Icon'
@@ -17,7 +17,14 @@ export default function Login() {
   const { login, register, isAuthenticated } = useAuth()
 
   // Redirect destination after successful auth
-  const from = location.state?.from?.pathname || ROUTES.HOME
+  const searchParams = new URLSearchParams(location.search)
+  const fromQuery = searchParams.get('from')
+  const from =
+    (typeof location.state?.from === 'string'
+      ? location.state.from
+      : location.state?.from?.pathname) ||
+    fromQuery ||
+    ROUTES.HOME
 
   // Mode: 'login' | 'register'
   const [mode, setMode] = useState('login')

@@ -126,4 +126,21 @@ export function formatChatTimestamp(dateInput) {
   return `${day}/${month}`
 }
 
+/**
+ * Tính toán thời lượng chênh lệch giữa giờ bắt đầu và giờ kết thúc (HH:mm)
+ * @param {string} start '08:30'
+ * @param {string} end '10:30'
+ * @returns {{ hours: number, minutes: number, totalMinutes: number }}
+ */
+export function calculateDuration(start, end) {
+  if (!start || !end) return { hours: 0, minutes: 0, totalMinutes: 0 }
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  let total = (eh * 60 + em) - (sh * 60 + sm)
+  if (total < 0) total += 24 * 60 // xử lý trường hợp qua nửa đêm
+  const hours = Math.floor(total / 60)
+  const minutes = total % 60
+  return { hours, minutes, totalMinutes: total }
+}
+
 

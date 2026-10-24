@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import Icon from '../../components/common/Icon'
@@ -7,19 +7,28 @@ import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
 import TaskSearchInput from '../../components/common/TaskSearchInput'
 import AddressSelector from '../../components/common/AddressSelector'
+import TaskBudgetSelector from '../../components/common/TaskBudgetSelector'
+import TaskScheduleSelector from '../../components/common/TaskScheduleSelector'
+import { calculateDuration } from '../../utils/formatters'
 import { parseVietnameseAddress } from '../../services/addressService'
-import { createTaskApi } from '../../services/taskService'
+import { createTaskApi, assignWorkerApi } from '../../services/taskService'
+import { DEFAULT_AVATAR } from '../../assets/constants'
 import { MAX_TASK_IMAGES, MAX_IMAGE_BYTES } from '../../constants/uploadLimits'
 import { useAuth } from '../../hooks/useAuth'
 import { validateTaskDetailForm } from '../../utils/validation'
+import { ROUTES } from '../../routes/paths'
 
 /**
  * TaskMate TaskDetail (Đăng việc & Đề xuất thù lao) - Standardized JSX Component
  */
 export default function TaskDetail({ onNavigate }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const preselected = location.state?.selectedTask
   const taskDraft = location.state?.taskDraft
+  const [targetTasker, setTargetTasker] = useState(
+    () => location.state?.targetTasker || null
+  )
 
   // Validation errors state
   const [errors, setErrors] = useState({})
@@ -43,7 +52,12 @@ export default function TaskDetail({ onNavigate }) {
     taskDraft?.title || preselected?.title || ''
   )
   // Skill thực tế trong DB — chỉ có khi người dùng chọn từ gợi ý (bắt buộc cho matching)
-  const [requiredSkillId, setRequiredSkillId] = useState(taskDraft?.skillId || '')
+  const [requiredSkillId, setRequiredSkillId] = useState(
+    taskDraft?.skillId ||
+      location.state?.targetTasker?.skills?.[0]?.id ||
+      location.state?.targetTasker?.skills?.[0]?.skillId ||
+      ''
+  )
 
   // State for Section 2: Description (empty by default)
   const [description, setDescription] = useState(taskDraft?.description || '')
@@ -123,7 +137,7 @@ export default function TaskDetail({ onNavigate }) {
   // ==============================================================
   // State for Section 4: Address (Managed by shared <AddressSelector />)
   // ==============================================================
-  const { user } = useAuth()
+  const { user, token, isAuthenticated, logout } = useAuth()
 
   const initialAddressString =
     taskDraft?.fullAddress ||
@@ -227,30 +241,21 @@ export default function TaskDetail({ onNavigate }) {
     },
   ]
 
-  // Calculate duration between startTime and endTime
-  const calculateDuration = (start, end) => {
-    if (!start || !end) return { hours: 0, minutes: 0, totalMinutes: 0 }
-    const [sh, sm] = start.split(':').map(Number)
-    const [eh, em] = end.split(':').map(Number)
-    let total = (eh * 60 + em) - (sh * 60 + sm)
-    if (total < 0) total += 24 * 60 // cross-midnight fallback
-    const hours = Math.floor(total / 60)
-    const minutes = total % 60
-    return { hours, minutes, totalMinutes: total }
-  }
-
   const durationInfo = calculateDuration(startTime, endTime)
-
-  const applyDurationPreset = (hoursToAdd) => {
-    const [sh, sm] = startTime.split(':').map(Number)
-    const newEndHour = (sh + hoursToAdd) % 24
-    const formatted = `${String(newEndHour).padStart(2, '0')}:${String(sm).padStart(2, '0')}`
-    setEndTime(formatted)
-    clearFieldError('scheduleTime')
-  }
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
+
+    // Nếu chưa đăng nhập hoặc token không tồn tại -> out ra trang đăng nhập luôn
+    if (!token || !isAuthenticated) {
+      logout?.()
+      if (onNavigate) {
+        onNavigate('login', { from: location })
+      } else {
+        navigate(ROUTES.LOGIN, { state: { from: location } })
+      }
+      return
+    }
 
     const fallbackParsed = parseVietnameseAddress(specificAddress)
     const resolvedProvince = province || fallbackParsed.province
@@ -398,13 +403,47 @@ export default function TaskDetail({ onNavigate }) {
         taskImages: taskImages, // Giữ lại mảng ảnh và file thật cho các bước tiếp theo/chỉnh sửa
       }
 
+      if (targetTasker) {
+        try {
+          await assignWorkerApi(created.id, targetTasker.id || targetTasker.userId)
+        } catch (assignErr) {
+          console.warn('Assign worker directly failed:', assignErr)
+        }
+
+        const successMsg = `Đã gửi đề xuất công việc tới thợ ${targetTasker.name} thành công!`
+        if (onNavigate) {
+          onNavigate('my-tasks', { alertMessage: successMsg })
+        } else {
+          navigate(ROUTES.CLIENT_TASKS, { state: { alertMessage: successMsg } })
+        }
+        return
+      }
+
       if (onNavigate) {
         onNavigate('filter-tasker', {
           fromTaskDetail: true,
           taskData,
         })
+      } else {
+        navigate(`/tasks/${created.id}/filter-tasker`, {
+          state: { fromTaskDetail: true, taskData },
+        })
       }
     } catch (err) {
+      if (
+        err.status === 401 ||
+        err.message?.includes('token') ||
+        err.message?.includes('đăng nhập') ||
+        err.message?.includes('Unauthorized')
+      ) {
+        logout?.()
+        if (onNavigate) {
+          onNavigate('login', { from: location })
+        } else {
+          navigate(ROUTES.LOGIN, { state: { from: location } })
+        }
+        return
+      }
       setSubmitError(err.message || 'Không thể tạo công việc. Vui lòng thử lại.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
@@ -470,6 +509,42 @@ export default function TaskDetail({ onNavigate }) {
         <div className="w-full bg-surface py-8">
           <div className="max-w-[1240px] mx-auto px-6">
             <form onSubmit={handleSubmit} noValidate className="max-w-4xl mx-auto space-y-6">
+              {/* Direct Offer Banner if targetTasker is present */}
+              {targetTasker && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-primary-fixed/25 border-2 border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
+                  <div className="flex items-center gap-3.5">
+                    <img
+                      src={targetTasker.avatar || DEFAULT_AVATAR}
+                      alt={targetTasker.name}
+                      className="w-13 h-13 rounded-full object-cover border-2 border-primary shadow-sm shrink-0"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <Badge variant="primary" icon="bolt" size="xs">
+                          Chỉ định trực tiếp
+                        </Badge>
+                        <span className="font-caption text-xs text-on-surface-variant font-medium">
+                          (Direct Offer)
+                        </span>
+                      </div>
+                      <h3 className="font-headline-sm text-base sm:text-lg font-bold text-on-surface">
+                        Gửi yêu cầu trực tiếp cho thợ: <span className="text-primary">{targetTasker.name}</span>
+                      </h3>
+                      <p className="font-caption text-xs text-on-surface-variant mt-0.5">
+                        Hoàn tất địa chỉ và hình ảnh bên dưới. Yêu cầu sẽ được chuyển thẳng tới {targetTasker.name}.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTargetTasker(null)}
+                    className="text-xs font-semibold text-on-surface-variant hover:text-error transition-colors underline self-start sm:self-center cursor-pointer shrink-0"
+                  >
+                    Đổi sang tìm thợ tự do
+                  </button>
+                </div>
+              )}
+
               {/* Section 1: Chuẩn hóa công việc (Đã bỏ danh sách gợi ý vì user đã chọn từ trang home) */}
               <div
                 id="step-1"
@@ -700,324 +775,42 @@ export default function TaskDetail({ onNavigate }) {
               </div>
 
               {/* Section 5: Thù lao đề xuất */}
-              <div
-                id="step-5"
-                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
-                  errors.amount
-                    ? 'border-error/60 ring-1 ring-error/20'
-                    : 'border-surface-variant/30'
-                }`}
-              >
-                <div className="mb-5">
-                  <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
-                    Bước 5: Thù lao đề xuất
-                  </span>
-                  <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                    Đề xuất mức giá bạn mong muốn
-                  </h2>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Tasker sẽ dựa vào mức giá này để nhận việc hoặc gửi báo giá tối ưu.
-                  </p>
-                </div>
-
-                {/* Amount display card */}
-                <div className="bg-surface-container-low rounded-2xl p-5 sm:p-6 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <span className="font-caption text-caption uppercase tracking-wider text-on-surface-variant font-semibold">
-                      Mức giá bạn chi trả
-                    </span>
-                    <div className="flex items-baseline gap-2 mt-0.5">
-                      <span className="font-display-hero text-display-hero font-extrabold text-primary tracking-tight">
-                        {amount.toLocaleString('vi-VN')}
-                      </span>
-                      <span className="font-headline-md text-headline-md text-primary font-bold">
-                        VNĐ
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Horizontal roller / slider */}
-                <div className="px-2 pt-2 pb-2">
-                  <div className="relative py-2">
-                    <input
-                      type="range"
-                      min={100000}
-                      max={2000000}
-                      step={20000}
-                      value={amount}
-                      onChange={(e) => {
-                        setAmount(Number(e.target.value))
-                        clearFieldError('amount')
-                      }}
-                      className="w-full h-3 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary"
-                    />
-                    <div className="flex justify-between items-center text-on-surface-variant font-caption text-xs mt-2 font-medium px-1">
-                      <span>100.000 đ</span>
-                      <span>500.000 đ</span>
-                      <span>1.000.000 đ</span>
-                      <span>1.500.000 đ</span>
-                      <span>2.000.000 đ</span>
-                    </div>
-                  </div>
-                  {errors.amount && (
-                    <p className="mt-2 flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
-                      <Icon name="error" size={15} />
-                      <span>{errors.amount}</span>
-                    </p>
-                  )}
-
-                  {/* Note if urgent */}
-                  <div className="mt-4 p-3.5 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-2.5 text-xs text-on-surface">
-                    <Icon name="info" size={18} className="text-primary shrink-0" />
-                    <span>
-                      <strong className="text-primary font-semibold">Lưu ý:</strong> Nên để giá cao hơn nếu bạn cần tìm thợ tuyển gấp.
-                    </span>
-                  </div>
-                </div>
-
-                <label className="flex items-start gap-3 mt-4 p-3.5 rounded-lg bg-surface-container-low cursor-pointer hover:bg-surface-container transition-colors select-none">
-                  <input
-                    type="checkbox"
-                    checked={allowNegotiate}
-                    onChange={(e) => setAllowNegotiate(e.target.checked)}
-                    className="w-4 h-4 mt-1 accent-primary rounded cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-label-md text-label-md font-semibold text-on-surface">
-                      Cho phép Tasker đề xuất thương lượng thù lao
-                    </span>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">
-                      Tasker có thể gửi báo giá kèm lý do cụ thể nếu cần thêm đồ nghề đặc thù hoặc phụ kiện bổ sung.
-                    </p>
-                  </div>
-                </label>
-              </div>
+              <TaskBudgetSelector
+                amount={amount}
+                onChangeAmount={(val) => {
+                  setAmount(val)
+                  clearFieldError('amount')
+                }}
+                allowNegotiate={allowNegotiate}
+                onChangeAllowNegotiate={setAllowNegotiate}
+                error={errors.amount}
+              />
 
               {/* Section 6: Lịch hẹn & Thời lượng (Real-time Date & Start-End Duration) */}
-              <div
-                id="step-6"
-                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
-                  errors.customDate || errors.startTime || errors.scheduleTime
-                    ? 'border-error/60 ring-1 ring-error/20'
-                    : 'border-surface-variant/30'
-                }`}
-              >
-                <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
-                  Bước 6: Lịch hẹn &amp; Thời lượng
-                </span>
-                <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-4">
-                  Khi nào bạn muốn bắt đầu?
-                </h2>
-
-                {/* 1. Date options */}
-                <div className="mb-6">
-                  <label className="block font-label-sm text-label-sm font-semibold text-on-surface mb-2">
-                    Chọn ngày làm việc:
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    {dateOptions.map((opt) => {
-                      const isActive = selectedDate === opt.id
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedDate(opt.id)
-                            clearFieldError('customDate', 'startTime')
-                          }}
-                          className={`flex items-center gap-3 p-3.5 rounded-xl text-left transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-primary-fixed/30 ring-2 ring-primary shadow-sm'
-                              : 'bg-surface-container-low hover:bg-surface-container'
-                          }`}
-                        >
-                          <Icon
-                            name={opt.icon}
-                            size={24}
-                            className={isActive ? 'text-primary' : opt.iconColor}
-                          />
-                          <div>
-                            <p className={`font-label-md text-label-md font-bold ${isActive ? 'text-primary' : 'text-on-surface'}`}>
-                              {opt.title}
-                            </p>
-                            <p className="font-caption text-caption text-on-surface-variant">
-                              {opt.sub}
-                            </p>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* Dynamic Date Picker when "Chọn ngày khác" is chosen */}
-                  {selectedDate === 'other' && (
-                    <div className="mt-3 p-4 rounded-xl bg-surface-container-low border border-primary/20 flex items-center gap-3 animate-in fade-in duration-200">
-                      <div className="w-10 h-10 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm flex-shrink-0">
-                        <Icon name="calendar_today" size={20} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <label
-                          htmlFor="custom-date-picker"
-                          className="block text-xs font-bold text-primary uppercase tracking-wider mb-1"
-                        >
-                          Chọn ngày làm việc cụ thể:
-                        </label>
-                        <input
-                          id="custom-date-picker"
-                          type="date"
-                          min={todayIso}
-                          value={customDate}
-                          onChange={(e) => {
-                            setCustomDate(e.target.value)
-                            clearFieldError('customDate', 'startTime')
-                          }}
-                          className={`bg-surface-container-lowest px-3 py-2 rounded-lg font-label-md text-sm text-on-surface outline-none border w-full max-w-xs cursor-pointer shadow-sm ${
-                            errors.customDate
-                              ? 'border-error ring-1 ring-error/20 focus:border-error'
-                              : 'border-surface-variant/40 focus:border-primary'
-                          }`}
-                        />
-                        {errors.customDate && (
-                          <p className="mt-1.5 flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
-                            <Icon name="error" size={15} />
-                            <span>{errors.customDate}</span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. Duration: Start Time - End Time */}
-                <div className="mb-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <label className="block font-label-sm text-label-sm font-semibold text-on-surface">
-                      Thời lượng dự kiến hoàn thành (Start – End):
-                    </label>
-                    <span className="font-label-sm text-xs font-bold text-primary bg-primary-fixed/30 px-2.5 py-1 rounded-full self-start sm:self-auto">
-                      Ước tính: {durationInfo.hours} giờ {durationInfo.minutes > 0 ? `${durationInfo.minutes} phút` : ''} ({durationInfo.totalMinutes} phút)
-                    </span>
-                  </div>
-
-                  {/* Start - End Time Input Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                    {/* Start Time */}
-                    <div
-                      className={`p-3.5 rounded-xl bg-surface-container-low border flex items-center gap-3 ${
-                        errors.startTime || errors.scheduleTime
-                          ? 'border-error ring-1 ring-error/20'
-                          : 'border-surface-variant/30'
-                      }`}
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm flex-shrink-0">
-                        <Icon name="schedule" size={20} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <label
-                          htmlFor="start-time-input"
-                          className="block text-[11px] font-bold text-outline uppercase tracking-wider mb-0.5"
-                        >
-                          Giờ bắt đầu (Start)
-                        </label>
-                        <input
-                          id="start-time-input"
-                          type="time"
-                          value={startTime}
-                          onChange={(e) => {
-                            setStartTime(e.target.value)
-                            clearFieldError('startTime', 'scheduleTime')
-                          }}
-                          className="bg-transparent font-label-md text-base font-bold text-on-surface outline-none w-full cursor-pointer"
-                        />
-                      </div>
-                    </div>
-
-                    {/* End Time */}
-                    <div
-                      className={`p-3.5 rounded-xl bg-surface-container-low border flex items-center gap-3 ${
-                        errors.scheduleTime
-                          ? 'border-error ring-1 ring-error/20'
-                          : 'border-surface-variant/30'
-                      }`}
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-secondary shadow-sm flex-shrink-0">
-                        <Icon name="timelapse" size={20} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <label
-                          htmlFor="end-time-input"
-                          className="block text-[11px] font-bold text-outline uppercase tracking-wider mb-0.5"
-                        >
-                          Giờ kết thúc (End)
-                        </label>
-                        <input
-                          id="end-time-input"
-                          type="time"
-                          value={endTime}
-                          onChange={(e) => {
-                            setEndTime(e.target.value)
-                            clearFieldError('scheduleTime')
-                          }}
-                          className="bg-transparent font-label-md text-base font-bold text-on-surface outline-none w-full cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  {(errors.startTime || errors.scheduleTime) && (
-                    <div className="mb-3 space-y-1">
-                      {errors.startTime && (
-                        <p className="flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
-                          <Icon name="error" size={15} />
-                          <span>{errors.startTime}</span>
-                        </p>
-                      )}
-                      {errors.scheduleTime && (
-                        <p className="flex items-center gap-1.5 text-error font-body-sm text-xs font-semibold">
-                          <Icon name="error" size={15} />
-                          <span>{errors.scheduleTime}</span>
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Quick Preset Buttons */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="font-label-sm text-xs text-outline font-semibold">
-                      Gợi ý nhanh (+):
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => applyDurationPreset(1)}
-                      className="px-3 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 hover:text-primary transition-colors font-label-sm text-xs font-semibold cursor-pointer"
-                    >
-                      + 1 giờ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyDurationPreset(2)}
-                      className="px-3 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 hover:text-primary transition-colors font-label-sm text-xs font-semibold cursor-pointer"
-                    >
-                      + 2 giờ (Tủ IKEA)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyDurationPreset(3)}
-                      className="px-3 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 hover:text-primary transition-colors font-label-sm text-xs font-semibold cursor-pointer"
-                    >
-                      + 3 giờ (Nhiều chi tiết)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyDurationPreset(4)}
-                      className="px-3 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 hover:text-primary transition-colors font-label-sm text-xs font-semibold cursor-pointer"
-                    >
-                      + 4 giờ (Nửa ngày)
-                    </button>
-                  </div>
-                </div>
-              </div>
-
+              <TaskScheduleSelector
+                selectedDate={selectedDate}
+                onChangeSelectedDate={(val) => {
+                  setSelectedDate(val)
+                  clearFieldError('customDate', 'startTime')
+                }}
+                customDate={customDate}
+                onChangeCustomDate={(val) => {
+                  setCustomDate(val)
+                  clearFieldError('customDate', 'startTime')
+                }}
+                startTime={startTime}
+                onChangeStartTime={(val) => {
+                  setStartTime(val)
+                  clearFieldError('startTime', 'scheduleTime')
+                }}
+                endTime={endTime}
+                onChangeEndTime={(val) => {
+                  setEndTime(val)
+                  clearFieldError('scheduleTime')
+                }}
+                errors={errors}
+              />
+              
               {/* Final Action CTA Buttons */}
               <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm space-y-4 border border-surface-variant/30">
                 {submitError && (
@@ -1036,7 +829,11 @@ export default function TaskDetail({ onNavigate }) {
                     disabled={submitting}
                     className="py-4"
                   >
-                    {submitting ? 'Đang đăng việc...' : 'Đăng việc ngay (Miễn phí)'}
+                    {submitting
+                      ? 'Đang gửi yêu cầu...'
+                      : targetTasker
+                      ? `Gửi đề xuất việc trực tiếp cho ${targetTasker.name}`
+                      : 'Đăng việc ngay (Miễn phí)'}
                   </Button>
                   <Button
                     type="button"

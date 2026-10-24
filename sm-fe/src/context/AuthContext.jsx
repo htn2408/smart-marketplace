@@ -47,6 +47,18 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // Lắng nghe sự kiện auth:unauthorized để reset user & token ngay lập tức
+  useEffect(() => {
+    const handleAuthUnauthorized = () => {
+      clearToken()
+      setToken(null)
+      setUser(null)
+      setIsLoading(false)
+    }
+    window.addEventListener('auth:unauthorized', handleAuthUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', handleAuthUnauthorized)
+  }, [])
+
   /**
    * Perform user login
    */
@@ -55,7 +67,16 @@ export function AuthProvider({ children }) {
     if (response?.token) {
       saveToken(response.token)
       setToken(response.token)
-      setUser(response.user)
+      if (response.user) {
+        setUser(response.user)
+      }
+      // Đồng bộ thông tin người dùng đầy đủ (số dư ví balance, workerProfile, avatar) ngay lập tức
+      try {
+        const fullUser = await fetchCurrentUserApi(response.token)
+        setUser(fullUser)
+      } catch {
+        // Fallback giữ response.user
+      }
     }
     return response
   }

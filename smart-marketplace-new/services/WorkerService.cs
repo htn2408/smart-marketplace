@@ -34,6 +34,8 @@ public class WorkerService(
 
         return new WorkerPublicProfileResponse
         {
+            Id = wp.Id,
+            WorkerProfileId = wp.Id,
             UserId = wp.UserId,
             Name = wp.User.Name,
             Description = wp.Description,

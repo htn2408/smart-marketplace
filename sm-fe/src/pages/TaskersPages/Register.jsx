@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import Icon from '../../components/common/Icon'
 import Button from '../../components/common/Button'
 import DistrictMultiSelector from '../../components/common/DistrictMultiSelector'
@@ -19,6 +19,7 @@ import { ROUTES } from '../../routes/paths'
  */
 export default function Register({ onNavigate }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, token, updateUser, isAuthenticated } = useAuth()
 
   const [districts, setDistricts] = useState(() => user?.workerProfile?.serviceDistricts || [])
@@ -107,11 +108,11 @@ export default function Register({ onNavigate }) {
     setErrorMessage('')
 
     if (!isAuthenticated || !token) {
-      setErrorMessage('Vui lòng đăng nhập tài khoản trước khi đăng ký làm Thợ.')
-      setTimeout(() => {
-        if (onNavigate) onNavigate('login')
-        else navigate(ROUTES.LOGIN)
-      }, 1500)
+      if (onNavigate) {
+        onNavigate('login', { from: location })
+      } else {
+        navigate(ROUTES.LOGIN, { state: { from: location } })
+      }
       return
     }
 
@@ -153,6 +154,19 @@ export default function Register({ onNavigate }) {
         navigate(ROUTES.TASKER_DASHBOARD)
       }
     } catch (err) {
+      if (
+        err.status === 401 ||
+        err.message?.includes('token') ||
+        err.message?.includes('đăng nhập') ||
+        err.message?.includes('Unauthorized')
+      ) {
+        if (onNavigate) {
+          onNavigate('login', { from: location })
+        } else {
+          navigate(ROUTES.LOGIN, { state: { from: location } })
+        }
+        return
+      }
       setErrorMessage(err.message || 'Đăng ký trở thành Tasker thất bại. Vui lòng thử lại.')
     } finally {
       setIsSubmitting(false)

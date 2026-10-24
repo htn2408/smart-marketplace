@@ -15,5 +15,8 @@ public class LoginResponse
         public string Email { get; set; } = null!;
         public string Role { get; set; } = null!;
         public List<string> Roles { get; set; } = new();
+        public decimal Balance { get; set; }
+        public decimal HeldBalance { get; set; }
+        public string? AvatarUrl { get; set; }
     }
 }

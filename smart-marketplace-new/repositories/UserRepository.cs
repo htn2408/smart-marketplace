@@ -29,7 +29,7 @@ public class UserRepository(AppDbContext db) : IUserRepository
                 .ThenInclude(wp => wp!.ServiceDistricts)
             .Include(u => u.WorkerProfile)
                 .ThenInclude(wp => wp!.GalleryImages)
-            .FirstOrDefaultAsync(u => u.Id == id, ct);
+            .FirstOrDefaultAsync(u => u.Id == id || (u.WorkerProfile != null && u.WorkerProfile.Id == id), ct);
 
     public Task<WorkerProfile?> FindWorkerProfileByUserIdAsync(string userId, CancellationToken ct = default) =>
         db.WorkerProfiles

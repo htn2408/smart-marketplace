@@ -7,41 +7,81 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5236/api'
 const TOKEN_KEY = 'taskmate_jwt_token'
 
 /**
- * Get JWT token from LocalStorage
+ * Get JWT token from sessionStorage (tự động xóa khi đóng tab/thoát trình duyệt)
  * @returns {string|null}
  */
 export function getToken() {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    // Dọn dẹp token cũ còn sót lại trong localStorage nếu có từ trước
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(TOKEN_KEY)) {
+      localStorage.removeItem(TOKEN_KEY)
+    }
+    return sessionStorage.getItem(TOKEN_KEY)
   } catch {
     return null
   }
 }
 
 /**
- * Save JWT token to LocalStorage
+ * Save JWT token to sessionStorage (phiên làm việc kết thúc khi đóng tab)
  * @param {string} token
  */
 export function setToken(token) {
   try {
     if (token) {
-      localStorage.setItem(TOKEN_KEY, token)
+      sessionStorage.setItem(TOKEN_KEY, token)
     } else {
+      sessionStorage.removeItem(TOKEN_KEY)
+    }
+    // Đảm bảo không lưu vĩnh viễn trong localStorage
+    if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(TOKEN_KEY)
     }
   } catch {
-    // Ignore localStorage quota errors
+    // Ignore storage quota errors
   }
 }
 
 /**
- * Remove JWT token from LocalStorage
+ * Remove JWT token from sessionStorage and localStorage
  */
 export function removeToken() {
   try {
-    localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(TOKEN_KEY)
+    }
   } catch {
     // Ignore
+  }
+}
+
+/**
+ * Điều hướng ra trang đăng nhập khi mất token hoặc token hết hạn (401 Unauthorized)
+ * Xóa sạch token và chuyển thẳng về /login
+ * @param {string} [fromPath]
+ */
+export function handleUnauthorized(fromPath) {
+  removeToken()
+  if (typeof window !== 'undefined') {
+    const currentPath = fromPath || window.location.pathname
+    window.dispatchEvent(
+      new CustomEvent('auth:unauthorized', {
+        detail: { from: currentPath },
+      })
+    )
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = `/login?from=${encodeURIComponent(currentPath)}`
+    }
+  }
+}
+
+function checkAuthUnauthorized(response) {
+  if (response?.status === 401) {
+    handleUnauthorized()
+    const err = new Error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.')
+    err.status = 401
+    throw err
   }
 }
 
@@ -142,7 +182,12 @@ export async function fetchCurrentUserApi(token) {
  * @param {{ name?: string, phoneNumber?: string, address?: string, latitude?: number, longitude?: number }} payload
  */
 export async function updateProfileApi(token, payload) {
-  if (!token) throw new Error('Không có token xác thực.')
+  if (!token) {
+    handleUnauthorized()
+    const err = new Error('Không có token xác thực.')
+    err.status = 401
+    throw err
+  }
 
   const response = await fetch(`${API_BASE_URL}/auth/profile`, {
     method: 'PUT',
@@ -152,6 +197,8 @@ export async function updateProfileApi(token, payload) {
     },
     body: JSON.stringify(payload),
   })
+
+  checkAuthUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {
@@ -173,7 +220,12 @@ export async function updateProfileApi(token, payload) {
  * @param {{ oldPassword: string, newPassword: string }} payload
  */
 export async function changePasswordApi(token, payload) {
-  if (!token) throw new Error('Không có token xác thực.')
+  if (!token) {
+    handleUnauthorized()
+    const err = new Error('Không có token xác thực.')
+    err.status = 401
+    throw err
+  }
 
   const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
     method: 'PUT',
@@ -183,6 +235,8 @@ export async function changePasswordApi(token, payload) {
     },
     body: JSON.stringify(payload),
   })
+
+  checkAuthUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {
@@ -204,7 +258,12 @@ export async function changePasswordApi(token, payload) {
  * @param {{ description?: string, skillIds?: string[], serviceDistricts?: Array<{ provinceCode: string, provinceName: string, districtCode: string, districtName: string }> }} payload
  */
 export async function updateWorkerProfileApi(token, payload) {
-  if (!token) throw new Error('Không có token xác thực.')
+  if (!token) {
+    handleUnauthorized()
+    const err = new Error('Không có token xác thực.')
+    err.status = 401
+    throw err
+  }
 
   const response = await fetch(`${API_BASE_URL}/auth/worker-profile`, {
     method: 'PUT',
@@ -214,6 +273,8 @@ export async function updateWorkerProfileApi(token, payload) {
     },
     body: JSON.stringify(payload),
   })
+
+  checkAuthUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {
@@ -240,7 +301,12 @@ export async function updateWorkerProfileApi(token, payload) {
  * @returns {Promise<{ id: string, name: string, email: string, avatarUrl: string }>}
  */
 export async function uploadAvatarApi(token, file) {
-  if (!token) throw new Error('Vui lòng đăng nhập.')
+  if (!token) {
+    handleUnauthorized()
+    const err = new Error('Vui lòng đăng nhập.')
+    err.status = 401
+    throw err
+  }
   if (!file) throw new Error('Vui lòng chọn file hình ảnh.')
 
   const formData = new FormData()
@@ -253,6 +319,8 @@ export async function uploadAvatarApi(token, file) {
     },
     body: formData,
   })
+
+  checkAuthUnauthorized(response)
 
   const data = await response.json()
   if (!response.ok) {

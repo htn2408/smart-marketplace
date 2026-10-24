@@ -80,6 +80,9 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService, I
                 Email = user.Email,
                 Role = primaryRole,
                 Roles = roleNames,
+                Balance = user.Balance,
+                HeldBalance = user.HeldBalance,
+                AvatarUrl = user.AvatarUrl,
             },
         };
     }

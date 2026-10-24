@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
+import { useLocation, useParams, useNavigate } from 'react-router-dom'
+import { ROUTES } from '../../routes/paths'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import TaskerLayout from '../../components/layout/TaskerLayout'
@@ -32,6 +33,7 @@ import { DEFAULT_AVATAR } from '../../assets/constants'
  */
 export default function TaskerProfile({ onNavigate }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const { id: paramTaskerId } = useParams()
   const { user, token, updateUser } = useAuth()
 
@@ -437,10 +439,35 @@ export default function TaskerProfile({ onNavigate }) {
             <BookingSidebar
               taskerName={displayName}
               initialRate={200000}
+              taskerSkills={skills}
               onSubmitOffer={(data) => {
-                alert(
-                  `Đã gửi đề xuất thành công!\n- Dịch vụ: ${data.jobDetail}\n- Thời gian: ${data.selectedTimeSlot}\n- Thù lao đề xuất: ${data.packagePrice}₫`
-                )
+                const target = {
+                  id: viewedTasker?.workerProfileId || viewedTasker?.id || paramTaskerId,
+                  userId: viewedTasker?.userId || paramTaskerId,
+                  name: displayName,
+                  avatar: viewedTasker?.avatarUrl || location.state?.tasker?.avatar,
+                  rating: viewedTasker?.rating,
+                  completedTasks: viewedTasker?.completedTasks,
+                  skills: skills,
+                };
+                const taskDraft = {
+                  title: data.jobDetail || data.skillName || 'Dịch vụ gia đình',
+                  description: data.jobDetail,
+                  skillId: data.skillId,
+                  skillName: data.skillName,
+                  amount: data.amount,
+                  offeredPrice: data.amount,
+                  selectedDate: data.selectedDate,
+                  customDate: data.customDate,
+                  startTime: data.startTime,
+                  endTime: data.endTime,
+                  allowNegotiate: data.allowRenegotiate,
+                };
+                if (onNavigate) {
+                  onNavigate('task-detail', { taskDraft, targetTasker: target });
+                } else {
+                  navigate(ROUTES.TASK_DETAIL, { state: { taskDraft, targetTasker: target } });
+                }
               }}
             />
           </div>

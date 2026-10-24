@@ -58,65 +58,74 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
     setTimeout(() => setToastMessage(null), 3000)
   }
 
-  // Tự động mở hoặc khởi tạo cuộc trò chuyện khi được điều hướng từ thẻ (TaskerCard, Filter, Profile...)
+  // 1. Tải danh sách cuộc trò chuyện và tự động mở đúng đoạn chat với targetUserId (nếu có)
   useEffect(() => {
-    if (!targetUserId) return
-    if (!currentUserId) {
-      const timer = setTimeout(() => {
-        showToast('Vui lòng đăng nhập để bắt đầu nhắn tin.')
-      }, 0)
-      return () => clearTimeout(timer)
-    }
-    if (targetUserId === currentUserId) return
-
+    if (!currentUserId) return
+    const controller = new AbortController()
     let isMounted = true
 
-    initConversationApi(targetUserId, currentUserId)
-      .then((conv) => {
+    const loadConversations = async () => {
+      try {
+        let list = await fetchConversations({ signal: controller.signal, currentUserId })
         if (!isMounted) return
-        setConversations((prev) => {
-          const existingIndex = prev.findIndex((c) => c.id === conv.id)
-          if (existingIndex >= 0) {
-            const updated = [...prev]
-            const [item] = updated.splice(existingIndex, 1)
-            return [item, ...updated]
+
+        // Nếu có targetUserId (được điều hướng từ TaskManager, Profile, Filter...)
+        if (targetUserId && targetUserId !== currentUserId) {
+          // 1. Kiểm tra xem cuộc trò chuyện với thợ/đối tác này đã tồn tại chưa
+          const existing = list.find(
+            (c) =>
+              c.partner?.id === targetUserId ||
+              c.partner?.userId === targetUserId ||
+              c.raw?.participantIds?.includes(targetUserId)
+          )
+
+          if (existing) {
+            setConversations(list)
+            setSelectedConversationId(existing.id)
+            setIsMobileChatOpen(true)
+            return
           }
-          return [conv, ...prev]
-        })
-        setSelectedConversationId(conv.id)
-        setIsMobileChatOpen(true)
-      })
-      .catch((err) => {
-        console.warn('Lỗi khởi tạo hội thoại từ thẻ:', err.message)
-        showToast(err.message || 'Không thể mở cuộc trò chuyện với người này.')
-      })
 
-    return () => {
-      isMounted = false
-    }
-  }, [targetUserId, currentUserId])
+          // 2. Nếu chưa có, gọi API khởi tạo cuộc trò chuyện mới
+          try {
+            const newConv = await initConversationApi(targetUserId, currentUserId)
+            if (!isMounted) return
+            if (newConv && newConv.id) {
+              const updatedList = [newConv, ...list.filter((c) => c.id !== newConv.id)]
+              setConversations(updatedList)
+              setSelectedConversationId(newConv.id)
+              setIsMobileChatOpen(true)
+              return
+            }
+          } catch (initErr) {
+            console.warn('Lỗi khởi tạo hội thoại từ targetUserId:', initErr.message)
+            showToast(initErr.message || 'Không thể mở cuộc trò chuyện với người này.')
+          }
+        }
 
-  // 1. Tải danh sách cuộc trò chuyện ban đầu
-  useEffect(() => {
-    const controller = new AbortController()
-
-    fetchConversations({ signal: controller.signal, currentUserId })
-      .then((data) => {
-        setConversations(data)
-        if (data.length > 0) {
-          setSelectedConversationId((prev) => (prev && data.some((c) => c.id === prev) ? prev : data[0].id))
+        // 3. Trường hợp bình thường (không có targetUserId hoặc tạo mới thất bại):
+        setConversations(list)
+        if (list.length > 0) {
+          setSelectedConversationId((prev) =>
+            prev && list.some((c) => c.id === prev) ? prev : list[0].id
+          )
         } else {
           setSelectedConversationId(null)
           setMessages([])
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (err.name === 'AbortError') return
         console.warn('Lỗi tải danh sách trò chuyện:', err)
-      })
+      }
+    }
 
-    return () => controller.abort()
-  }, [currentUserId])
+    loadConversations()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [currentUserId, targetUserId])
 
   // 2. Cuộc trò chuyện đang chọn
   const activeConversation = useMemo(() => {

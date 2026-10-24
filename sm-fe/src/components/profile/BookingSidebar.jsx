@@ -2,6 +2,9 @@ import { useState } from 'react'
 import Icon from '../common/Icon'
 import Button from '../common/Button'
 import Badge from '../common/Badge'
+import TaskScheduleSelector from '../common/TaskScheduleSelector'
+import TaskBudgetSelector from '../common/TaskBudgetSelector'
+import { formatCurrency } from '../../utils/formatters'
 
 /**
  * Interactive Booking & Offer Sidebar for Tasker Profile
@@ -9,40 +12,62 @@ import Badge from '../common/Badge'
 export default function BookingSidebar({
   taskerName = 'Tuấn',
   initialRate = 200000,
+  taskerSkills = [],
   onSubmitOffer,
 }) {
-  const [serviceType, setServiceType] = useState('ikea')
-  const [jobDetail, setJobDetail] = useState(
-    'Lắp ráp tủ quần áo PAX 2 buồng + 1 bàn Micke'
-  )
-  const [selectedDate, setSelectedDate] = useState('today')
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState('08:30 - 10:30')
-  const [pricingType, setPricingType] = useState('package') // 'package' | 'hourly'
-  const [packagePrice, setPackagePrice] = useState('450.000')
+    const defaultSkillId = taskerSkills?.[0]?.skillId || taskerSkills?.[0]?.id || ''
+  const defaultSkillName = taskerSkills?.[0]?.skillName || taskerSkills?.[0]?.name || ''
+
+  const [selectedSkillId, setSelectedSkillId] = useState('')
+  const [customJobDetail, setCustomJobDetail] = useState('')
+
+  const activeSkillId = selectedSkillId || defaultSkillId
+  const activeSkill = (taskerSkills || []).find((s) => (s.skillId || s.id) === activeSkillId)
+  const activeSkillName = activeSkill?.skillName || activeSkill?.name || defaultSkillName
+  const activeJobDetail = customJobDetail !== ''
+    ? customJobDetail
+    : activeSkillName
+    ? `Cần hỗ trợ công việc ${activeSkillName}`
+    : 'Lắp ráp đồ nội thất IKEA & Gia đình'
+
+  const [selectedDate, setSelectedDate] = useState('tomorrow')
+  const [customDate, setCustomDate] = useState('')
+  const [startTime, setStartTime] = useState('08:30')
+  const [endTime, setEndTime] = useState('10:30')
+  const [amount, setAmount] = useState(450000)
   const [allowRenegotiate, setAllowRenegotiate] = useState(true)
 
-  const dateOptions = [
-    { id: 'today', label: 'Hôm nay', sub: '24 Th10' },
-    { id: 'tomorrow', label: 'Ngày mai', sub: '25 Th10' },
-    { id: 'saturday', label: 'Thứ Bảy', sub: '26 Th10' },
-  ]
-
-  const timeSlots = ['08:30 - 10:30', '14:00 - 16:00', '18:00 - 20:00']
+  const handleSkillChange = (e) => {
+    const val = e.target.value
+    setSelectedSkillId(val)
+    const found = (taskerSkills || []).find((s) => (s.skillId || s.id) === val)
+    if (found) {
+      const name = found.skillName || found.name
+      setCustomJobDetail(`Cần hỗ trợ công việc ${name}`)
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const offerData = {
+      serviceType: activeSkillId || 'general',
+      skillId: activeSkillId,
+      skillName: activeSkillName || activeJobDetail,
+      jobDetail: activeJobDetail.trim(),
+      selectedDate,
+      customDate,
+      startTime,
+      endTime,
+      selectedTimeSlot: `${startTime} - ${endTime}`,
+      amount,
+      packagePrice: formatCurrency(amount),
+      allowRenegotiate,
+    }
+
     if (onSubmitOffer) {
-      onSubmitOffer({
-        serviceType,
-        jobDetail,
-        selectedDate,
-        selectedTimeSlot,
-        pricingType,
-        packagePrice,
-        allowRenegotiate,
-      })
+      onSubmitOffer(offerData)
     } else {
-      alert(`Đã gửi đề xuất việc "${jobDetail}" cho ${taskerName} thành công!`)
+      alert(`Đã gửi đề xuất việc "${activeJobDetail}" cho ${taskerName} thành công!`)
     }
   }
 
@@ -78,22 +103,36 @@ export default function BookingSidebar({
             className="font-label-sm text-label-sm font-bold text-on-surface"
             htmlFor="offerJobInput"
           >
-            1. Chọn hoặc nhập công việc bạn cần {taskerName} làm
+            1. Chọn công việc bạn cần {taskerName} làm
           </label>
           <div className="relative">
             <select
               id="offerJobInput"
-              value={serviceType}
-              onChange={(e) => setServiceType(e.target.value)}
+              value={activeSkillId}
+              onChange={handleSkillChange}
               className="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg py-2.5 px-3 pr-10 focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary cursor-pointer border border-transparent focus:border-primary/20"
             >
-              <option value="ikea">Lắp ráp đồ nội thất IKEA &amp; Gia đình</option>
-              <option value="drill">Khoan tường treo rèm, TV &amp; Gương lớn</option>
-              <option value="electric">
-                Sửa chữa điện gia dụng &amp; Đường nước vặt
-              </option>
-              <option value="lock">Lắp khóa cửa thông minh Smart Lock</option>
-              <option value="other">Công việc sửa chữa tiện ích khác...</option>
+              {taskerSkills && taskerSkills.length > 0 ? (
+                taskerSkills.map((s) => {
+                  const sId = s.skillId || s.id
+                  const sName = s.skillName || s.name
+                  return (
+                    <option key={sId} value={sId}>
+                      {sName}
+                    </option>
+                  )
+                })
+              ) : (
+                <>
+                  <option value="ikea">Lắp ráp đồ nội thất IKEA &amp; Gia đình</option>
+                  <option value="drill">Khoan tường treo rèm, TV &amp; Gương lớn</option>
+                  <option value="electric">
+                    Sửa chữa điện gia dụng &amp; Đường nước vặt
+                  </option>
+                  <option value="lock">Lắp khóa cửa thông minh Smart Lock</option>
+                  <option value="other">Công việc sửa chữa tiện ích khác...</option>
+                </>
+              )}
             </select>
             <Icon
               name="arrow_drop_down"
@@ -103,149 +142,48 @@ export default function BookingSidebar({
           </div>
           <input
             type="text"
-            value={jobDetail}
-            onChange={(e) => setJobDetail(e.target.value)}
-            placeholder="Mô tả chi tiết (ví dụ: Lắp tủ IKEA 2 cánh + treo 1 TV 55 inch)"
+            value={activeJobDetail}
+            onChange={(e) => setCustomJobDetail(e.target.value)}
+            placeholder="Mô tả cụ thể (ví dụ: Lắp tủ IKEA 2 cánh + treo 1 TV 55 inch)"
             className="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg py-2 px-3 focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary border border-transparent focus:border-primary/20"
           />
         </div>
 
-        {/* 2. Date & Time Selection */}
-        <div className="flex flex-col gap-1.5">
-          <label className="font-label-sm text-label-sm font-bold text-on-surface">
-            2. Chọn ngày &amp; khung giờ bạn muốn làm
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {dateOptions.map((opt) => {
-              const isSelected = selectedDate === opt.id
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setSelectedDate(opt.id)}
-                  className={`py-2 px-1 rounded-lg flex flex-col items-center justify-center transition-colors cursor-pointer ${
-                    isSelected
-                      ? 'bg-primary text-on-primary'
-                      : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                  }`}
-                >
-                  <span
-                    className={`font-caption text-caption ${
-                      isSelected ? 'opacity-90' : 'text-on-surface-variant'
-                    }`}
-                  >
-                    {opt.label}
-                  </span>
-                  <span className="font-label-sm text-label-sm font-bold">
-                    {opt.sub}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+        {/* 2. Date & Time Selection (Reused TaskScheduleSelector) */}
+        <TaskScheduleSelector
+          compact
+          id="booking-schedule"
+          stepTitle="2. Chọn ngày & khung giờ bạn muốn làm"
+          title=""
+          selectedDate={selectedDate}
+          onChangeSelectedDate={setSelectedDate}
+          customDate={customDate}
+          onChangeCustomDate={setCustomDate}
+          startTime={startTime}
+          onChangeStartTime={setStartTime}
+          endTime={endTime}
+          onChangeEndTime={setEndTime}
+        />
 
-          <div className="grid grid-cols-3 gap-2 mt-1">
-            {timeSlots.map((slot) => {
-              const isSelected = selectedTimeSlot === slot
-              return (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => setSelectedTimeSlot(slot)}
-                  className={`py-1.5 px-2 rounded-lg font-label-sm text-label-sm text-center transition-colors cursor-pointer ${
-                    isSelected
-                      ? 'bg-surface-container-high text-on-surface font-bold ring-2 ring-primary'
-                      : 'bg-surface-container-low text-on-surface font-medium hover:bg-surface-container'
-                  }`}
-                >
-                  {slot}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* 3. Budget Proposal */}
-        <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-surface-container-low ring-1 ring-primary/20">
-          <label className="font-label-sm text-label-sm font-bold text-on-surface">
-            3. Đề xuất mức thù lao của bạn:
-          </label>
-
-          {/* Pricing Model Toggle */}
-          <div className="grid grid-cols-2 p-1 rounded-lg bg-surface-container gap-1">
-            <button
-              type="button"
-              onClick={() => setPricingType('package')}
-              className={`py-1.5 rounded-md font-label-sm text-label-sm text-center cursor-pointer transition-all ${
-                pricingType === 'package'
-                  ? 'bg-surface-container-lowest text-primary font-bold shadow-sm'
-                  : 'text-on-surface-variant font-medium hover:text-on-surface'
-              }`}
-            >
-              Trả trọn gói việc này
-            </button>
-            <button
-              type="button"
-              onClick={() => setPricingType('hourly')}
-              className={`py-1.5 rounded-md font-label-sm text-label-sm text-center cursor-pointer transition-all ${
-                pricingType === 'hourly'
-                  ? 'bg-surface-container-lowest text-primary font-bold shadow-sm'
-                  : 'text-on-surface-variant font-medium hover:text-on-surface'
-              }`}
-            >
-              Trả theo giờ
-            </button>
-          </div>
-
-          {/* Amount input */}
-          <div className="flex items-center gap-2 mt-1">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={packagePrice}
-                onChange={(e) => setPackagePrice(e.target.value)}
-                className="w-full bg-surface-container-lowest text-on-surface font-headline-md text-headline-md font-bold rounded-lg py-2 pl-3 pr-12 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <span className="absolute right-3 top-3 text-body-sm font-semibold text-on-surface-variant">
-                VNĐ
-              </span>
-            </div>
-            <span className="text-body-sm text-on-surface-variant font-medium">
-              {pricingType === 'package' ? 'trọn gói' : '/giờ'}
-            </span>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-primary-fixed/30 text-on-primary-fixed-variant flex items-start gap-2">
-            <Icon
-              name="lightbulb"
-              size={18}
-              className="text-primary shrink-0 mt-0.5"
-            />
-            <p className="font-caption text-caption leading-tight">
-              <strong>Mức thù lao gợi ý cho công việc này:</strong> 400.000₫ –
-              500.000₫ để thợ nhận ngay không cần trả giá lại.
-            </p>
-          </div>
-
-          <label className="flex items-center gap-2 pt-1 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={allowRenegotiate}
-              onChange={(e) => setAllowRenegotiate(e.target.checked)}
-              className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
-            />
-            <span className="font-caption text-caption text-on-surface">
-              Cho phép Tasker đề xuất lại mức giá nếu công việc phát sinh
-            </span>
-          </label>
-        </div>
+        {/* 3. Budget Proposal (Reused TaskBudgetSelector) */}
+        <TaskBudgetSelector
+          compact
+          id="booking-budget"
+          stepTitle="3. Đề xuất mức thù lao của bạn:"
+          title=""
+          subtitle=""
+          amount={amount}
+          onChangeAmount={setAmount}
+          allowNegotiate={allowRenegotiate}
+          onChangeAllowNegotiate={setAllowRenegotiate}
+        />
 
         {/* Total Summary */}
-        <div className="p-3 rounded-lg bg-surface-container flex flex-col gap-1.5">
+        <div className="p-3.5 rounded-lg bg-surface-container flex flex-col gap-1.5">
           <div className="flex items-center justify-between font-label-md text-label-md font-bold text-on-surface">
             <span>Mức thù lao bạn đề xuất:</span>
             <span className="text-primary font-extrabold text-[18px]">
-              {packagePrice}₫ {pricingType === 'hourly' && '/h'}
+              {formatCurrency(amount)}
             </span>
           </div>
           <p className="font-caption text-caption text-on-surface-variant">
@@ -259,12 +197,15 @@ export default function BookingSidebar({
           type="submit"
           variant="primary"
           size="lg"
-          icon="send"
-          iconPosition="left"
+          icon="arrow_forward"
+          iconPosition="right"
           fullWidth
         >
-          Gửi đề xuất việc cho {taskerName}
+          Tiếp tục: Địa chỉ &amp; Hình ảnh
         </Button>
+        <p className="font-caption text-xs text-on-surface-variant text-center -mt-2">
+          Bước tiếp theo: Thêm vị trí &amp; ảnh chụp hiện trường để gửi trực tiếp cho {taskerName}.
+        </p>
 
         {/* Assurance notes */}
         <div className="flex flex-col gap-2 text-center">
