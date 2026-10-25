@@ -280,6 +280,8 @@ public class TaskService(
 
     public async Task<TaskerTaskListResponse> GetTaskerTasksAsync(string workerUserId, string? statusFilter, CancellationToken ct = default)
     {
+        await ExpireOverdueOffersAsync(ct);
+
         var workerProfile = await tasks.FindWorkerProfileByUserIdTrackingAsync(workerUserId, ct)
             ?? throw new NotFoundException("Không tìm thấy hồ sơ thợ.");
 
@@ -342,6 +344,7 @@ public class TaskService(
             OfferedPrice = t.OfferedPrice,
             Images = t.Images.Select(i => i.ImageUrl).ToList(),
             CreatedAt = t.CreatedAt,
+            OfferExpiresAt = t.OfferExpiresAt,
         }).ToList();
 
         return new TaskerTaskListResponse
@@ -369,6 +372,19 @@ public class TaskService(
             throw new BusinessValidationException($"Công việc đang ở trạng thái \"{task.Status}\", chỉ có thể nhận khi ở trạng thái chờ (PENDING).");
         }
 
+        if (task.OfferExpiresAt.HasValue && task.OfferExpiresAt.Value < DateTime.UtcNow)
+        {
+            // Hoàn cọc Escrow cho khách hàng vì đã quá hạn nhận việc
+            task.Client.HeldBalance = Math.Max(0m, task.Client.HeldBalance - task.OfferedPrice);
+            task.Client.Balance += task.OfferedPrice;
+            task.WorkerProfileId = null;
+            task.OfferExpiresAt = null;
+            task.UpdatedAt = DateTime.UtcNow;
+            await tasks.SaveAsync(ct);
+
+            throw new BusinessValidationException("Yêu cầu công việc này đã hết hạn nhận việc do quá thời gian chờ quy định. Tiền cọc đã được hoàn về ví của khách hàng.");
+        }
+
         var taskEnd = task.ScheduledStartTime.AddMinutes(task.ExpectedTime);
         var isOverlapping = await tasks.HasOverlappingTaskAsync(workerProfile.Id, task.ScheduledStartTime, taskEnd, task.Id, ct);
         if (isOverlapping)
@@ -377,6 +393,7 @@ public class TaskService(
         }
 
         task.Status = TaskItemStatus.MATCHED;
+        task.OfferExpiresAt = null;
         task.UpdatedAt = DateTime.UtcNow;
 
         await tasks.SaveAsync(ct);
@@ -418,6 +435,7 @@ public class TaskService(
 
         // Trả task về PENDING chưa gán thợ
         task.WorkerProfileId = null;
+        task.OfferExpiresAt = null;
         task.Status = TaskItemStatus.PENDING;
         task.UpdatedAt = DateTime.UtcNow;
 
@@ -573,6 +591,7 @@ public class TaskService(
         task.Client.HeldBalance += task.OfferedPrice;
 
         task.WorkerProfileId = worker.Id;
+        task.OfferExpiresAt = CalculateOfferExpiration(task.ScheduledStartTime, DateTime.UtcNow);
         task.UpdatedAt = DateTime.UtcNow;
 
         await tasks.SaveAsync(ct);
@@ -586,6 +605,7 @@ public class TaskService(
                 clientName = task.Client.Name,
                 offeredPrice = task.OfferedPrice,
                 scheduledStartTime = task.ScheduledStartTime,
+                offerExpiresAt = task.OfferExpiresAt,
                 message = $"Bạn vừa nhận được một đề xuất công việc mới \"{task.Title}\" từ khách hàng {task.Client.Name}!"
             }, ct);
         }
@@ -646,6 +666,8 @@ public class TaskService(
 
     public async Task<ClientTaskListResponse> GetClientTasksAsync(string clientUserId, string? statusFilter, CancellationToken ct = default)
     {
+        await ExpireOverdueOffersAsync(ct);
+
         var allTasks = await tasks.GetTasksByClientIdAsync(clientUserId, ct);
 
         var stats = new ClientTaskListResponse.ClientStatsDto
@@ -711,6 +733,7 @@ public class TaskService(
             OfferedPrice = t.OfferedPrice,
             Images = t.Images.Select(i => i.ImageUrl).ToList(),
             CreatedAt = t.CreatedAt,
+            OfferExpiresAt = t.OfferExpiresAt,
         }).ToList();
 
         return new ClientTaskListResponse
@@ -744,6 +767,7 @@ public class TaskService(
             task.Client.Balance += task.OfferedPrice;
         }
 
+        task.OfferExpiresAt = null;
         task.Status = TaskItemStatus.CANCELLED;
         task.UpdatedAt = DateTime.UtcNow;
 
@@ -762,5 +786,97 @@ public class TaskService(
             }
             catch { }
         }
+    }
+
+    private async Task ExpireOverdueOffersAsync(CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var overdueTasks = await tasks.FindOverduePendingTasksAsync(now, ct);
+        if (overdueTasks.Count == 0) return;
+
+        foreach (var task in overdueTasks)
+        {
+            var oldWorkerProfile = task.WorkerProfile;
+            var oldWorkerUserId = oldWorkerProfile?.UserId;
+
+            // Hoàn cọc Escrow cho khách
+            task.Client.HeldBalance = Math.Max(0m, task.Client.HeldBalance - task.OfferedPrice);
+            task.Client.Balance += task.OfferedPrice;
+
+            task.WorkerProfileId = null;
+            task.OfferExpiresAt = null;
+            task.Status = TaskItemStatus.PENDING;
+            task.UpdatedAt = now;
+
+            try
+            {
+                // Thông báo cho khách hàng
+                await hubContext.Clients.Group($"user_{task.ClientId}").SendAsync("TaskOfferExpired", new
+                {
+                    taskId = task.Id,
+                    title = task.Title,
+                    refundedAmount = task.OfferedPrice,
+                    message = $"Yêu cầu \"{task.Title}\" đã hết thời gian chờ thợ phản hồi. Tiền cọc {task.OfferedPrice:N0} đ đã được tự động hoàn về ví của bạn."
+                }, ct);
+
+                // Thông báo cho thợ nếu có
+                if (!string.IsNullOrEmpty(oldWorkerUserId))
+                {
+                    await hubContext.Clients.Group($"user_{oldWorkerUserId}").SendAsync("TaskOfferExpired", new
+                    {
+                        taskId = task.Id,
+                        title = task.Title,
+                        message = $"Yêu cầu \"{task.Title}\" đã hết thời gian phản hồi quy định và được hệ thống thu hồi."
+                    }, ct);
+                }
+            }
+            catch { }
+        }
+
+        await tasks.SaveAsync(ct);
+    }
+
+    /// <summary>
+    /// Tính thời hạn chờ thợ phản hồi nhận việc theo quy định:
+    /// - Việc gấp (bắt đầu trong vòng 2 giờ tới): chờ 30 phút.
+    /// - Việc trong ngày (bắt đầu sau > 2 giờ tới): chờ 1 giờ.
+    /// - Việc từ ngày hôm sau trở đi: cho phép chờ 3 giờ.
+    /// Không bao giờ cho phép thời hạn nhận việc trễ hơn giờ bắt đầu thực tế của công việc.
+    /// </summary>
+    private static DateTime CalculateOfferExpiration(DateTime scheduledStartTime, DateTime assignedAt)
+    {
+        // Quy đổi về múi giờ Việt Nam (UTC+7) để so sánh mốc ngày
+        var assignedVn = assignedAt.AddHours(7);
+        var scheduledVn = scheduledStartTime.AddHours(7);
+
+        DateTime expiresAt;
+
+        if (scheduledVn.Date > assignedVn.Date)
+        {
+            // Việc từ ngày hôm sau: cho phép chờ 3 giờ
+            expiresAt = assignedAt.AddHours(3);
+        }
+        else
+        {
+            var diff = scheduledStartTime - assignedAt;
+            if (diff.TotalHours <= 2)
+            {
+                // Việc gấp trong vòng 2 giờ tới: chờ 30 phút
+                expiresAt = assignedAt.AddMinutes(30);
+            }
+            else
+            {
+                // Việc trong ngày (còn hơn 2 giờ): chờ 1 giờ
+                expiresAt = assignedAt.AddHours(1);
+            }
+        }
+
+        // Không bao giờ cho phép thời hạn nhận việc trễ hơn giờ bắt đầu thực tế
+        if (expiresAt > scheduledStartTime)
+        {
+            expiresAt = scheduledStartTime;
+        }
+
+        return expiresAt;
     }
 }

@@ -5,7 +5,7 @@ import Footer from '../../components/layout/Footer'
 import Icon from '../../components/common/Icon'
 import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
-import { formatCurrency, formatDateTime } from '../../utils/formatters'
+import { formatCurrency, formatDateTime, calculateTimeRemaining } from '../../utils/formatters'
 import { ROUTES } from '../../routes/paths'
 import { fetchClientTasks, approveTaskApi, cancelTaskApi } from '../../services/taskService'
 import { useChatWebSocket } from '../../hooks/useChatWebSocket'
@@ -67,7 +67,14 @@ export default function TaskManager({ onNavigate }) {
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [activeModal, setActiveModal] = useState(null) // { type: 'escrow' | 'cancel' | 'report' | 'detail', task }
   const [previewImage, setPreviewImage] = useState(null)
-    const [toastMessage, setToastMessage] = useState(() => location.state?.alertMessage || '')
+  const [toastMessage, setToastMessage] = useState(() => location.state?.alertMessage || '')
+  const [, setClock] = useState(0)
+
+  // Cập nhật từng giây cho countdown nhận việc (15 phút)
+  useEffect(() => {
+    const timer = setInterval(() => setClock((c) => c + 1), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Hiển thị toast thông báo nhanh
   const showToast = useCallback((msg) => {
@@ -125,6 +132,9 @@ export default function TaskManager({ onNavigate }) {
         handleRefresh()
       } else if (evt.type === 'TaskCompleted') {
         showToast(evt.data?.message || 'Thợ đã hoàn thành công việc. Vui lòng nghiệm thu!')
+        handleRefresh()
+      } else if (evt.type === 'TaskOfferExpired') {
+        showToast(evt.data?.message || 'Yêu cầu đặt việc đã hết thời gian chờ thợ phản hồi. Tiền cọc đã được tự động hoàn về ví của bạn.')
         handleRefresh()
       }
     })
@@ -347,7 +357,7 @@ export default function TaskManager({ onNavigate }) {
                     </div>
                     <span className="inline-flex items-center gap-1 font-caption text-caption text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
                       <Icon name="timer" size={13} />
-                      <span>Ưu tiên 15p</span>
+                      <span>Đang chờ thợ</span>
                     </span>
                   </div>
                 </div>
@@ -568,6 +578,12 @@ export default function TaskManager({ onNavigate }) {
                           const isDone = task.status === 'DONE'
                           const isCancelled = task.status === 'CANCELLED'
 
+                          const offerRemaining =
+                            isPending && task.worker && task.offerExpiresAt
+                              ? calculateTimeRemaining(task.offerExpiresAt)
+                              : null
+                          const isOfferExpired = offerRemaining?.isExpired ?? false
+
                           const code = `#TM-${task.id.slice(0, 8).toUpperCase()}`
                           const icon = getCategoryIcon(task.category || task.skillName)
                           const timeStr = formatDateTime(task.scheduledStartTime)
@@ -745,6 +761,26 @@ export default function TaskManager({ onNavigate }) {
                                 </div>
                               )}
 
+                              {isPending && isOfferExpired && task.worker && (
+                                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <Icon name="error_outline" size={18} className="text-red-600 shrink-0" />
+                                    <span>
+                                      Đã quá thời gian chờ thợ phản hồi. Tiền cọc đã được hệ thống tự động hoàn lại ví TaskMate của bạn.
+                                    </span>
+                                  </div>
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    icon="person_search"
+                                    onClick={() => handleChooseAnotherTasker(task)}
+                                    className="text-xs font-bold shrink-0"
+                                  >
+                                    Chọn thợ khác ngay
+                                  </Button>
+                                </div>
+                              )}
+
                               {/* Description snippet if any */}
                               {task.description && (
                                 <p className="font-body-sm text-xs text-on-surface-variant bg-surface-container-lowest p-2 rounded-lg border border-surface-variant/20">
@@ -786,10 +822,36 @@ export default function TaskManager({ onNavigate }) {
                               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                                 <div className="flex items-center gap-2">
                                   {isPending && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-700 animate-pulse" />
-                                      {task.worker ? 'Chờ thợ phản hồi' : 'Chờ chọn thợ mới'}
-                                    </span>
+                                    task.worker ? (
+                                      offerRemaining ? (
+                                        isOfferExpired ? (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 font-label-sm text-xs font-bold">
+                                            <Icon name="error_outline" size={14} />
+                                            Quá hạn phản hồi • Đã hoàn cọc
+                                          </span>
+                                        ) : offerRemaining.totalSeconds <= 180 ? (
+                                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 font-label-sm text-xs font-bold animate-pulse">
+                                            <Icon name="local_fire_department" size={14} className="text-rose-600" />
+                                            Chờ thợ: còn {offerRemaining.formatted}
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
+                                            <Icon name="timer" size={14} className="text-amber-700" />
+                                            Chờ thợ phản hồi: còn {offerRemaining.formatted}
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-700 animate-pulse" />
+                                          Chờ thợ phản hồi
+                                        </span>
+                                      )
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-700 animate-pulse" />
+                                        Chờ chọn thợ mới
+                                      </span>
+                                    )
                                   )}
                                   {isMatched && (
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed/60 text-primary font-label-sm text-xs font-bold">
@@ -824,6 +886,17 @@ export default function TaskManager({ onNavigate }) {
                                 </div>
 
                                 <div className="flex items-center gap-2">
+                                  {isPending && isOfferExpired && (
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      icon="person_search"
+                                      onClick={() => handleChooseAnotherTasker(task)}
+                                      className="text-xs font-bold"
+                                    >
+                                      Chọn thợ khác ngay
+                                    </Button>
+                                  )}
                                   {(isPending || isMatched) && (
                                     <Button
                                       variant="tonal"

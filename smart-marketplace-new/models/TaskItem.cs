@@ -142,6 +142,9 @@ public class TaskItem
     // TIMESTAMP
     // ==========================================
 
+    [Column("offer_expires_at")]
+    public DateTime? OfferExpiresAt { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

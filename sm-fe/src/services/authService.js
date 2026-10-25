@@ -335,3 +335,80 @@ export async function uploadAvatarApi(token, file) {
   return data
 }
 
+/**
+ * Request password reset OTP via Email
+ * @param {string} email
+ * @returns {Promise<{ message: string }>}
+ */
+export async function forgotPasswordApi(email) {
+  const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message = data.error || data.message || 'Không thể gửi mã xác thực. Vui lòng thử lại.'
+    throw new Error(message)
+  }
+
+  return data
+}
+
+/**
+ * Verify OTP code before revealing new password inputs
+ * @param {{ email: string, otp: string }} payload
+ * @returns {Promise<{ message: string }>}
+ */
+export async function verifyOtpApi({ email, otp }) {
+  const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      otp: otp.trim(),
+    }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message = data.error || data.message || 'Mã xác nhận OTP không chính xác.'
+    throw new Error(message)
+  }
+
+  return data
+}
+
+/**
+ * Reset password using Email, OTP and New Password
+ * @param {{ email: string, otp: string, newPassword: string }} payload
+ * @returns {Promise<{ message: string }>}
+ */
+export async function resetPasswordApi({ email, otp, newPassword }) {
+  const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      otp: otp.trim(),
+      newPassword,
+    }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    const message = data.error || data.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.'
+    throw new Error(message)
+  }
+
+  return data
+}
+
+

@@ -87,6 +87,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, Microsoft.EntityFrameworkCore.ServerVersion.AutoDetect(connectionString)));
 
 // Repository + Service layer
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();

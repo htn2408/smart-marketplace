@@ -25,4 +25,5 @@ public interface ITaskRepository
     Task<WorkerProfile?> FindWorkerProfileByIdAsync(string workerProfileId, CancellationToken ct = default);
     Task<bool> HasOverlappingTaskAsync(string workerProfileId, DateTime start, DateTime end, string? excludeTaskId, CancellationToken ct = default);
     Task<List<TaskItem>> GetTasksByClientIdAsync(string clientId, CancellationToken ct = default);
+    Task<List<TaskItem>> FindOverduePendingTasksAsync(DateTime now, CancellationToken ct = default);
 }

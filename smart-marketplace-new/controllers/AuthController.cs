@@ -96,4 +96,28 @@ public class AuthController(IAuthService auth) : ControllerBase
         await auth.ChangePasswordAsync(id, request, ct);
         return Ok(new { message = "Đổi mật khẩu thành công." });
     }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken ct)
+    {
+        await auth.ForgotPasswordAsync(request, ct);
+        return Ok(new { message = "Mã xác thực OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư." });
+    }
+
+    [HttpPost("verify-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request, CancellationToken ct)
+    {
+        await auth.VerifyOtpAsync(request, ct);
+        return Ok(new { message = "Mã xác nhận OTP chính xác." });
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
+    {
+        await auth.ResetPasswordAsync(request, ct);
+        return Ok(new { message = "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới." });
+    }
 }

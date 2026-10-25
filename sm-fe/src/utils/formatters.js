@@ -143,4 +143,43 @@ export function calculateDuration(start, end) {
   return { hours, minutes, totalMinutes: total }
 }
 
+/**
+ * Calculate remaining time in minutes and seconds until expiration date
+ * @param {string|Date} expiresAt
+ * @returns {{ isExpired: boolean, minutes: number, seconds: number, formatted: string, totalSeconds: number }}
+ */
+export function calculateTimeRemaining(expiresAt) {
+  if (!expiresAt) {
+    return { isExpired: true, minutes: 0, seconds: 0, formatted: '00:00', totalSeconds: 0 }
+  }
+  const expiryTime = new Date(expiresAt).getTime()
+  if (isNaN(expiryTime)) {
+    return { isExpired: true, minutes: 0, seconds: 0, formatted: '00:00', totalSeconds: 0 }
+  }
+  const now = Date.now()
+  const diffMs = expiryTime - now
+
+  if (diffMs <= 0) {
+    return { isExpired: true, minutes: 0, seconds: 0, formatted: '00:00', totalSeconds: 0 }
+  }
+
+  const totalSeconds = Math.floor(diffMs / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const formatted =
+    hours > 0
+      ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+
+  return {
+    isExpired: false,
+    hours,
+    minutes,
+    seconds,
+    formatted,
+    totalSeconds,
+  }
+}
+
 

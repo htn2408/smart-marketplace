@@ -171,15 +171,6 @@ export default function Homepage({ onNavigate }) {
                     alt="Homepage Banner"
                     src="/images/banners/matt-adams-7PiboaUAB_0-unsplash.jpg"
                   />
-
-
-                  {/* Floating Trust Metric Pill */}
-                  <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-surface-container-lowest/95 backdrop-blur-md shadow-md flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-                    <span className="font-label-sm text-label-sm text-primary font-bold">
-                      1.280+ Tasker đang rảnh
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>

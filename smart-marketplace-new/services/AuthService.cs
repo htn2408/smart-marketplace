@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using smart_marketplace_new.auth;
 using smart_marketplace_new.dto;
 using smart_marketplace_new.models;
@@ -7,7 +8,12 @@ using smart_marketplace_new.repositories;
 namespace smart_marketplace_new.services;
 
 // Business logic của auth — hỗ trợ đa role qua bảng user_roles (JOIN từ UserRepository).
-public class AuthService(IUserRepository users, IJwtTokenService tokenService, IImageStorage imageStorage) : IAuthService
+public class AuthService(
+    IUserRepository users,
+    IJwtTokenService tokenService,
+    IImageStorage imageStorage,
+    IEmailService emailService,
+    IMemoryCache cache) : IAuthService
 {
     // Hash dummy để so khi email không tồn tại — thời gian phản hồi như bcrypt thật,
     // chặn dò email tồn tại qua timing (side-channel).
@@ -290,5 +296,100 @@ public class AuthService(IUserRepository users, IJwtTokenService tokenService, I
                         .ToList(),
                 },
         };
+    }
+
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct = default)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await users.FindByEmailAsync(email, ct)
+            ?? throw new NotFoundException("Email này chưa được đăng ký trong hệ thống TaskMate.");
+
+        // Sinh mã ngẫu nhiên 6 chữ số từ 100000 đến 999999
+        var otpCode = Random.Shared.Next(100000, 999999).ToString();
+        var cacheKey = $"pwd_reset_{email}";
+
+        var entry = new PasswordResetOtpEntry
+        {
+            Otp = otpCode,
+            Attempts = 0,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Lưu vào cache với thời hạn 5 phút
+        cache.Set(cacheKey, entry, TimeSpan.FromMinutes(5));
+
+        // Gửi email thực tế qua Gmail SMTP
+        await emailService.SendPasswordResetOtpAsync(email, user.Name ?? "Quý khách", otpCode, ct);
+    }
+
+    public Task VerifyOtpAsync(VerifyOtpRequest request, CancellationToken ct = default)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+        var cacheKey = $"pwd_reset_{email}";
+
+        if (!cache.TryGetValue(cacheKey, out PasswordResetOtpEntry? entry) || entry == null)
+        {
+            throw new BusinessValidationException("Mã xác thực OTP đã hết hạn hoặc không tồn tại. Vui lòng bấm 'Gửi lại mã'.");
+        }
+
+        if (entry.Attempts >= 5)
+        {
+            cache.Remove(cacheKey);
+            throw new BusinessValidationException("Bạn đã nhập sai mã OTP quá 5 lần. Vui lòng gửi lại yêu cầu mã mới.");
+        }
+
+        if (entry.Otp != request.Otp.Trim())
+        {
+            entry.Attempts++;
+            cache.Set(cacheKey, entry, TimeSpan.FromMinutes(5));
+            var remaining = 5 - entry.Attempts;
+            throw new BusinessValidationException($"Mã OTP không chính xác. Bạn còn {remaining} lần thử.");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+        var cacheKey = $"pwd_reset_{email}";
+
+        if (!cache.TryGetValue(cacheKey, out PasswordResetOtpEntry? entry) || entry == null)
+        {
+            throw new BusinessValidationException("Mã xác thực OTP đã hết hạn hoặc không tồn tại. Vui lòng bấm 'Gửi lại mã'.");
+        }
+
+        if (entry.Attempts >= 5)
+        {
+            cache.Remove(cacheKey);
+            throw new BusinessValidationException("Bạn đã nhập sai mã OTP quá 5 lần. Vui lòng gửi lại yêu cầu mã mới.");
+        }
+
+        if (entry.Otp != request.Otp.Trim())
+        {
+            entry.Attempts++;
+            cache.Set(cacheKey, entry, TimeSpan.FromMinutes(5));
+            var remaining = 5 - entry.Attempts;
+            throw new BusinessValidationException($"Mã OTP không chính xác. Bạn còn {remaining} lần thử.");
+        }
+
+        var user = await users.FindByEmailAsync(email, ct)
+            ?? throw new NotFoundException("Không tìm thấy thông tin tài khoản người dùng.");
+
+        // Hash mật khẩu mới và cập nhật
+        user.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await users.SaveAsync(ct);
+
+        // Hủy OTP khỏi bộ nhớ cache
+        cache.Remove(cacheKey);
+    }
+
+    private sealed class PasswordResetOtpEntry
+    {
+        public string Otp { get; set; } = string.Empty;
+        public int Attempts { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

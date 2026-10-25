@@ -148,4 +148,14 @@ public class TaskRepository(AppDbContext db) : ITaskRepository
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
     }
+
+    public Task<List<TaskItem>> FindOverduePendingTasksAsync(DateTime now, CancellationToken ct = default) =>
+        db.Tasks
+            .Include(t => t.Client)
+            .Include(t => t.WorkerProfile)
+            .Where(t => t.Status == TaskItemStatus.PENDING &&
+                        t.WorkerProfileId != null &&
+                        t.OfferExpiresAt != null &&
+                        t.OfferExpiresAt < now)
+            .ToListAsync(ct);
 }

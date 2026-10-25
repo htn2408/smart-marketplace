@@ -15,7 +15,7 @@ export default function BookingSidebar({
   taskerSkills = [],
   onSubmitOffer,
 }) {
-    const defaultSkillId = taskerSkills?.[0]?.skillId || taskerSkills?.[0]?.id || ''
+  const defaultSkillId = taskerSkills?.[0]?.skillId || taskerSkills?.[0]?.id || ''
   const defaultSkillName = taskerSkills?.[0]?.skillName || taskerSkills?.[0]?.name || ''
 
   const [selectedSkillId, setSelectedSkillId] = useState('')
@@ -24,11 +24,6 @@ export default function BookingSidebar({
   const activeSkillId = selectedSkillId || defaultSkillId
   const activeSkill = (taskerSkills || []).find((s) => (s.skillId || s.id) === activeSkillId)
   const activeSkillName = activeSkill?.skillName || activeSkill?.name || defaultSkillName
-  const activeJobDetail = customJobDetail !== ''
-    ? customJobDetail
-    : activeSkillName
-    ? `Cần hỗ trợ công việc ${activeSkillName}`
-    : 'Lắp ráp đồ nội thất IKEA & Gia đình'
 
   const [selectedDate, setSelectedDate] = useState('tomorrow')
   const [customDate, setCustomDate] = useState('')
@@ -38,22 +33,17 @@ export default function BookingSidebar({
   const [allowRenegotiate, setAllowRenegotiate] = useState(true)
 
   const handleSkillChange = (e) => {
-    const val = e.target.value
-    setSelectedSkillId(val)
-    const found = (taskerSkills || []).find((s) => (s.skillId || s.id) === val)
-    if (found) {
-      const name = found.skillName || found.name
-      setCustomJobDetail(`Cần hỗ trợ công việc ${name}`)
-    }
+    setSelectedSkillId(e.target.value)
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const finalJobDetail = customJobDetail.trim() || activeSkillName || 'Công việc gia đình'
     const offerData = {
       serviceType: activeSkillId || 'general',
       skillId: activeSkillId,
-      skillName: activeSkillName || activeJobDetail,
-      jobDetail: activeJobDetail.trim(),
+      skillName: activeSkillName || finalJobDetail,
+      jobDetail: finalJobDetail,
       selectedDate,
       customDate,
       startTime,
@@ -67,7 +57,7 @@ export default function BookingSidebar({
     if (onSubmitOffer) {
       onSubmitOffer(offerData)
     } else {
-      alert(`Đã gửi đề xuất việc "${activeJobDetail}" cho ${taskerName} thành công!`)
+      alert(`Đã gửi đề xuất việc "${finalJobDetail}" cho ${taskerName} thành công!`)
     }
   }
 
@@ -142,9 +132,9 @@ export default function BookingSidebar({
           </div>
           <input
             type="text"
-            value={activeJobDetail}
+            value={customJobDetail}
             onChange={(e) => setCustomJobDetail(e.target.value)}
-            placeholder="Mô tả cụ thể (ví dụ: Lắp tủ IKEA 2 cánh + treo 1 TV 55 inch)"
+            placeholder="Nhập nội dung công việc..."
             className="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg py-2 px-3 focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary border border-transparent focus:border-primary/20"
           />
         </div>

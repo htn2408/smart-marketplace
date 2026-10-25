@@ -3,7 +3,13 @@ import TaskerLayout from '../../components/layout/TaskerLayout'
 import Icon from '../../components/common/Icon'
 import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
-import { formatCurrency, formatDateTime, formatHourSlot, getCategoryIcon } from '../../utils/formatters'
+import {
+  formatCurrency,
+  formatDateTime,
+  formatHourSlot,
+  getCategoryIcon,
+  calculateTimeRemaining,
+} from '../../utils/formatters'
 import {
   fetchTaskerTasks,
   acceptTaskApi,
@@ -91,6 +97,13 @@ export default function RequireAndCalendar({ onNavigate }) {
   const [selectedTaskDetail, setSelectedTaskDetail] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
+  const [, setClock] = useState(0)
+
+  // Cập nhật từng giây cho countdown nhận việc (15 phút)
+  useEffect(() => {
+    const timer = setInterval(() => setClock((c) => c + 1), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Hiển thị toast thông báo nhanh
   const showToast = (message) => {
@@ -134,6 +147,9 @@ export default function RequireAndCalendar({ onNavigate }) {
         handleRefresh()
       } else if (evt.type === 'TaskCancelled') {
         showToast(evt.data?.message || 'Khách hàng đã hủy công việc.')
+        handleRefresh()
+      } else if (evt.type === 'TaskOfferExpired') {
+        showToast(evt.data?.message || 'Yêu cầu nhận việc đã hết hạn do quá thời gian chờ quy định.')
         handleRefresh()
       }
     })
@@ -349,7 +365,7 @@ export default function RequireAndCalendar({ onNavigate }) {
             </div>
             <p className="font-caption text-xs text-amber-800 font-semibold mt-2 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
-              <span>Chờ phản hồi (Ưu tiên 15p)</span>
+              <span>Chờ phản hồi nhận việc</span>
             </p>
           </div>
         </div>
@@ -546,6 +562,10 @@ export default function RequireAndCalendar({ onNavigate }) {
                 const isDone = task.status === 'DONE'
                 const isCancelled = task.status === 'CANCELLED'
 
+                const offerRemaining =
+                  isPending && task.offerExpiresAt ? calculateTimeRemaining(task.offerExpiresAt) : null
+                const isOfferExpired = offerRemaining?.isExpired ?? false
+
                 const code = `#TM-${task.id.slice(0, 8).toUpperCase()}`
                 const icon = getCategoryIcon(task.category || task.skillName)
                 const locationStr = `${task.district}, ${task.city}`
@@ -651,10 +671,29 @@ export default function RequireAndCalendar({ onNavigate }) {
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-2">
                             {isPending && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-700 animate-pulse" />
-                                Chờ xác nhận
-                              </span>
+                              offerRemaining ? (
+                                isOfferExpired ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 font-label-sm text-xs font-bold">
+                                    <Icon name="error_outline" size={14} />
+                                    Đã quá hạn nhận việc
+                                  </span>
+                                ) : offerRemaining.totalSeconds <= 180 ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 font-label-sm text-xs font-bold animate-pulse">
+                                    <Icon name="local_fire_department" size={14} className="text-rose-600" />
+                                    Sắp hết hạn: {offerRemaining.formatted}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
+                                    <Icon name="timer" size={14} className="text-amber-700" />
+                                    Còn {offerRemaining.formatted} để nhận việc
+                                  </span>
+                                )
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm text-xs font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-700 animate-pulse" />
+                                  Chờ xác nhận
+                                </span>
+                              )
                             )}
                             {isMatched && (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed/60 text-primary font-label-sm text-xs font-bold">
@@ -687,7 +726,12 @@ export default function RequireAndCalendar({ onNavigate }) {
                               </span>
                             )}
                             <span className="font-caption text-xs text-on-surface-variant">
-                              {isPending && 'Khách hàng gửi yêu cầu trực tiếp, vui lòng phản hồi sớm.'}
+                              {isPending &&
+                                (isOfferExpired
+                                  ? 'Yêu cầu đã quá thời gian chờ phản hồi, cọc đã được tự động hoàn cho khách.'
+                                  : offerRemaining
+                                    ? `Vui lòng phản hồi trong ${offerRemaining.formatted} trước khi yêu cầu tự hủy.`
+                                    : 'Khách hàng gửi yêu cầu trực tiếp, vui lòng phản hồi sớm.')}
                               {isMatched && 'Đã khóa lịch hẹn. Khách đã cọc tiền qua TaskMate.'}
                               {isInProgress && 'Bạn đang làm việc. Bấm hoàn thành khi xong việc.'}
                               {isAwaitingApproval && 'Đã gửi yêu cầu nghiệm thu, tiền sẽ vào ví khi khách xác nhận.'}
@@ -777,11 +821,13 @@ export default function RequireAndCalendar({ onNavigate }) {
                               variant="primary"
                               size="sm"
                               icon="done_all"
-                              disabled={isActionBusy}
+                              disabled={isActionBusy || isOfferExpired}
                               onClick={() => handleAccept(task.id)}
-                              className="rounded-xl text-xs font-extrabold px-5 shadow-sm"
+                              className={`rounded-xl text-xs font-extrabold px-5 shadow-sm ${
+                                isOfferExpired ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
                             >
-                              {isActionBusy ? 'Đang xử lý...' : 'Chấp nhận'}
+                              {isActionBusy ? 'Đang xử lý...' : isOfferExpired ? 'Đã hết hạn' : 'Chấp nhận'}
                             </Button>
                           </>
                         )}
@@ -1065,6 +1111,36 @@ export default function RequireAndCalendar({ onNavigate }) {
               </button>
             </div>
 
+            {selectedTaskDetail.status === 'PENDING' && selectedTaskDetail.offerExpiresAt && (() => {
+              const modalRemaining = calculateTimeRemaining(selectedTaskDetail.offerExpiresAt)
+              return modalRemaining.isExpired ? (
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2 font-medium">
+                  <Icon name="error_outline" size={18} className="text-red-600 shrink-0" />
+                  <span>Yêu cầu này đã quá thời gian nhận việc quy định. Tiền cọc đã được hệ thống hoàn lại cho khách hàng.</span>
+                </div>
+              ) : (
+                <div
+                  className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between font-medium ${
+                    modalRemaining.totalSeconds <= 180
+                      ? 'bg-rose-50 border-rose-200 text-rose-900'
+                      : 'bg-amber-50 border-amber-200 text-amber-900'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Icon
+                      name={modalRemaining.totalSeconds <= 180 ? 'local_fire_department' : 'timer'}
+                      size={18}
+                      className={modalRemaining.totalSeconds <= 180 ? 'text-rose-600' : 'text-amber-700'}
+                    />
+                    Thời gian phản hồi còn lại:
+                  </span>
+                  <span className="font-mono font-extrabold text-sm px-2.5 py-0.5 rounded-lg bg-white shadow-xs">
+                    {modalRemaining.formatted}
+                  </span>
+                </div>
+              )
+            })()}
+
             <div className="space-y-3.5 text-sm">
               <div className="bg-surface-container-low p-4 rounded-2xl space-y-2">
                 <div className="flex justify-between items-center text-xs">
@@ -1182,14 +1258,39 @@ export default function RequireAndCalendar({ onNavigate }) {
                   </span>
                 )}
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setSelectedTaskDetail(null)}
-                className="rounded-xl px-5 text-xs font-bold"
-              >
-                Đóng chi tiết
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedTaskDetail.status === 'PENDING' && (() => {
+                  const modalRemaining = selectedTaskDetail.offerExpiresAt
+                    ? calculateTimeRemaining(selectedTaskDetail.offerExpiresAt)
+                    : null
+                  const modalExpired = modalRemaining?.isExpired ?? false
+                  const isActionBusy = actionLoadingId === selectedTaskDetail.id
+                  return (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="done_all"
+                      disabled={isActionBusy || modalExpired}
+                      onClick={async () => {
+                        const tId = selectedTaskDetail.id
+                        setSelectedTaskDetail(null)
+                        await handleAccept(tId)
+                      }}
+                      className="rounded-xl px-5 text-xs font-bold"
+                    >
+                      {modalExpired ? 'Đã hết hạn' : 'Nhận việc ngay'}
+                    </Button>
+                  )
+                })()}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedTaskDetail(null)}
+                  className="rounded-xl px-5 text-xs font-bold border-surface-variant/40"
+                >
+                  Đóng
+                </Button>
+              </div>
             </div>
           </div>
         </div>

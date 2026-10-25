@@ -835,16 +835,7 @@ export default function TaskDetail({ onNavigate }) {
                       ? `Gửi đề xuất việc trực tiếp cho ${targetTasker.name}`
                       : 'Đăng việc ngay (Miễn phí)'}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="tonal"
-                    size="lg"
-                    icon="save"
-                    className="w-full sm:w-auto py-4"
-                    onClick={() => alert('Đã lưu bài đăng vào bản nháp!')}
-                  >
-                    Lưu bản nháp
-                  </Button>
+                  
                 </div>
                 <p className="text-center font-caption text-caption text-on-surface-variant">
                   Bằng việc đăng yêu cầu, bạn đồng ý với{' '}

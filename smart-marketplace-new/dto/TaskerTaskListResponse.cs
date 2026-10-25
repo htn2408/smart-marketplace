@@ -36,6 +36,7 @@ public class TaskerTaskListResponse
         public decimal OfferedPrice { get; set; }
         public List<string> Images { get; set; } = new();
         public DateTime CreatedAt { get; set; }
+        public DateTime? OfferExpiresAt { get; set; }
     }
 
     public class ClientBriefDto
