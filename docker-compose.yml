@@ -42,7 +42,7 @@ services:
   # ========================================================
   backend:
     build:
-      context: ./smart-marketplace-new
+      context: ./backend
       dockerfile: Dockerfile
     image: smart-marketplace-be:latest
     container_name: smart-marketplace-api
@@ -95,7 +95,7 @@ services:
   # ========================================================
   frontend:
     build:
-      context: ./sm-fe
+      context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_API_URL: "${VITE_API_URL:-http://localhost:5236/api}"
@@ -109,7 +109,7 @@ services:
       - "5173:80"
     volumes:
       - ${SSL_CERTS_PATH:-./certs_empty}:/etc/letsencrypt:ro
-      - ${NGINX_CONF_PATH:-./sm-fe/nginx.conf}:/etc/nginx/conf.d/default.conf:ro
+      - ${NGINX_CONF_PATH:-./frontend/nginx.conf}:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
     networks:

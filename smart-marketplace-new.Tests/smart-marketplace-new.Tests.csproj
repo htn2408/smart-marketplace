@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\smart-marketplace-new\smart-marketplace-new.csproj" />
+    <ProjectReference Include="..\backend\smart-marketplace-new.csproj" />
   </ItemGroup>
 
 </Project>

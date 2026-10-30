@@ -13,4 +13,5 @@ TestResults/
 .vs/
 .idea/
 .zcode/
+sm-fe/
 *.user
