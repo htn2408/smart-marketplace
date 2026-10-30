@@ -20,7 +20,7 @@
 ### 👤 Customer Portal
 - **Task Posting & Smart Search:** Post jobs categorized by trade, schedule, location, and estimated budget.
 - **Dynamic Filtering & Recommendations:** Filter professionals by proximity, ratings, hourly rates, and real-time availability.
-- **Intelligent Matching Algorithm:** Automated tasker recommendation scoring based on a weighted 60% rating / 40% experience formula with automated schedule overlap conflict checks.
+- **Intelligent Matching Algorithm:** Automated tasker recommendation scoring based on a multi-factor weighted evaluation model with automated schedule overlap conflict checks.
 - **Booking & Lifecycle Tracking:** End-to-end task state management (Pending -> Accepted -> In Progress -> Completed -> Cancelled).
 - **Reviews & Ratings:** Transparent post-completion reviews with verified rating calculations.
 
