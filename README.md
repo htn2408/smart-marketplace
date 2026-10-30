@@ -1,4 +1,4 @@
-# 🛠️ TaskMate - Nền Tảng Kết Nối Dịch Vụ Gia Đình & Thợ Lành Nghề
+# 🛠️ TaskMate - Smart Marketplace for Home Services & Skilled Taskers
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Live%20Demo-success?style=for-the-badge&logo=google-chrome&color=22c55e" alt="Live Demo" />
@@ -9,44 +9,44 @@
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker" alt="Docker" />
 </p>
 
-> **TaskMate** là nền tảng thương mại dịch vụ tiện ích gia đình (Gig-Economy Marketplace) kết nối khách hàng với các đối tác thợ lành nghề (sửa điện nước, dọn dẹp, lắp ráp nội thất,...). Dự án áp dụng kiến trúc Micro-service/Containerized với hệ cơ sở dữ liệu kép (MySQL + MongoDB), xử lý tin nhắn thời gian thực qua WebSockets/SignalR và thuật toán tính điểm ghép cặp thông minh.
+> **TaskMate** is an on-demand gig-economy home services marketplace connecting clients with vetted, skilled taskers (plumbing, electrical repairs, home cleaning, carpentry, and more). Built with a containerized micro-service architecture, dual-database layer (MySQL + MongoDB), real-time WebSockets/SignalR messaging, and an intelligent tasker matching engine.
 
-🌐 **Trải nghiệm trực tiếp:** [https://taskmate-vn.duckdns.org](https://taskmate-vn.duckdns.org)
-
----
-
-## 🌟 Tính Năng Nổi Bật (Key Features)
-
-### 👤 Dành cho Khách Hàng (Customer)
-- **Đăng bài & Tìm kiếm thông minh:** Đăng nhu cầu công việc theo danh mục, địa điểm, thời gian và mức giá dự kiến.
-- **Bộ lọc & Gợi ý thợ:** Lọc theo khoảng cách, đánh giá sao, mức giá và tình trạng sẵn sàng.
-- **Thuật toán Smart Matching:** Tự động đề xuất danh sách thợ phù hợp nhất dựa trên tỷ lệ điểm đánh giá (60%), kinh nghiệm (40%) và tự động loại trừ các thợ đang bị trùng lịch hẹn.
-- **Đặt lịch & Theo dõi trạng thái:** Theo dõi trạng thái công việc (Pending -> Accepted -> In Progress -> Completed -> Cancelled).
-- **Đánh giá & Xếp hạng:** Viết đánh giá, chấm điểm sao minh bạch sau khi hoàn thành công việc.
-
-### 🧰 Dành cho Đối Tác Thợ (Tasker)
-- **Hồ sơ chuyên nghiệp:** Quản lý kỹ năng, kinh nghiệm, bảng giá dịch vụ và hồ sơ cá nhân.
-- **Tasker Dashboard:** Xem danh sách việc mới, quản lý lịch làm việc và doanh thu.
-- **Tiếp nhận & Xử lý đơn:** Linh hoạt chấp nhận hoặc từ chối đơn đặt lịch theo thời gian rảnh.
-
-### 💬 Thời Gian Thực & Trải Nghiệm Người Dùng (Real-time & UX)
-- **Real-time Chat (SignalR + MongoDB):** Nhắn tin trao đổi 1-1 trực tiếp giữa khách hàng và thợ với độ trễ thấp; lưu trữ lịch sử tin nhắn không giới hạn trên MongoDB.
-- **Responsive Mobile-First:** Giao diện tối ưu hoàn hảo cho mọi thiết bị (màn hình điện thoại từ 360px đến desktop 4K).
-- **Bảo mật & Xác thực:** JWT Authentication, BCrypt mã hóa mật khẩu, OTP khôi phục mật khẩu qua Gmail SMTP.
+🌐 **Live Production Demo:** [https://taskmate-vn.duckdns.org](https://taskmate-vn.duckdns.org)
 
 ---
 
-## 🏗️ Kiến Trúc Hệ Thống (Architecture)
+## 🌟 Key Features
+
+### 👤 Customer Portal
+- **Task Posting & Smart Search:** Post jobs categorized by trade, schedule, location, and estimated budget.
+- **Dynamic Filtering & Recommendations:** Filter professionals by proximity, ratings, hourly rates, and real-time availability.
+- **Intelligent Matching Algorithm:** Automated tasker recommendation scoring based on a weighted 60% rating / 40% experience formula with automated schedule overlap conflict checks.
+- **Booking & Lifecycle Tracking:** End-to-end task state management (Pending -> Accepted -> In Progress -> Completed -> Cancelled).
+- **Reviews & Ratings:** Transparent post-completion reviews with verified rating calculations.
+
+### 🧰 Tasker Portal
+- **Professional Profiles:** Showcase portfolio images, verified trade skills, hourly rates, and working history.
+- **Tasker Dashboard:** Manage job requests, working calendar, schedule availability, and earnings.
+- **Order Dispatch Management:** Flexible acceptance, rejection, and progress updates for client bookings.
+
+### 💬 Real-Time Communication & UX
+- **Real-Time Chat (SignalR + MongoDB):** Low-latency 1-on-1 instant messaging between clients and taskers; scalable, unstructured chat history persistence via MongoDB.
+- **Mobile-First Responsive Design:** Optimized across all viewports (from 360px mobile devices to 4K displays).
+- **Security & Identity:** Secure JWT authentication, BCrypt password hashing, and automated OTP password resets via Gmail SMTP.
+
+---
+
+## 🏗️ System Architecture
 
 ```mermaid
 flowchart TD
     subgraph Client ["Frontend (React 19 + Vite + Tailwind v4)"]
-        UI["Khách hàng & Tasker UI"]
+        UI["Customer & Tasker UI"]
         SignalRClient["SignalR Client (WebSockets)"]
     end
 
     subgraph Gateway ["Reverse Proxy & Web Server"]
-        Nginx["Nginx (SSL Let's Encrypt / Port 80, 443)"]
+        Nginx["Nginx (Let's Encrypt SSL / Ports 80, 443)"]
     end
 
     subgraph Backend [".NET 10 Web API Service"]
@@ -58,7 +58,7 @@ flowchart TD
     subgraph DataLayer ["Data Storage (Dual Databases)"]
         MySQL[("MySQL 8.0\n(Users, Tasks, Bookings, Reviews)")]
         MongoDB[("MongoDB 7.0\n(Conversations, Chat Messages)")]
-        Cloudinary[("Cloudinary\n(Ảnh đại diện, Ảnh công việc)")]
+        Cloudinary[("Cloudinary\n(Avatars, Job Attachments)")]
     end
 
     UI -->|HTTPS Request| Nginx
