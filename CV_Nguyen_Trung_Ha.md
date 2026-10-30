@@ -15,7 +15,7 @@ Results-driven Software Engineering student with practical experience engineerin
 - **Frontend Technologies:** React 19, Vite, Tailwind CSS v4, Axios, Leaflet Maps.
 - **Databases & Storage:** MySQL 8.0, Microsoft SQL Server 2022, MongoDB 7.0 (NoSQL), Cloudinary API.
 - **Architecture & Security:** Controller-Service-Repository Pattern, JWT Authentication, BCrypt, Stateless Session, Gmail SMTP OTP.
-- **DevOps, Testing & Tools:** Docker, Docker Compose, Nginx (Reverse Proxy & SSL), GitHub Actions (CI/CD), xUnit, Postman, Git.
+- **DevOps & Tools:** Docker, Docker Compose, Nginx (Reverse Proxy & SSL), GitHub Actions (CI/CD), Postman, Git.
 - **Languages:** English — Professional Working Proficiency (TOEIC 860/990; fluent in reading technical documentation & engineering specs).
 
 ---
@@ -32,7 +32,7 @@ Results-driven Software Engineering student with practical experience engineerin
 - **Intelligent Matching Engine:** Built a custom matching algorithm scoring taskers based on a multi-factor weighted scoring model (evaluating verified ratings alongside completed task history) with automated schedule overlap detection to prevent booking conflicts.
 - **Low-Latency Real-Time Chat:** Implemented bi-directional messaging using **SignalR (WebSockets)**, securing communication channels with JWT authentication and isolated user group endpoints.
 - **Security & Password Recovery:** Hardened API endpoints with stateless JWT authentication, BCrypt password hashing, and an automated 6-digit OTP password reset workflow via **Gmail SMTP**.
-- **Automated Testing & CI/CD Deployment:** Authored **22 unit test suites using xUnit** validating algorithm edge cases; automated end-to-end linting, testing, and production Docker container builds to a CloudFly VPS via **GitHub Actions**.
+- **Dockerization & CI/CD Deployment:** Containerized 5 independent services using **Docker Compose**; configured **Nginx as a Reverse Proxy** with SSL/HTTPS termination, and automated continuous deployment to a CloudFly VPS via **GitHub Actions**.
 
 #### NEXUS TELECOM SERVICE SYSTEM | Backend / Full-Stack Developer
 *Enterprise telecommunications provisioning, operational dispatch & billing management system*  
@@ -43,7 +43,7 @@ Results-driven Software Engineering student with practical experience engineerin
 - **Role-Based Workflow Orchestration:** Programmed an enterprise workflow orchestrating 5 isolated roles (Customer, Retail, NOC Field Engineer, Accountant, Admin) across retail order verification, technical surveys, and circuit activations.
 - **Precision Billing Engine:** Developed a high-precision corporate billing engine utilizing `Decimal.js` to eliminate IEEE-754 floating-point rounding errors across tiered bulk discounts, taxes, deposit waivers, and bilingual vector PDF invoices.
 - **Event Streaming & Socket Management:** Built real-time notification dispatch and customer-support live channels using **Socket.IO** with dynamic room isolation and anti-brute-force rate limiting.
-- **Containerized Infrastructure & CI:** Containerized the application stack using **Docker Compose** and **Nginx Reverse Proxy**; integrated a GitHub Actions CI pipeline executing **262 automated unit/integration tests** prior to staging.
+- **Containerized Infrastructure & CI/CD:** Containerized the full application stack using **Docker Compose** with **Nginx Reverse Proxy**; established an automated continuous integration and deployment pipeline on **GitHub Actions** for production-ready staging.
 
 ---
 
