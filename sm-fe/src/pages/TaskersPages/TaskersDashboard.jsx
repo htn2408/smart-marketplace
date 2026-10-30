@@ -375,29 +375,29 @@ export default function TaskersDashboard({ onNavigate }) {
           )}
 
       {/* 1. Welcome Hero Banner */}
-      <section className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant/30 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <section className="bg-surface-container-lowest rounded-3xl p-4 sm:p-6 shadow-sm border border-surface-variant/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
         <div className="space-y-3 max-w-2xl">
           {/* Trust Badges Row */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/80 text-amber-900 text-xs font-extrabold">
-              <Icon name="star" size={16} className="text-amber-700" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-amber-100/80 text-amber-900 text-xs font-extrabold">
+              <Icon name="star" size={15} className="text-amber-700" />
               Đánh giá {ratingStr} ★
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed/50 text-primary text-xs font-bold">
+            <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-primary-fixed/50 text-primary text-xs font-bold">
               <Icon name="task_alt" size={15} />
-              {completedTasksCount} công việc đã hoàn thành
+              {completedTasksCount} việc đã xong
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-semibold border border-surface-variant/40">
+            <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-semibold border border-surface-variant/40">
               <Icon name="verified_user" size={15} className="text-primary" />
-              Đối tác Thợ chuyên nghiệp
+              Đối tác Thợ
             </span>
           </div>
 
           {/* Greeting */}
-          <h2 className="font-headline-lg text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight">
+          <h2 className="font-headline-lg text-xl sm:text-2xl lg:text-3xl font-extrabold text-on-surface tracking-tight">
             Xin chào, {displayName} 👋
           </h2>
-          <p className="font-body-sm text-sm text-on-surface-variant leading-relaxed">
+          <p className="font-body-sm text-xs sm:text-sm text-on-surface-variant leading-relaxed">
             {serviceDistricts.length > 0 ? (
               <>
                 Bạn đang mở nhận việc tại khu vực{' '}
@@ -416,14 +416,14 @@ export default function TaskersDashboard({ onNavigate }) {
         </div>
 
         {/* Right Quick Control Box */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-surface-container-low/70 p-3.5 rounded-2xl border border-surface-variant/40 shrink-0">
-          <div className="flex items-center gap-3 pr-3 border-r border-surface-variant/40">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 bg-surface-container-low/70 p-3 sm:p-3.5 rounded-2xl border border-surface-variant/40 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 pr-2.5 sm:pr-3 border-r border-surface-variant/40">
             <div className="text-xs leading-snug max-w-[120px]">
-              <p className="font-bold text-on-surface">
-                {isOnline ? 'Đang mở nhận việc' : 'Đang tạm dừng nhận việc'}
+              <p className="font-bold text-on-surface text-[11px] sm:text-xs">
+                {isOnline ? 'Đang mở nhận việc' : 'Đang tạm dừng'}
               </p>
-              <p className="text-[11px] text-primary font-semibold truncate">
-                • {serviceDistricts[0]?.districtName || 'Chưa chọn quận'}
+              <p className="text-[10px] sm:text-[11px] text-primary font-semibold truncate">
+                • {serviceDistricts[0]?.districtName || 'Chưa chọn'}
               </p>
             </div>
             <button
@@ -450,7 +450,7 @@ export default function TaskersDashboard({ onNavigate }) {
             onClick={() => onNavigate?.('tasker-profile', { isOwnerView: true })}
             className="rounded-xl text-xs font-bold bg-surface-container-lowest"
           >
-            Hồ sơ &amp; Dịch vụ
+            Hồ sơ
           </Button>
 
           <Button
@@ -466,29 +466,29 @@ export default function TaskersDashboard({ onNavigate }) {
       </section>
 
       {/* 2. 4 Summary Stat Cards (Bento KPIs) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statCards.map((stat) => (
           <div
             key={stat.id}
             onClick={stat.onClick}
-            className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-variant/30 flex items-center justify-between gap-3 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
+            className="bg-surface-container-lowest rounded-2xl p-3.5 sm:p-5 shadow-sm border border-surface-variant/30 flex items-center justify-between gap-2.5 sm:gap-3 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
           >
-            <div className="space-y-1.5">
-              <span className="font-label-sm text-xs font-semibold text-on-surface-variant block">
+            <div className="space-y-1 sm:space-y-1.5 min-w-0">
+              <span className="font-label-sm text-[11px] sm:text-xs font-semibold text-on-surface-variant block truncate">
                 {stat.label}
               </span>
-              <div className="font-headline-lg text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight">
+              <div className="font-headline-lg text-xl sm:text-2xl lg:text-3xl font-extrabold text-on-surface tracking-tight">
                 {isLoading ? '--' : stat.value}
               </div>
-              <div className={`inline-flex items-center gap-1 text-xs font-bold ${stat.subtextColor}`}>
-                {stat.subtextIcon && <Icon name={stat.subtextIcon} size={14} />}
-                <span>{stat.subtext}</span>
+              <div className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold truncate ${stat.subtextColor}`}>
+                {stat.subtextIcon && <Icon name={stat.subtextIcon} size={13} />}
+                <span className="truncate">{stat.subtext}</span>
               </div>
             </div>
             <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${stat.iconBg}`}
+              className={`w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${stat.iconBg}`}
             >
-              <Icon name={stat.icon} size={22} />
+              <Icon name={stat.icon} size={20} />
             </div>
           </div>
         ))}
@@ -572,49 +572,51 @@ export default function TaskersDashboard({ onNavigate }) {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                      <div className="text-right mr-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 self-start md:self-center w-full md:w-auto justify-between md:justify-end pt-2 md:pt-0">
+                      <div className="text-left md:text-right mr-1 sm:mr-2">
                         <span className="text-[11px] text-outline block">Thù lao đề xuất</span>
-                        <span className="font-headline-sm text-base font-extrabold text-primary">
+                        <span className="font-headline-sm text-sm sm:text-base font-extrabold text-primary">
                           {formatCurrency(task.offeredPrice)}
                         </span>
                       </div>
-                      {task.client?.id && (
+                      <div className="flex items-center gap-2">
+                        {task.client?.id && (
+                          <Button
+                            variant="tonal"
+                            size="sm"
+                            icon="chat"
+                            onClick={() =>
+                              onNavigate?.('messages', {
+                                targetUserId: task.client.id,
+                                targetName: task.client.name,
+                              })
+                            }
+                            className="rounded-xl text-xs font-bold text-primary hover:bg-primary-fixed/40 px-2 sm:px-3"
+                            title="Nhắn tin với khách"
+                          >
+                            Nhắn tin
+                          </Button>
+                        )}
                         <Button
-                          variant="tonal"
+                          variant="outline"
                           size="sm"
-                          icon="chat"
-                          onClick={() =>
-                            onNavigate?.('messages', {
-                              targetUserId: task.client.id,
-                              targetName: task.client.name,
-                            })
-                          }
-                          className="rounded-xl text-xs font-bold text-primary hover:bg-primary-fixed/40"
-                          title="Nhắn tin với khách"
+                          disabled={isBusy}
+                          onClick={() => handleDeclineTask(task.id)}
+                          className="rounded-xl text-xs text-red-600 hover:bg-red-50 border-red-200 px-2.5 sm:px-3"
                         >
-                          Nhắn tin
+                          Từ chối
                         </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={isBusy}
-                        onClick={() => handleDeclineTask(task.id)}
-                        className="rounded-xl text-xs text-red-600 hover:bg-red-50 border-red-200"
-                      >
-                        Từ chối
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        icon="check_circle"
-                        disabled={isBusy}
-                        onClick={() => handleAcceptTask(task)}
-                        className="rounded-xl text-xs"
-                      >
-                        {isBusy ? 'Đang xử lý...' : 'Nhận việc'}
-                      </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon="check_circle"
+                          disabled={isBusy}
+                          onClick={() => handleAcceptTask(task)}
+                          className="rounded-xl text-xs px-2.5 sm:px-3"
+                        >
+                          {isBusy ? 'Đang...' : 'Nhận việc'}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )

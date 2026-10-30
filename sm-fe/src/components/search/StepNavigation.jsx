@@ -6,10 +6,25 @@ import Icon from '../common/Icon'
 export default function StepNavigation({ totalFound = 6 }) {
   return (
     <section className="w-full bg-surface-container-lowest shadow-sm border-b border-surface-variant/30">
-      <div className="max-w-[1240px] mx-auto px-6 py-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Step items container */}
-          <div className="flex items-center gap-3 sm:gap-6 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 py-3.5 sm:py-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          {/* Mobile Compact Stepper */}
+          <div className="flex md:hidden items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs shadow-xs">
+                2
+              </span>
+              <span className="font-label-md text-xs font-bold text-on-surface">
+                Bước 2 / 3: Gợi ý thợ phù hợp
+              </span>
+            </div>
+            <span className="text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+              {totalFound} thợ
+            </span>
+          </div>
+
+          {/* Desktop Step items container */}
+          <div className="hidden md:flex items-center gap-3 sm:gap-6 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
             {/* Step 1 */}
             <div className="flex items-center gap-2.5 shrink-0">
               <span className="w-7 h-7 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-label-sm text-label-sm">
@@ -61,7 +76,7 @@ export default function StepNavigation({ totalFound = 6 }) {
           </div>
 
           {/* Real-time Live Watch Indicator */}
-          <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-primary-fixed/40 text-on-primary-fixed-variant font-label-sm text-label-sm self-start md:self-auto">
+          <div className="hidden md:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-primary-fixed/40 text-on-primary-fixed-variant font-label-sm text-label-sm self-start md:self-auto">
             <Icon name="person_search" size={18} className="text-primary" />
             <span>
               Tìm thấy <strong>{totalFound} thợ</strong> đáp ứng yêu cầu

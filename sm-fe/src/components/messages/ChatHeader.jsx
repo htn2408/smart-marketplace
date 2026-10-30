@@ -19,13 +19,13 @@ export default function ChatHeader({
   const { partner, taskTitle, taskId } = conversation
 
   return (
-    <div className="h-16 px-4 lg:px-6 border-b border-surface-variant/30 flex-none flex items-center justify-between bg-surface-container-lowest z-10 shadow-xs">
-      <div className="flex items-center gap-3 min-w-0">
+    <div className="h-16 px-3.5 sm:px-4 lg:px-6 border-b border-surface-variant/30 flex-none flex items-center justify-between bg-surface-container-lowest z-10 shadow-xs">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
         {/* Mobile Back Button */}
         <button
           type="button"
           onClick={onBack}
-          className="md:hidden p-1.5 -ml-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer"
+          className="md:hidden p-1.5 -ml-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer shrink-0"
           title="Quay lại danh sách"
         >
           <Icon name="arrow_back" size={20} />
@@ -42,21 +42,21 @@ export default function ChatHeader({
           <img
             src={partner.avatar}
             alt={partner.name}
-            className={`w-10 h-10 rounded-full object-cover ring-2 ring-primary/20 transition-all ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-primary/20 transition-all ${
               canViewProfile ? 'group-hover:ring-primary group-hover:scale-105 shadow-xs' : ''
             }`}
           />
           {partner.isOnline && (
             <span
-              className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white"
+              className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 ring-2 ring-white"
               title="Đang hoạt động"
             />
           )}
         </div>
 
         {/* Partner Info Details */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <h2
               onClick={canViewProfile ? () => onViewProfile?.(partner) : undefined}
               title={canViewProfile ? `Xem trang cá nhân của ${partner.name}` : undefined}
@@ -73,7 +73,7 @@ export default function ChatHeader({
                 size="xs"
                 icon="verified"
                 onClick={canViewProfile ? () => onViewProfile?.(partner) : undefined}
-                className={canViewProfile ? 'cursor-pointer hover:opacity-85' : ''}
+                className={`hidden sm:inline-flex ${canViewProfile ? 'cursor-pointer hover:opacity-85' : ''}`}
                 title={canViewProfile ? `Xem trang cá nhân của ${partner.name}` : undefined}
               >
                 {partner.role}
@@ -81,7 +81,7 @@ export default function ChatHeader({
             )}
 
             {partner.rating && (
-              <span className="text-xs font-bold text-amber-700 flex items-center gap-0.5">
+              <span className="hidden sm:inline-flex text-xs font-bold text-amber-700 items-center gap-0.5 shrink-0">
                 <Icon name="star" size={14} filled className="text-amber-600" />
                 <span>{partner.rating}</span>
                 {partner.completedJobs && (
@@ -93,19 +93,19 @@ export default function ChatHeader({
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
+          <div className="flex items-center gap-1.5 text-xs text-on-surface-variant mt-0.5 truncate">
             {partner.isOnline ? (
-              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+              <span className="text-emerald-700 font-semibold flex items-center gap-1 shrink-0 text-[11px] sm:text-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Đang hoạt động</span>
               </span>
             ) : (
-              <span className="text-outline">Ngoại tuyến</span>
+              <span className="text-outline shrink-0 text-[11px] sm:text-xs">Ngoại tuyến</span>
             )}
             {partner.responseSpeed && (
               <>
                 <span>•</span>
-                <span className="truncate">{partner.responseSpeed}</span>
+                <span className="truncate text-[11px] sm:text-xs">{partner.responseSpeed}</span>
               </>
             )}
           </div>
@@ -113,7 +113,7 @@ export default function ChatHeader({
       </div>
 
       {/* Header Action Buttons */}
-      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
         {taskTitle && (
           <button
             type="button"
@@ -129,19 +129,19 @@ export default function ChatHeader({
         <button
           type="button"
           onClick={onCall}
-          className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-xl transition-colors cursor-pointer"
+          className="p-1.5 sm:p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-xl transition-colors cursor-pointer"
           title="Gọi điện trao đổi"
         >
-          <Icon name="call" size={20} />
+          <Icon name="call" size={18} className="sm:scale-110" />
         </button>
 
         <button
           type="button"
           onClick={onReport}
-          className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/40 rounded-xl transition-colors cursor-pointer"
+          className="p-1.5 sm:p-2 text-on-surface-variant hover:text-error hover:bg-error-container/40 rounded-xl transition-colors cursor-pointer"
           title="Báo cáo vi phạm"
         >
-          <Icon name="report" size={20} />
+          <Icon name="report" size={18} className="sm:scale-110" />
         </button>
       </div>
     </div>

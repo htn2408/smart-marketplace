@@ -1,4 +1,5 @@
 import Icon from './Icon'
+import { cn } from '../../utils/cn'
 
 /**
  * Standardized Button component for TaskMate Design System
@@ -48,15 +49,13 @@ export default function Button({
       'bg-surface-container-lowest text-primary hover:bg-surface-container-low shadow-md',
   }
 
-  const computedClass = [
+  const computedClass = cn(
     baseStyles,
     sizeStyles[size] || sizeStyles.md,
     variantStyles[variant] || variantStyles.primary,
-    fullWidth ? 'w-full' : '',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ')
+    fullWidth && 'w-full',
+    className
+  )
 
   const renderIcon = (iconName) => {
     if (!iconName) return null

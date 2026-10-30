@@ -261,14 +261,14 @@ export default function Login() {
       <button
         type="button"
         onClick={() => navigate(ROUTES.HOME)}
-        className="absolute top-6 left-6 z-20 flex items-center gap-2 text-white/80 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur-md px-4 py-2 rounded-full font-label-md text-sm transition-all cursor-pointer shadow-md"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center gap-1.5 sm:gap-2 text-white/90 hover:text-white bg-black/40 hover:bg-black/60 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-label-md text-xs sm:text-sm transition-all cursor-pointer shadow-md"
       >
-        <Icon name="arrow_back" size={18} />
-        <span>Về trang chủ</span>
+        <Icon name="arrow_back" size={16} />
+        <span>Trang chủ</span>
       </button>
 
       {/* Main Authentication Card */}
-      <div className="relative z-10 w-full max-w-[440px] bg-surface-container-lowest rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-surface-variant/30 p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-[440px] my-14 sm:my-8 bg-surface-container-lowest rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-surface-variant/30 p-5 sm:p-7 md:p-9 animate-in fade-in zoom-in-95 duration-200">
         {/* Brand Logo & Header */}
         <div className="flex flex-col items-center text-center mb-6">
           <div className="h-10 flex items-center justify-center mb-3">

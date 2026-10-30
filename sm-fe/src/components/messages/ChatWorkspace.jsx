@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom'
 import Icon from '../common/Icon'
+import Button from '../common/Button'
+import { ROUTES } from '../../routes/paths'
 import ConversationList from './ConversationList'
 import ChatHeader from './ChatHeader'
 import MessageBubble from './MessageBubble'
@@ -349,7 +351,7 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
 
   return (
     <div
-      className={`relative flex-1 min-h-0 w-full bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-variant/40 shadow-sm flex overflow-hidden ${className}`}
+      className={`relative flex-1 min-h-0 w-full bg-surface-container-lowest rounded-none sm:rounded-2xl lg:rounded-3xl border-0 sm:border border-surface-variant/40 shadow-none sm:shadow-sm flex overflow-hidden ${className}`}
     >
       {/* Toast Notification */}
       {toastMessage && (
@@ -363,7 +365,7 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
 
       {/* ================= LEFT SIDEBAR (Conversation List) ================= */}
       <div
-        className={`w-full md:w-[320px] lg:w-[360px] flex-none flex flex-col min-h-0 ${
+        className={`w-full md:w-[320px] lg:w-[360px] xl:w-[380px] flex-none flex flex-col min-h-0 ${
           isMobileChatOpen ? 'hidden md:flex' : 'flex'
         }`}
       >
@@ -443,10 +445,31 @@ export default function ChatWorkspace({ onNavigate, role = 'client', className =
               onEmoji={() => showToast('Tính năng biểu tượng cảm xúc sẽ sớm ra mắt.')}
             />
           </>
+        ) : !user ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center space-y-3.5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
+              <Icon name="lock" size={28} />
+            </div>
+            <h3 className="font-headline-sm text-base font-bold text-on-surface">
+              Vui lòng đăng nhập để xem tin nhắn
+            </h3>
+            <p className="text-xs text-on-surface-variant max-w-sm">
+              Đăng nhập tài khoản TaskMate của bạn để trao đổi trực tiếp và nhận thông báo công việc.
+            </p>
+            <Button
+              variant="primary"
+              size="sm"
+              icon="login"
+              onClick={() => (onNavigate ? onNavigate('login') : navigate(ROUTES.LOGIN))}
+              className="rounded-xl font-bold mt-1"
+            >
+              Đăng nhập ngay
+            </Button>
+          </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-            <div className="w-16 h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
-              <Icon name="forum" size={32} />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center space-y-3">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
+              <Icon name="forum" size={28} />
             </div>
             <h3 className="font-headline-sm text-base font-bold text-on-surface">
               Chưa chọn cuộc trò chuyện nào

@@ -16,14 +16,29 @@ export default function Header({ activePath, onNavigate }) {
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
 
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const userMenuRef = useRef(null)
+  const isTasker =
+    user?.roles?.includes('TASKER') ||
+    user?.roles?.includes('WORKER') ||
+    user?.role === 'TASKER' ||
+    user?.role === 'WORKER'
 
-  // Close dropdown menu when clicking outside
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const userMenuRef = useRef(null)
+  const mobileMenuRef = useRef(null)
+
+  // Close dropdown menu and mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setIsUserMenuOpen(false)
+      }
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target) &&
+        !e.target.closest('[data-mobile-menu-toggle]')
+      ) {
+        setIsMobileMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -98,17 +113,17 @@ export default function Header({ activePath, onNavigate }) {
 
   return (
     <header className="fixed top-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-      <div className="h-20 max-w-[1240px] mx-auto px-6 flex items-center justify-between gap-4">
+      <div className="h-20 max-w-[1240px] mx-auto px-4 sm:px-6 flex items-center justify-between gap-2 sm:gap-4">
         {/* Logo & Navigation */}
         <div className="flex items-center gap-6 xl:gap-8 min-w-0">
           <Link
             to={ROUTES.HOME}
             onClick={(e) => handleLinkClick(e, 'home', ROUTES.HOME)}
-            className="flex items-center gap-3 group shrink-0"
+            className="flex items-center gap-2 sm:gap-3 group shrink-0"
           >
             <img
               alt="TaskMate Brand Logo"
-              className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
+              className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105"
               src={TASKMATE_LOGO_URL}
             />
             <span className="sr-only">TaskMate</span>
@@ -136,37 +151,27 @@ export default function Header({ activePath, onNavigate }) {
         </div>
 
         {/* Right Action Controls */}
-        <div className="flex items-center gap-3 sm:gap-3.5 shrink-0">
-          {(() => {
-            const isTasker =
-              user?.roles?.includes('TASKER') ||
-              user?.roles?.includes('WORKER') ||
-              user?.role === 'TASKER' ||
-              user?.role === 'WORKER'
-
-            return (
-              <Button
-                variant="outline"
-                size="sm"
-                icon={isTasker ? 'swap_horiz' : undefined}
-                className="hidden sm:inline-flex rounded-full text-primary shrink-0 whitespace-nowrap"
-                onClick={(e) =>
-                  handleLinkClick(
-                    e,
-                    isTasker ? 'tasker-dashboard' : 'become-tasker',
-                    isTasker ? ROUTES.TASKER_DASHBOARD : ROUTES.TASKER_REGISTER
-                  )
-                }
-              >
-                {isTasker ? 'Chế độ Tasker' : 'Trở thành Tasker'}
-              </Button>
-            )
-          })()}
+        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            icon={isTasker ? 'swap_horiz' : undefined}
+            className="hidden md:inline-flex rounded-full text-primary shrink-0 whitespace-nowrap"
+            onClick={(e) =>
+              handleLinkClick(
+                e,
+                isTasker ? 'tasker-dashboard' : 'become-tasker',
+                isTasker ? ROUTES.TASKER_DASHBOARD : ROUTES.TASKER_REGISTER
+              )
+            }
+          >
+            {isTasker ? 'Chế độ Tasker' : 'Trở thành Tasker'}
+          </Button>
 
           {/* Số dư tài khoản ví (hiển thị trước thông tin tài khoản cá nhân) */}
           {isAuthenticated && (
             <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs hover:border-primary/40 transition-all select-none shrink-0"
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs hover:border-primary/40 transition-all select-none shrink-0"
               title={`Số dư khả dụng: ${formatCurrency(user?.balance ?? 0)}`}
             >
               <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
@@ -187,7 +192,7 @@ export default function Header({ activePath, onNavigate }) {
           {!isAuthenticated ? (
             <Link
               to={ROUTES.LOGIN}
-              className="font-label-md text-label-md font-semibold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-lg hover:bg-primary-fixed/20 shrink-0 whitespace-nowrap"
+              className="font-label-md text-xs sm:text-label-md font-semibold text-primary hover:text-primary/80 transition-colors px-2.5 sm:px-3 py-1.5 rounded-lg hover:bg-primary-fixed/20 shrink-0 whitespace-nowrap"
             >
               Đăng nhập
             </Link>
@@ -285,8 +290,98 @@ export default function Header({ activePath, onNavigate }) {
               )}
             </div>
           )}
+          {/* Mobile Hamburger Toggle Button */}
+          <button
+            type="button"
+            data-mobile-menu-toggle="true"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden p-2 rounded-xl text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer shrink-0"
+            aria-label="Menu"
+          >
+            <Icon name={isMobileMenuOpen ? 'close' : 'menu'} size={24} />
+          </button>
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {isMobileMenuOpen && (
+        <div
+          ref={mobileMenuRef}
+          className="lg:hidden w-full bg-surface-container-lowest/95 backdrop-blur-2xl border-b border-surface-variant/40 shadow-2xl px-5 py-4 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-150"
+        >
+          {/* User info on mobile drawer when logged in */}
+          {isAuthenticated && (
+            <div className="p-3 rounded-xl bg-surface-container-low border border-surface-variant/40 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                  <Icon name="account_balance_wallet" size={18} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-on-surface-variant leading-none">
+                    Số dư khả dụng
+                  </span>
+                  <span className="font-label-md text-sm font-extrabold text-primary leading-tight mt-0.5">
+                    {formatCurrency(user?.balance ?? 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <nav className="flex flex-col gap-1">
+            {navLinks.map((link) => {
+              const isActive = currentActive === link.path
+              return (
+                <Link
+                  key={link.path}
+                  to={link.to}
+                  onClick={(e) => {
+                    handleLinkClick(e, link.path, link.to)
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-base transition-colors ${
+                    isActive
+                      ? 'bg-primary/10 text-primary font-bold'
+                      : 'text-on-surface hover:bg-surface-container-low font-medium'
+                  }`}
+                >
+                  <span>{link.label}</span>
+                  <Icon name="chevron_right" size={18} className="text-outline" />
+                </Link>
+              )
+            })}
+          </nav>
+
+          <div className="pt-2 border-t border-surface-variant/30 flex flex-col gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              icon={isTasker ? 'swap_horiz' : undefined}
+              className="w-full rounded-xl text-primary justify-center font-bold"
+              onClick={(e) => {
+                setIsMobileMenuOpen(false)
+                handleLinkClick(
+                  e,
+                  isTasker ? 'tasker-dashboard' : 'become-tasker',
+                  isTasker ? ROUTES.TASKER_DASHBOARD : ROUTES.TASKER_REGISTER
+                )
+              }}
+            >
+              {isTasker ? 'Chế độ Tasker' : 'Trở thành Tasker'}
+            </Button>
+
+            {!isAuthenticated && (
+              <Link
+                to={ROUTES.LOGIN}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="w-full py-2.5 px-4 rounded-xl text-center font-bold bg-primary text-on-primary shadow-sm hover:bg-primary-container transition-colors"
+              >
+                Đăng nhập
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   )
 }

@@ -459,25 +459,25 @@ export default function TaskDetail({ onNavigate }) {
       <main className="w-full pt-20 bg-surface flex-1">
         {/* Progress & Page Header Bar */}
         <section className="w-full bg-surface-container-lowest shadow-[0_1px_4px_rgba(13,112,84,0.04)] border-b border-surface-variant/30">
-          <div className="max-w-[1240px] mx-auto px-6 py-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                   <Badge variant="primary" icon="add_task">
                     Tạo yêu cầu dịch vụ
                   </Badge>
-                  <span className="text-outline-variant font-body-sm text-body-sm">•</span>
-                  <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  <span className="hidden sm:inline text-outline-variant font-body-sm text-body-sm">•</span>
+                  <span className="hidden sm:inline font-body-sm text-body-sm text-on-surface-variant">
                     Không mất phí đăng tin • Đảm bảo giá minh bạch
                   </span>
                 </div>
-                <h1 className="font-headline-lg text-headline-lg text-on-surface font-extrabold tracking-tight">
+                <h1 className="text-xl sm:text-2xl lg:text-headline-lg text-on-surface font-extrabold tracking-tight">
                   Đăng việc &amp; Đề xuất thù lao
                 </h1>
               </div>
 
-              {/* Steps Breadcrumb */}
-              <div className="flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-xl">
+              {/* Steps Breadcrumb - Desktop & Tablet */}
+              <div className="hidden md:flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-xl">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-sm text-label-sm font-bold">
                     1
@@ -501,22 +501,37 @@ export default function TaskDetail({ onNavigate }) {
                   <span className="font-label-md text-label-md">Xác nhận &amp; Nghiệm thu</span>
                 </div>
               </div>
+
+              {/* Steps Indicator - Mobile Phone */}
+              <div className="md:hidden flex items-center justify-between bg-surface-container-low px-3.5 py-2 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold">
+                    1
+                  </span>
+                  <span className="text-xs font-bold text-primary">
+                    Bước 1 / 3: Chi tiết công việc
+                  </span>
+                </div>
+                <span className="text-[11px] font-medium text-on-surface-variant">
+                  Tiếp theo: Chọn thợ
+                </span>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Main Content Form */}
-        <div className="w-full bg-surface py-8">
-          <div className="max-w-[1240px] mx-auto px-6">
-            <form onSubmit={handleSubmit} noValidate className="max-w-4xl mx-auto space-y-6">
+        <div className="w-full bg-surface py-4 sm:py-8">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+            <form onSubmit={handleSubmit} noValidate className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
               {/* Direct Offer Banner if targetTasker is present */}
               {targetTasker && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-primary-fixed/25 border-2 border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
-                  <div className="flex items-center gap-3.5">
+                <div className="p-3.5 sm:p-5 rounded-2xl bg-primary-fixed/25 border-2 border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-sm animate-in fade-in duration-200">
+                  <div className="flex items-center gap-3">
                     <img
                       src={targetTasker.avatar || DEFAULT_AVATAR}
                       alt={targetTasker.name}
-                      className="w-13 h-13 rounded-full object-cover border-2 border-primary shadow-sm shrink-0"
+                      className="w-11 h-11 sm:w-13 sm:h-13 rounded-full object-cover border-2 border-primary shadow-sm shrink-0"
                     />
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
@@ -527,10 +542,10 @@ export default function TaskDetail({ onNavigate }) {
                           (Direct Offer)
                         </span>
                       </div>
-                      <h3 className="font-headline-sm text-base sm:text-lg font-bold text-on-surface">
+                      <h3 className="text-sm sm:text-lg font-bold text-on-surface">
                         Gửi yêu cầu trực tiếp cho thợ: <span className="text-primary">{targetTasker.name}</span>
                       </h3>
-                      <p className="font-caption text-xs text-on-surface-variant mt-0.5">
+                      <p className="font-caption text-[11px] sm:text-xs text-on-surface-variant mt-0.5">
                         Hoàn tất địa chỉ và hình ảnh bên dưới. Yêu cầu sẽ được chuyển thẳng tới {targetTasker.name}.
                       </p>
                     </div>
@@ -548,30 +563,32 @@ export default function TaskDetail({ onNavigate }) {
               {/* Section 1: Chuẩn hóa công việc (Đã bỏ danh sách gợi ý vì user đã chọn từ trang home) */}
               <div
                 id="step-1"
-                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                className={`bg-surface-container-lowest rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm border transition-colors ${
                   errors.taskCategory
                     ? 'border-error/60 ring-1 ring-error/20'
                     : 'border-surface-variant/30'
                 }`}
               >
-                <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary" />
-                      <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
+                      <span className="font-label-sm text-xs sm:text-label-sm font-semibold uppercase tracking-wider text-primary">
                         Bước 1: Chuẩn hóa công việc
                       </span>
                     </div>
-                    <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                    <h2 className="text-base sm:text-lg lg:text-headline-sm font-bold text-on-surface">
                       Bạn cần hỗ trợ công việc gì?
                     </h2>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">
+                    <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant mt-0.5">
                       Tên công việc chuẩn hóa giúp thuật toán ghép thợ lành nghề nhanh gấp 3 lần.
                     </p>
                   </div>
-                  <Badge variant="secondary" icon="trending_up" size="sm">
-                    Phổ biến rất cao
-                  </Badge>
+                  <div className="hidden sm:inline-flex shrink-0">
+                    <Badge variant="secondary" icon="trending_up" size="sm">
+                      Phổ biến rất cao
+                    </Badge>
+                  </div>
                 </div>
 
                 <TaskSearchInput
@@ -610,29 +627,29 @@ export default function TaskDetail({ onNavigate }) {
               {/* Section 2: Chi tiết mô tả (Đã bỏ bộ kiểm tra tiện ích nhanh) */}
               <div
                 id="step-2"
-                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                className={`bg-surface-container-lowest rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm border transition-colors ${
                   errors.description
                     ? 'border-error/60 ring-1 ring-error/20'
                     : 'border-surface-variant/30'
                 }`}
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-start justify-between gap-2 mb-3">
                   <div>
-                    <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
+                    <span className="font-label-sm text-xs sm:text-label-sm font-semibold uppercase tracking-wider text-primary">
                       Bước 2: Chi tiết mô tả
                     </span>
-                    <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                    <h2 className="text-base sm:text-lg lg:text-headline-sm font-bold text-on-surface">
                       Mô tả cụ thể hiện trạng &amp; yêu cầu <span className="text-error">*</span>
                     </h2>
                   </div>
                   <span
-                    className={`font-caption text-caption px-2 py-1 rounded ${
+                    className={`font-caption text-[11px] sm:text-caption px-2 py-1 rounded shrink-0 ${
                       description.length > 1000
                         ? 'bg-error-container text-error font-bold'
                         : 'text-on-surface-variant bg-surface-container-low'
                     }`}
                   >
-                    {description.length}/1000 ký tự
+                    {description.length}/1000
                   </span>
                 </div>
 
@@ -644,7 +661,7 @@ export default function TaskDetail({ onNavigate }) {
                   }}
                   rows={4}
                   placeholder="Mô tả cụ thể về đồ cần lắp, kích thước, hiện trạng vị trí lắp, tầng mấy (có thang máy không)..."
-                  className={`w-full p-4 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:bg-surface-container-lowest focus:outline-none transition-all placeholder:text-on-surface-variant/60 resize-y border ${
+                  className={`w-full p-3 sm:p-4 rounded-lg bg-surface-container-low text-on-surface font-body-md text-sm sm:text-base focus:bg-surface-container-lowest focus:outline-none transition-all placeholder:text-on-surface-variant/60 resize-y border ${
                     errors.description
                       ? 'border-error ring-1 ring-error/20 focus:ring-2 focus:ring-error/40'
                       : 'border-transparent focus:ring-2 focus:ring-primary/40 focus:border-primary/20'
@@ -661,21 +678,21 @@ export default function TaskDetail({ onNavigate }) {
               {/* Section 3: Hình ảnh hiện trạng */}
               <div
                 id="step-3"
-                className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border border-surface-variant/30"
+                className="bg-surface-container-lowest rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm border border-surface-variant/30"
               >
-                <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-3">
                   <div>
-                    <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
+                    <span className="font-label-sm text-xs sm:text-label-sm font-semibold uppercase tracking-wider text-primary">
                       Bước 3: Hình ảnh hiện trạng
                     </span>
-                    <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                    <h2 className="text-base sm:text-lg lg:text-headline-sm font-bold text-on-surface">
                       Tải ảnh hiện trạng công việc ({taskImages.length}/{MAX_TASK_IMAGES})
                     </h2>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">
+                    <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant mt-0.5">
                       Đăng ảnh thực tế giúp Tasker hiểu việc chuẩn xác và nhận ngay mà không cần khảo sát rườm rà.
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded bg-primary-fixed/30 text-on-primary-fixed-variant font-label-sm text-label-sm font-semibold shrink-0">
+                  <span className="self-start sm:self-auto px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-primary-fixed/30 text-on-primary-fixed-variant text-[11px] sm:text-label-sm font-semibold shrink-0">
                     Tối đa 10 ảnh • 5MB/ảnh
                   </span>
                 </div>
@@ -746,7 +763,7 @@ export default function TaskDetail({ onNavigate }) {
               {/* Section 4: Địa điểm thực hiện (Reusing shared <AddressSelector />) */}
               <div
                 id="step-4"
-                className={`bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm border transition-colors ${
+                className={`bg-surface-container-lowest rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm border transition-colors ${
                   errors.province || errors.district || errors.ward || errors.specificAddress
                     ? 'border-error/60 ring-1 ring-error/20'
                     : 'border-surface-variant/30'
@@ -812,9 +829,9 @@ export default function TaskDetail({ onNavigate }) {
               />
               
               {/* Final Action CTA Buttons */}
-              <div className="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm space-y-4 border border-surface-variant/30">
+              <div className="bg-surface-container-lowest rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm space-y-3 sm:space-y-4 border border-surface-variant/30">
                 {submitError && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-error-container text-error font-label-sm text-label-sm font-semibold">
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-error-container text-error font-label-sm text-xs sm:text-label-sm font-semibold">
                     <Icon name="error" size={18} className="shrink-0 mt-0.5" />
                     <span>{submitError}</span>
                   </div>
@@ -827,7 +844,7 @@ export default function TaskDetail({ onNavigate }) {
                     icon="send"
                     fullWidth
                     disabled={submitting}
-                    className="py-4"
+                    className="py-3.5 sm:py-4 text-sm sm:text-base font-bold"
                   >
                     {submitting
                       ? 'Đang gửi yêu cầu...'
@@ -835,9 +852,8 @@ export default function TaskDetail({ onNavigate }) {
                       ? `Gửi đề xuất việc trực tiếp cho ${targetTasker.name}`
                       : 'Đăng việc ngay (Miễn phí)'}
                   </Button>
-                  
                 </div>
-                <p className="text-center font-caption text-caption text-on-surface-variant">
+                <p className="text-center font-caption text-[11px] sm:text-caption text-on-surface-variant leading-relaxed">
                   Bằng việc đăng yêu cầu, bạn đồng ý với{' '}
                   <a className="text-primary underline" href="#">
                     Điều khoản dịch vụ

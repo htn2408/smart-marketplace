@@ -29,10 +29,10 @@ export default function Footer({ onNavigate }) {
   }
 
   return (
-    <footer className="w-full bg-surface-container-low pt-16 pb-12 mt-10">
-      <div className="max-w-[1240px] mx-auto px-6">
+    <footer className="w-full bg-surface-container-low pt-10 sm:pt-16 pb-8 sm:pb-12 mt-8 sm:mt-10">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
         {/* Main Footer Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-surface-variant/40">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10 pb-8 sm:pb-12 border-b border-surface-variant/40">
           {/* Brand Info */}
           <div className="lg:col-span-2 flex flex-col items-start gap-4 pr-0 lg:pr-8">
             <div className="flex items-center gap-3">
@@ -192,7 +192,7 @@ export default function Footer({ onNavigate }) {
         </div>
 
         {/* Middle Utility & App Download Strip */}
-        <div className="py-8 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-surface-variant/40">
+        <div className="py-6 sm:py-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 border-b border-surface-variant/40 text-center md:text-left">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow-sm">
               <Icon name="language" size={18} className="text-on-surface-variant" />

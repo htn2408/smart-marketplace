@@ -280,11 +280,11 @@ export default function TaskManager({ onNavigate }) {
       <main className="w-full pt-20 bg-surface flex-1 min-h-[calc(100vh-20rem)]">
         <div className="flex flex-col w-full">
           {/* Top Command & Metrics Overview Bar */}
-          <section className="w-full bg-surface-container-low py-8 md:py-10 border-b border-surface-variant/30">
-            <div className="max-w-[1240px] mx-auto px-6">
+          <section className="w-full bg-surface-container-low py-6 sm:py-8 md:py-10 border-b border-surface-variant/30">
+            <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
               {/* Breadcrumb & Header Row */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8">
-                <div className="flex flex-col gap-2">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 pb-6 sm:pb-8">
+                <div className="flex flex-col gap-1.5 sm:gap-2">
                   <div className="flex items-center gap-2 font-caption text-caption text-on-surface-variant">
                     <button
                       type="button"
@@ -296,22 +296,22 @@ export default function TaskManager({ onNavigate }) {
                     <Icon name="chevron_right" size={14} className="text-outline" />
                     <span className="text-primary font-medium">Quản lý việc của tôi</span>
                   </div>
-                  <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
+                  <h1 className="text-xl sm:text-2xl lg:text-headline-xl text-on-surface tracking-tight font-bold">
                     Quản lý công việc &amp; Lịch hẹn
                   </h1>
-                  <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl leading-relaxed">
+                  <p className="font-body-md text-xs sm:text-body-md text-on-surface-variant max-w-2xl leading-relaxed">
                     Theo dõi tiến độ trực tiếp từ thợ chuyên nghiệp, kiểm soát chất lượng thi công và
                     an tâm giải ngân qua TaskMate Escrow.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap sm:flex-nowrap">
                   <Button
                     variant="outline"
                     size="md"
                     icon="refresh"
                     onClick={handleRefresh}
-                    className="rounded-lg shadow-xs"
+                    className="rounded-lg shadow-xs py-2 sm:py-2.5 text-xs sm:text-sm"
                     title="Làm mới dữ liệu từ máy chủ"
                   >
                     Làm mới
@@ -327,7 +327,7 @@ export default function TaskManager({ onNavigate }) {
                         window.location.href = ROUTES.TASK_DETAIL
                       }
                     }}
-                    className="shadow-md font-bold rounded-lg"
+                    className="shadow-md font-bold rounded-lg py-2 sm:py-2.5 text-xs sm:text-sm"
                   >
                     + Đăng việc mới
                   </Button>
@@ -335,111 +335,116 @@ export default function TaskManager({ onNavigate }) {
               </div>
 
               {/* 4 High-Impact KPI Counter Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Metric 1: Pending */}
-                <div className="p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-4 border border-surface-variant/20 hover:border-secondary-fixed transition-colors">
+                <div className="p-3.5 sm:p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-3 sm:gap-4 border border-surface-variant/20 hover:border-secondary-fixed transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="font-label-md text-label-md text-on-surface-variant">
+                    <span className="font-label-md text-xs sm:text-label-md text-on-surface-variant">
                       Chờ thợ phản hồi
                     </span>
-                    <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center">
-                      <Icon name="hourglass_top" size={20} />
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
+                      <Icon name="hourglass_top" size={18} />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-headline-xl text-headline-xl text-on-surface font-bold">
+                  <div className="flex items-baseline justify-between flex-wrap gap-1">
+                    <div className="flex items-baseline gap-1.5 sm:gap-2">
+                      <span className="text-xl sm:text-2xl lg:text-headline-xl text-on-surface font-bold">
                         {String(data.stats.pendingCount).padStart(2, '0')}
                       </span>
-                      <span className="font-caption text-caption text-amber-800 font-medium">
-                        việc đang chờ
+                      <span className="font-caption text-[11px] sm:text-caption text-amber-800 font-medium">
+                        việc
                       </span>
                     </div>
-                    <span className="inline-flex items-center gap-1 font-caption text-caption text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
-                      <Icon name="timer" size={13} />
-                      <span>Đang chờ thợ</span>
+                    <span className="inline-flex items-center gap-1 font-caption text-[10px] sm:text-caption text-amber-900 bg-amber-100 px-1.5 sm:px-2 py-0.5 rounded-full font-semibold">
+                      <Icon name="timer" size={12} />
+                      <span>Chờ thợ</span>
                     </span>
                   </div>
                 </div>
 
                 {/* Metric 2: Upcoming */}
-                <div className="p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-4 border border-surface-variant/20 hover:border-primary-fixed transition-colors">
+                <div className="p-3.5 sm:p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-3 sm:gap-4 border border-surface-variant/20 hover:border-primary-fixed transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="font-label-md text-label-md text-on-surface-variant">
+                    <span className="font-label-md text-xs sm:text-label-md text-on-surface-variant">
                       Lịch sắp tới
                     </span>
-                    <div className="w-9 h-9 rounded-lg bg-primary-fixed/50 text-on-primary-fixed flex items-center justify-center">
-                      <Icon name="event_available" size={20} />
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary-fixed/50 text-on-primary-fixed flex items-center justify-center shrink-0">
+                      <Icon name="event_available" size={18} />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-headline-xl text-headline-xl text-on-surface font-bold">
+                  <div className="flex items-baseline justify-between flex-wrap gap-1">
+                    <div className="flex items-baseline gap-1.5 sm:gap-2">
+                      <span className="text-xl sm:text-2xl lg:text-headline-xl text-on-surface font-bold">
                         {String(data.stats.matchedCount).padStart(2, '0')}
                       </span>
-                      <span className="font-caption text-caption text-primary font-medium">
-                        đã chốt thợ
+                      <span className="font-caption text-[11px] sm:text-caption text-primary font-medium">
+                        lịch
                       </span>
                     </div>
-                    <span className="font-caption text-caption text-on-surface-variant font-medium">
-                      Đã cọc Escrow
+                    <span className="font-caption text-[10px] sm:text-caption text-primary font-medium flex items-center gap-0.5">
+                      <Icon name="check_circle" size={12} />
+                      Đã ghim
                     </span>
                   </div>
                 </div>
 
                 {/* Metric 3: In Progress & Awaiting Approval */}
-                <div className="p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-4 border border-surface-variant/20 hover:border-primary transition-colors">
+                <div className="p-3.5 sm:p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-3 sm:gap-4 border border-surface-variant/20 hover:border-primary transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="font-label-md text-label-md text-on-surface-variant">
-                      Đang thực hiện &amp; Nghiệm thu
+                    <span className="font-label-md text-xs sm:text-label-md text-on-surface-variant">
+                      Đang thực hiện
                     </span>
-                    <div className="relative w-9 h-9 rounded-lg bg-surface-container-high text-primary flex items-center justify-center">
-                      <Icon name="engineering" size={20} />
+                    <div className="flex items-center gap-1">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <Icon name="engineering" size={18} />
+                      </div>
                       {data.stats.awaitingApprovalCount > 0 && (
-                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center animate-bounce shrink-0" title="Có đơn việc đang chờ bạn nghiệm thu!">
+                          <Icon name="priority_high" size={18} />
+                        </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-headline-xl text-headline-xl text-on-surface font-bold">
+                  <div className="flex items-baseline justify-between flex-wrap gap-1">
+                    <div className="flex items-baseline gap-1.5 sm:gap-2">
+                      <span className="text-xl sm:text-2xl lg:text-headline-xl text-on-surface font-bold">
                         {String(data.stats.inProgressCount + data.stats.awaitingApprovalCount).padStart(2, '0')}
                       </span>
-                      <span className="font-caption text-caption text-on-surface-variant font-medium">
-                        đơn việc
+                      <span className="font-caption text-[11px] sm:text-caption text-on-surface-variant font-medium">
+                        đơn
                       </span>
                     </div>
                     {data.stats.awaitingApprovalCount > 0 && (
-                      <span className="inline-flex items-center gap-1 font-caption text-caption text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full font-bold animate-pulse">
-                        <Icon name="verified" size={13} />
-                        <span>Cần duyệt!</span>
+                      <span className="inline-flex items-center gap-1 font-caption text-[10px] sm:text-caption text-amber-900 bg-amber-200/80 px-1.5 sm:px-2 py-0.5 rounded-full font-bold animate-pulse">
+                        <Icon name="verified" size={12} />
+                        <span>Duyệt!</span>
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Metric 4: Completed */}
-                <div className="p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-4 border border-surface-variant/20 hover:border-primary transition-colors">
+                <div className="p-3.5 sm:p-5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-3 sm:gap-4 border border-surface-variant/20 hover:border-primary transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="font-label-md text-label-md text-on-surface-variant">
+                    <span className="font-label-md text-xs sm:text-label-md text-on-surface-variant">
                       Đã hoàn thành
                     </span>
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Icon name="task_alt" size={20} />
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Icon name="task_alt" size={18} />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-headline-xl text-headline-xl text-on-surface font-bold">
+                  <div className="flex items-baseline justify-between flex-wrap gap-1">
+                    <div className="flex items-baseline gap-1.5 sm:gap-2">
+                      <span className="text-xl sm:text-2xl lg:text-headline-xl text-on-surface font-bold">
                         {String(data.stats.doneCount).padStart(2, '0')}
                       </span>
-                      <span className="font-caption text-caption text-on-surface-variant font-medium">
-                        việc hoàn tất
+                      <span className="font-caption text-[11px] sm:text-caption text-on-surface-variant font-medium">
+                        việc
                       </span>
                     </div>
-                    <span className="font-caption text-caption text-primary font-medium flex items-center gap-0.5">
-                      <Icon name="shield" size={13} />
-                      Bảo hành 30 ngày
+                    <span className="font-caption text-[10px] sm:text-caption text-primary font-medium flex items-center gap-0.5">
+                      <Icon name="shield" size={12} />
+                      Bảo hành
                     </span>
                   </div>
                 </div>
@@ -448,8 +453,8 @@ export default function TaskManager({ onNavigate }) {
           </section>
 
           {/* Main Content Workspace */}
-          <section className="w-full py-8">
-            <div className="max-w-[1240px] mx-auto px-6">
+          <section className="w-full py-6 sm:py-8">
+            <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Left Side: Tasks Flow (8 cols) */}
                 <div className="lg:col-span-8 flex flex-col gap-6">

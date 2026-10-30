@@ -22,7 +22,7 @@ export default function ConversationList({
   const inProgressTotal = conversations.filter((c) => c.status === 'IN_PROGRESS').length
 
   return (
-    <aside className="w-full md:w-[350px] lg:w-[380px] flex-none flex flex-col border-r border-surface-variant/40 bg-surface-container-lowest min-h-0 h-full">
+    <aside className="w-full flex-1 flex flex-col border-r border-surface-variant/40 bg-surface-container-lowest min-h-0 h-full">
       {/* Top Header & Search */}
       <div className="p-4 border-b border-surface-variant/30 flex-none space-y-3">
         <div className="flex items-center justify-between">

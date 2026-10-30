@@ -302,7 +302,7 @@ export default function RequireAndCalendar({ onNavigate }) {
       )}
 
       {/* Top Banner Header: Tiêu đề & Nút bật Lịch hẹn */}
-      <section className="bg-surface-container-lowest rounded-3xl p-6 lg:p-8 shadow-sm border border-surface-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+      <section className="bg-surface-container-lowest rounded-3xl p-4 sm:p-6 lg:p-8 shadow-sm border border-surface-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative overflow-hidden">
         <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-primary/5 pointer-events-none blur-3xl" />
         <div className="flex flex-col gap-1.5 z-10 max-w-xl">
           <div className="flex items-center gap-2.5">
@@ -311,143 +311,143 @@ export default function RequireAndCalendar({ onNavigate }) {
               Khu vực hoạt động đăng ký • TaskMate Network
             </span>
           </div>
-          <h1 className="font-headline-lg text-2xl lg:text-3xl font-extrabold text-on-surface tracking-tight">
+          <h1 className="font-headline-lg text-xl sm:text-2xl lg:text-3xl font-extrabold text-on-surface tracking-tight">
             Yêu cầu &amp; Lịch hẹn
           </h1>
-          <p className="font-body-md text-sm text-on-surface-variant">
+          <p className="font-body-md text-xs sm:text-sm text-on-surface-variant">
             Quản lý yêu cầu trực tiếp từ khách hàng, điều phối lịch hẹn và theo dõi tiến độ nghiệm thu giải ngân.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 z-10 self-start md:self-auto">
+        <div className="flex items-center gap-2.5 sm:gap-3 z-10 self-start md:self-auto">
           <Button
             type="button"
             variant="outline"
-            size="md"
+            size="sm"
             icon="event_available"
             onClick={() => setIsCalendarModalOpen(true)}
-            className="rounded-2xl bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-variant/40 font-bold shadow-sm"
+            className="rounded-2xl bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-variant/40 font-bold shadow-sm text-xs sm:text-sm"
           >
             Xem chế độ Lịch
           </Button>
           <Button
             type="button"
             variant="primary"
-            size="md"
+            size="sm"
             icon="refresh"
             onClick={handleRefresh}
-            className="rounded-2xl px-3.5 shadow-sm"
+            className="rounded-2xl px-3 sm:px-3.5 shadow-sm"
             title="Làm mới dữ liệu từ máy chủ"
           />
         </div>
       </section>
 
       {/* 4 Bento Metrics Cards (Dữ liệu từ API Backend) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
         {/* Metric 1: Yêu cầu mới */}
-        <div className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-surface-container-lowest rounded-2xl p-3.5 sm:p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-label-md text-sm font-semibold text-on-surface-variant">
+            <span className="font-label-md text-xs sm:text-sm font-semibold text-on-surface-variant">
               Yêu cầu mới
             </span>
-            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800">
-              <Icon name="notifications_active" size={20} />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
+              <Icon name="notifications_active" size={18} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display-hero text-3xl font-extrabold text-amber-800 tracking-tight">
+              <span className="font-display-hero text-2xl sm:text-3xl font-extrabold text-amber-800 tracking-tight">
                 {String(data.stats.pendingCount).padStart(2, '0')}
               </span>
-              <span className="inline-flex items-center text-amber-900 font-label-sm text-xs font-extrabold bg-amber-200/60 px-2 py-0.5 rounded-lg">
+              <span className="inline-flex items-center text-amber-900 font-label-sm text-[10px] sm:text-xs font-extrabold bg-amber-200/60 px-1.5 sm:px-2 py-0.5 rounded-lg">
                 Mới
               </span>
             </div>
-            <p className="font-caption text-xs text-amber-800 font-semibold mt-2 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
-              <span>Chờ phản hồi nhận việc</span>
+            <p className="font-caption text-[11px] sm:text-xs text-amber-800 font-semibold mt-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping" />
+              <span className="truncate">Chờ phản hồi</span>
             </p>
           </div>
         </div>
 
         {/* Metric 2: Lịch sắp tới */}
-        <div className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-surface-container-lowest rounded-2xl p-3.5 sm:p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-label-md text-sm font-semibold text-on-surface-variant">
+            <span className="font-label-md text-xs sm:text-sm font-semibold text-on-surface-variant">
               Lịch sắp tới
             </span>
-            <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 flex items-center justify-center text-primary">
-              <Icon name="calendar_month" size={20} />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary-fixed/50 flex items-center justify-center text-primary shrink-0">
+              <Icon name="calendar_month" size={18} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display-hero text-3xl font-extrabold text-primary tracking-tight">
+              <span className="font-display-hero text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">
                 {String(data.stats.matchedCount).padStart(2, '0')}
               </span>
-              <span className="font-label-sm text-xs font-semibold text-on-surface-variant">
+              <span className="font-label-sm text-[10px] sm:text-xs font-semibold text-on-surface-variant">
                 lịch đặt
               </span>
             </div>
-            <p className="font-caption text-xs text-primary font-semibold mt-2 flex items-center gap-1">
-              <Icon name="verified" size={15} />
-              <span>Đã xác nhận &amp; cọc Escrow</span>
+            <p className="font-caption text-[11px] sm:text-xs text-primary font-semibold mt-2 flex items-center gap-1">
+              <Icon name="verified" size={14} />
+              <span className="truncate">Đã cọc Escrow</span>
             </p>
           </div>
         </div>
 
         {/* Metric 3: Đang thực hiện & Chờ duyệt */}
-        <div className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-surface-container-lowest rounded-2xl p-3.5 sm:p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-label-md text-sm font-semibold text-on-surface-variant">
-              Đang thực hiện
+            <span className="font-label-md text-xs sm:text-sm font-semibold text-on-surface-variant">
+              Đang làm
             </span>
-            <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface">
-              <Icon name="build_circle" size={20} />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface shrink-0">
+              <Icon name="build_circle" size={18} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display-hero text-3xl font-extrabold text-on-surface tracking-tight">
+              <span className="font-display-hero text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight">
                 {String(data.stats.inProgressCount + data.stats.awaitingApprovalCount).padStart(2, '0')}
               </span>
-              <span className="font-label-sm text-xs font-semibold text-on-surface-variant">
+              <span className="font-label-sm text-[10px] sm:text-xs font-semibold text-on-surface-variant">
                 đơn việc
               </span>
             </div>
-            <p className="font-caption text-xs text-on-surface-variant font-medium mt-2 flex items-center gap-1">
-              <Icon name="timer" size={15} className="text-primary" />
-              <span>
+            <p className="font-caption text-[11px] sm:text-xs text-on-surface-variant font-medium mt-2 flex items-center gap-1">
+              <Icon name="timer" size={14} className="text-primary" />
+              <span className="truncate">
                 {data.stats.awaitingApprovalCount > 0
-                  ? `${data.stats.awaitingApprovalCount} đơn đang chờ khách duyệt`
-                  : 'Tiến độ đang được cập nhật'}
+                  ? `${data.stats.awaitingApprovalCount} chờ duyệt`
+                  : 'Tiến độ cập nhật'}
               </span>
             </p>
           </div>
         </div>
 
         {/* Metric 4: Đã hoàn thành */}
-        <div className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-surface-container-lowest rounded-2xl p-3.5 sm:p-5 lg:p-6 shadow-sm border border-surface-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-label-md text-sm font-semibold text-on-surface-variant">
-              Đã hoàn thành
+            <span className="font-label-md text-xs sm:text-sm font-semibold text-on-surface-variant">
+              Hoàn thành
             </span>
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Icon name="task_alt" size={20} />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <Icon name="task_alt" size={18} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display-hero text-3xl font-extrabold text-on-surface tracking-tight">
+              <span className="font-display-hero text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight">
                 {String(data.stats.doneCount).padStart(2, '0')}
               </span>
-              <span className="font-label-sm text-xs font-bold text-primary">
+              <span className="font-label-sm text-[10px] sm:text-xs font-bold text-primary">
                 Đã giải ngân
               </span>
             </div>
-            <p className="font-caption text-xs text-on-surface-variant font-medium mt-2 flex items-center gap-1">
-              <Icon name="thumb_up" size={15} className="text-primary" />
-              <span>Được bảo vệ bởi Escrow</span>
+            <p className="font-caption text-[11px] sm:text-xs text-on-surface-variant font-medium mt-2 flex items-center gap-1">
+              <Icon name="thumb_up" size={14} className="text-primary" />
+              <span className="truncate">Bảo vệ Escrow</span>
             </p>
           </div>
         </div>
@@ -576,7 +576,7 @@ export default function RequireAndCalendar({ onNavigate }) {
                 return (
                   <div
                     key={task.id}
-                    className={`bg-surface-container-lowest rounded-3xl p-5 lg:p-6 shadow-sm border transition-all space-y-4 hover:shadow-md ${
+                    className={`bg-surface-container-lowest rounded-3xl p-4 sm:p-5 lg:p-6 shadow-sm border transition-all space-y-4 hover:shadow-md ${
                       isInProgress
                         ? 'border-l-4 border-l-primary border-surface-variant/30'
                         : isAwaitingApproval

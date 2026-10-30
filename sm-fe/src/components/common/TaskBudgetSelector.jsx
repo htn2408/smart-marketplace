@@ -26,11 +26,11 @@ export default function TaskBudgetSelector({
     onChangeAmount?.(Number(e.target.value))
   }
 
-  const containerPadding = compact ? 'p-4 sm:p-5' : 'p-6 sm:p-8'
-  const displayPadding = compact ? 'p-3.5 sm:p-4 mb-3' : 'p-5 sm:p-6 mb-5'
+  const containerPadding = compact ? 'p-4 sm:p-5' : 'p-4 sm:p-6 lg:p-8'
+  const displayPadding = compact ? 'p-3.5 sm:p-4 mb-3' : 'p-3.5 sm:p-5 lg:p-6 mb-4 sm:mb-5'
   const displayHeroClass = compact
     ? 'text-2xl sm:text-3xl font-extrabold text-primary tracking-tight'
-    : 'font-display-hero text-display-hero font-extrabold text-primary tracking-tight'
+    : 'text-2xl sm:text-3xl lg:text-display-hero font-extrabold text-primary tracking-tight'
 
   return (
     <div
@@ -43,19 +43,19 @@ export default function TaskBudgetSelector({
     >
       {/* Header section (if title or stepTitle exists) */}
       {(stepTitle || title) && (
-        <div className={compact ? 'mb-3' : 'mb-5'}>
+        <div className={compact ? 'mb-3' : 'mb-3 sm:mb-5'}>
           {stepTitle && (
             <span className="font-label-sm text-xs sm:text-label-sm font-semibold uppercase tracking-wider text-primary">
               {stepTitle}
             </span>
           )}
           {title && (
-            <h2 className={`font-headline-sm font-bold text-on-surface ${compact ? 'text-base sm:text-lg' : 'text-headline-sm'}`}>
+            <h2 className={`font-bold text-on-surface ${compact ? 'text-base sm:text-lg' : 'text-base sm:text-lg lg:text-headline-sm'}`}>
               {title}
             </h2>
           )}
           {subtitle && (
-            <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant">
+            <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant mt-0.5">
               {subtitle}
             </p>
           )}

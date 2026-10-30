@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import Icon from '../../components/common/Icon'
@@ -110,22 +110,22 @@ export default function UserProfile({ onNavigate }) {
       {/* Global Header */}
       <Header activePath="user-profile" onNavigate={onNavigate} />
 
-      <main className="w-full pt-24 pb-16 bg-surface flex-1">
-        <div className="max-w-[1000px] mx-auto px-6">
+      <main className="w-full pt-20 sm:pt-24 pb-12 sm:pb-16 bg-surface flex-1">
+        <div className="max-w-[1000px] mx-auto px-4 sm:px-6">
           {/* Header Title */}
-          <div className="mb-8">
-            <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-2xl lg:text-headline-lg font-bold text-on-surface">
               Hồ sơ &amp; Tài khoản cá nhân
             </h1>
-            <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+            <p className="font-body-md text-xs sm:text-body-md text-on-surface-variant mt-1">
               Quản lý thông tin liên hệ, vị trí địa chỉ nhận việc và bảo mật tài khoản TaskMate.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
             {/* Left Card: Summary Avatar & Role */}
             <div className="lg:col-span-4 flex flex-col gap-6">
-              <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm border border-surface-variant/30 flex flex-col items-center text-center">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 shadow-sm border border-surface-variant/30 flex flex-col items-center text-center">
                 <div className="w-24 h-24 rounded-full bg-primary-fixed/40 text-primary flex items-center justify-center font-bold text-3xl mb-4 ring-4 ring-primary/10">
                   {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
@@ -163,9 +163,9 @@ export default function UserProfile({ onNavigate }) {
             </div>
 
             {/* Right Column: Forms */}
-            <div className="lg:col-span-8 flex flex-col gap-8">
+            <div className="lg:col-span-8 flex flex-col gap-6 sm:gap-8">
               {/* Form 1: Thông tin cá nhân & Địa chỉ */}
-              <div className="bg-surface-container-lowest rounded-2xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm border border-surface-variant/30">
                 <div className="flex items-center gap-2.5 mb-6 border-b border-surface-variant/20 pb-4">
                   <Icon name="badge" size={24} className="text-primary" />
                   <h3 className="font-headline-sm text-lg font-bold text-on-surface">
@@ -266,7 +266,7 @@ export default function UserProfile({ onNavigate }) {
               </div>
 
               {/* Form 2: Đổi mật khẩu */}
-              <div className="bg-surface-container-lowest rounded-2xl p-6 sm:p-8 shadow-sm border border-surface-variant/30">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm border border-surface-variant/30">
                 <div className="flex items-center gap-2.5 mb-6 border-b border-surface-variant/20 pb-4">
                   <Icon name="lock_reset" size={24} className="text-primary" />
                   <div>

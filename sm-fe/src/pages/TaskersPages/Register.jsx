@@ -177,14 +177,14 @@ export default function Register({ onNavigate }) {
     <div className="min-h-screen bg-surface font-body-md text-on-surface flex flex-col">
       {/* Top Header tối giản: Logo thương hiệu TaskMate, bỏ 3 nút góc trên */}
       <header className="w-full border-b border-surface-variant/30 bg-surface-container-lowest sticky top-0 z-40 backdrop-blur-md">
-        <div className="max-w-[1240px] mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to={ROUTES.HOME} className="flex items-center gap-3 group focus:outline-none">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
+          <Link to={ROUTES.HOME} className="flex items-center gap-2.5 sm:gap-3 group focus:outline-none">
             <img
               alt="TaskMate Brand Logo"
-              className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
+              className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105"
               src={TASKMATE_LOGO_URL}
             />
-            <span className="font-headline-sm text-xl font-bold tracking-tight text-primary">
+            <span className="font-headline-sm text-lg sm:text-xl font-bold tracking-tight text-primary">
               TaskMate
             </span>
           </Link>
@@ -194,27 +194,27 @@ export default function Register({ onNavigate }) {
             className="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1.5"
           >
             <Icon name="arrow_back" size={16} />
-            <span>Về Trang chủ</span>
+            <span>Trang chủ</span>
           </Link>
         </div>
       </header>
 
       {/* Main Registration Content: 2 Cột */}
-      <main className="w-full max-w-[1240px] mx-auto px-6 py-8 md:py-12 flex-1">
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+      <main className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12 flex-1">
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-12 items-start">
           {/* Cột bên trái: Ảnh James Kovin Banner */}
           <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-6">
-            <div className="relative w-full rounded-3xl overflow-hidden shadow-md bg-surface-container aspect-[4/3] sm:aspect-[4/4] border border-surface-variant/30">
+            <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-md bg-surface-container aspect-[4/3] sm:aspect-[4/4] border border-surface-variant/30">
               <img
                 alt="Đối tác Thợ chuyên nghiệp TaskMate"
                 className="w-full h-full object-cover object-center transform transition-transform duration-500 hover:scale-[1.02]"
                 src="/images/banners/james-kovin-qqLxF3M-MA8-unsplash.jpg"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-4 sm:p-6 text-white">
                 <span className="text-xs uppercase tracking-wider font-extrabold text-secondary-fixed">
                   Cộng đồng Đối tác TaskMate
                 </span>
-                <h3 className="text-lg font-bold mt-1">
+                <h3 className="text-base sm:text-lg font-bold mt-1">
                   Chủ động thời gian, thu nhập không giới hạn
                 </h3>
                 <p className="text-xs text-white/80 mt-1">
@@ -224,7 +224,7 @@ export default function Register({ onNavigate }) {
             </div>
 
             {/* Quyền lợi nổi bật */}
-            <div className="bg-surface-container-lowest rounded-2xl p-6 border border-surface-variant/30 space-y-4">
+            <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 border border-surface-variant/30 space-y-4">
               <h4 className="font-label-lg text-sm font-bold text-on-surface flex items-center gap-2">
                 <Icon name="verified" size={20} className="text-primary" />
                 <span>Quyền lợi khi trở thành Tasker</span>
@@ -257,15 +257,15 @@ export default function Register({ onNavigate }) {
 
           {/* Cột bên phải: Biểu mẫu đăng ký Hồ sơ Thợ */}
           <div className="lg:col-span-7 order-1 lg:order-2 flex flex-col">
-            <div className="bg-surface-container-lowest rounded-3xl p-6 sm:p-8 shadow-sm border border-surface-variant/30 space-y-6">
+            <div className="bg-surface-container-lowest rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-sm border border-surface-variant/30 space-y-5 sm:space-y-6">
               <div>
                 <span className="font-label-sm text-xs font-bold text-primary uppercase tracking-wider">
                   Đăng ký Đối tác Thợ
                 </span>
-                <h1 className="font-headline-lg text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight mt-1">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-on-surface tracking-tight mt-1">
                   Kiếm thêm thu nhập theo cách của bạn
                 </h1>
-                <p className="font-body-md text-sm text-on-surface-variant mt-2 leading-relaxed">
+                <p className="font-body-md text-xs sm:text-sm text-on-surface-variant mt-1.5 sm:mt-2 leading-relaxed">
                   Điền khu vực hoạt động và các công việc bạn thành thạo để hệ thống tự động kết nối
                   khách hàng phù hợp nhất tới bạn.
                 </p>

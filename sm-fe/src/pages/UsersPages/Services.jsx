@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
@@ -125,10 +125,10 @@ export default function Services({ onNavigate }) {
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary-fixed/20 blur-3xl pointer-events-none" />
           <div className="absolute top-1/2 -right-24 w-80 h-80 rounded-full bg-secondary-fixed/20 blur-3xl pointer-events-none" />
 
-          <div className="max-w-[1240px] mx-auto px-6 py-12 lg:py-16">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               {/* Left Column: Title & Search */}
-              <div className="lg:col-span-7 flex flex-col gap-5 z-10">
+              <div className="lg:col-span-7 flex flex-col gap-4 sm:gap-5 z-10">
                 <div className="flex items-center gap-2">
                   <Badge variant="primary" icon="home_repair_service" size="sm">
                     Dịch vụ TaskMate
@@ -138,17 +138,17 @@ export default function Services({ onNavigate }) {
                   </span>
                 </div>
 
-                <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight leading-tight">
+                <h1 className="text-2xl sm:text-3xl lg:text-headline-xl font-extrabold text-on-surface tracking-tight leading-tight">
                   Để việc nhà cho <span className="text-primary font-extrabold">TaskMate</span> lo.
                 </h1>
 
-                <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl leading-relaxed">
+                <p className="font-body-md text-sm sm:text-base lg:text-body-lg text-on-surface-variant max-w-xl leading-relaxed">
                   Tìm thợ uy tín nhanh chóng, giá minh bạch. Từ lắp ráp đồ nội thất IKEA,
                   sửa chữa điện nước, khoan tường cho đến chuyển nhà và dọn dẹp không gian sống.
                 </p>
 
                 {/* Instant Search Bar */}
-                <div className="relative w-full max-w-xl mt-2">
+                <div className="relative w-full max-w-xl mt-1 sm:mt-2">
                   <div className="relative flex items-center">
                     <span className="absolute left-4 text-on-surface-variant flex items-center pointer-events-none">
                       <Icon name="search" size={22} className="text-primary" />
@@ -204,32 +204,32 @@ export default function Services({ onNavigate }) {
         </section>
 
         {/* QUICK CATEGORY FILTER PILLS */}
-        <section className="w-full bg-surface-container-lowest border-b border-surface-variant/30 sticky top-20 z-30">
-          <div className="max-w-[1240px] mx-auto px-6 py-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <section className="w-full bg-surface-container-lowest border-b border-surface-variant/30 sticky top-16 sm:top-20 z-30">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setActiveCategoryFilter('all')}
-              className={`px-4 py-2 rounded-full font-label-md text-label-md shrink-0 transition-colors cursor-pointer ${
+              className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full font-label-md text-xs sm:text-label-md shrink-0 transition-colors cursor-pointer ${
                 activeCategoryFilter === 'all'
                   ? 'bg-primary text-on-primary font-bold shadow-sm'
                   : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
               }`}
             >
-              Tất cả danh mục ({categories.length})
+              Tất cả ({categories.length})
             </button>
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
                 onClick={() => setActiveCategoryFilter(cat.id)}
-                className={`px-4 py-2 rounded-full font-label-md text-label-md shrink-0 transition-colors flex items-center gap-2 cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full font-label-md text-xs sm:text-label-md shrink-0 transition-colors flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                   activeCategoryFilter === cat.id
                     ? 'bg-primary text-on-primary font-bold shadow-sm'
                     : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                 }`}
               >
                 <span>{cat.name}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded-full bg-black/10">
+                <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-black/10">
                   {cat.jobs?.length || 0}
                 </span>
               </button>
@@ -238,8 +238,8 @@ export default function Services({ onNavigate }) {
         </section>
 
         {/* SERVICES CATEGORIES CARDS GRID */}
-        <section className="w-full py-12 lg:py-16">
-          <div className="max-w-[1240px] mx-auto px-6">
+        <section className="w-full py-8 sm:py-12 lg:py-16">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
             {/* Loading State */}
             {loading && (
               <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
@@ -289,7 +289,7 @@ export default function Services({ onNavigate }) {
 
             {/* Grid of Category Cards */}
             {!loading && !error && filteredCategories.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
                 {filteredCategories.map((category) => (
                   <div
                     key={category.id}
@@ -372,65 +372,65 @@ export default function Services({ onNavigate }) {
         </section>
 
         {/* TRUST & SAFETY GUARANTEE (TASKMATE PLEDGE) */}
-        <section className="w-full bg-surface-container-low py-14 border-t border-surface-variant/30">
-          <div className="max-w-[1240px] mx-auto px-6">
-            <div className="text-center max-w-2xl mx-auto mb-10">
-              <Badge variant="primary" icon="shield" size="sm" className="mb-3">
+        <section className="w-full bg-surface-container-low py-10 sm:py-14 border-t border-surface-variant/30">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+            <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+              <Badge variant="primary" icon="shield" size="sm" className="mb-2 sm:mb-3">
                 Cam kết chất lượng
               </Badge>
-              <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface">
+              <h2 className="text-xl sm:text-2xl lg:text-headline-lg font-bold text-on-surface">
                 Tại sao chọn TaskMate cho việc nhà của bạn?
               </h2>
-              <p className="font-body-md text-body-md text-on-surface-variant mt-2">
+              <p className="font-body-md text-xs sm:text-body-md text-on-surface-variant mt-1.5 sm:mt-2">
                 Chúng tôi mang đến sự an tâm tuyệt đối với quy trình thẩm định nghiêm ngặt và chính sách bảo vệ khách hàng.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Icon name="verified_user" size={26} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div className="p-4 sm:p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-2.5 sm:gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Icon name="verified_user" size={24} />
                 </div>
-                <h3 className="font-label-lg text-label-lg font-bold text-on-surface">
+                <h3 className="font-label-lg text-sm sm:text-label-lg font-bold text-on-surface">
                   Đã thẩm định 100%
                 </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant leading-relaxed">
                   Mỗi thợ Tasker đều được xác thực CCCD, thông tin liên lạc và kiểm tra tay nghề trước khi nhận việc.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-3">
-                <div className="w-12 h-12 rounded-xl bg-secondary-container/20 text-secondary-container flex items-center justify-center shrink-0">
-                  <Icon name="payments" size={26} />
+              <div className="p-4 sm:p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-2.5 sm:gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary-container/20 text-secondary-container flex items-center justify-center shrink-0">
+                  <Icon name="payments" size={24} />
                 </div>
-                <h3 className="font-label-lg text-label-lg font-bold text-on-surface">
+                <h3 className="font-label-lg text-sm sm:text-label-lg font-bold text-on-surface">
                   Chủ động đề xuất giá
                 </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant leading-relaxed">
                   Bạn đưa ra mức ngân sách kỳ vọng. Thỏa thuận minh bạch, tuyệt đối không phát sinh phụ phí ẩn.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Icon name="health_and_safety" size={26} />
+              <div className="p-4 sm:p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-2.5 sm:gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Icon name="health_and_safety" size={24} />
                 </div>
-                <h3 className="font-label-lg text-label-lg font-bold text-on-surface">
+                <h3 className="font-label-lg text-sm sm:text-label-lg font-bold text-on-surface">
                   Bảo hiểm trách nhiệm
                 </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant leading-relaxed">
                   Bảo hiểm trách nhiệm thi công lên đến 20.000.000₫ cho mỗi công việc thực hiện trên hệ thống.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-3">
-                <div className="w-12 h-12 rounded-xl bg-tertiary-container/20 text-tertiary flex items-center justify-center shrink-0">
-                  <Icon name="support_agent" size={26} />
+              <div className="p-4 sm:p-6 rounded-2xl bg-surface-container-lowest border border-surface-variant/30 flex flex-col gap-2.5 sm:gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-tertiary-container/20 text-tertiary flex items-center justify-center shrink-0">
+                  <Icon name="support_agent" size={24} />
                 </div>
-                <h3 className="font-label-lg text-label-lg font-bold text-on-surface">
+                <h3 className="font-label-lg text-sm sm:text-label-lg font-bold text-on-surface">
                   Hỗ trợ tận tâm 24/7
                 </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant leading-relaxed">
                   Đội ngũ chăm sóc khách hàng túc trực hỗ trợ bạn từ khi đăng việc đến khi nghiệm thu hoàn tất.
                 </p>
               </div>
@@ -439,53 +439,53 @@ export default function Services({ onNavigate }) {
         </section>
 
         {/* 3 STEPS HOW IT WORKS */}
-        <section className="w-full py-16 border-t border-surface-variant/30">
-          <div className="max-w-[1240px] mx-auto px-6">
-            <div className="text-center max-w-xl mx-auto mb-12">
-              <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface">
+        <section className="w-full py-10 sm:py-16 border-t border-surface-variant/30">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+            <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+              <h2 className="text-xl sm:text-2xl lg:text-headline-lg font-bold text-on-surface">
                 Hoàn thành công việc chỉ trong 3 bước
               </h2>
-              <p className="font-body-md text-body-md text-on-surface-variant mt-2">
+              <p className="font-body-md text-xs sm:text-body-md text-on-surface-variant mt-1.5 sm:mt-2">
                 Trải nghiệm đặt việc đơn giản, thuận tiện và an toàn
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 relative">
               {/* Step 1 */}
-              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-surface-container-low border border-surface-variant/20">
-                <div className="w-14 h-14 rounded-full bg-primary text-on-primary font-headline-md font-bold flex items-center justify-center mb-4 shadow-md">
+              <div className="flex flex-col items-center text-center p-5 sm:p-6 rounded-2xl bg-surface-container-low border border-surface-variant/20">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-on-primary text-lg sm:text-headline-md font-bold flex items-center justify-center mb-3 sm:mb-4 shadow-md">
                   1
                 </div>
-                <h3 className="font-label-lg text-label-lg font-bold text-on-surface mb-2">
+                <h3 className="font-label-lg text-sm sm:text-label-lg font-bold text-on-surface mb-1.5 sm:mb-2">
                   Chọn việc &amp; Đặt thời gian
                 </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant leading-relaxed">
                   Chọn dịch vụ phù hợp trong danh mục, mô tả nhu cầu và hẹn giờ bạn mong muốn thợ có mặt.
                 </p>
               </div>
 
               {/* Step 2 */}
-              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-surface-container-low border border-surface-variant/20">
-                <div className="w-14 h-14 rounded-full bg-primary text-on-primary font-headline-md font-bold flex items-center justify-center mb-4 shadow-md">
+              <div className="flex flex-col items-center text-center p-5 sm:p-6 rounded-2xl bg-surface-container-low border border-surface-variant/20">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-on-primary text-lg sm:text-headline-md font-bold flex items-center justify-center mb-3 sm:mb-4 shadow-md">
                   2
                 </div>
-                <h3 className="font-label-lg text-label-lg font-bold text-on-surface mb-2">
+                <h3 className="font-label-lg text-sm sm:text-label-lg font-bold text-on-surface mb-1.5 sm:mb-2">
                   Đề xuất ngân sách
                 </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant leading-relaxed">
                   Tự đưa mức thù lao bạn muốn chi trả hoặc duyệt thợ giỏi nhận việc sau vài phút.
                 </p>
               </div>
 
               {/* Step 3 */}
-              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-surface-container-low border border-surface-variant/20">
-                <div className="w-14 h-14 rounded-full bg-primary text-on-primary font-headline-md font-bold flex items-center justify-center mb-4 shadow-md">
+              <div className="flex flex-col items-center text-center p-5 sm:p-6 rounded-2xl bg-surface-container-low border border-surface-variant/20">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-on-primary text-lg sm:text-headline-md font-bold flex items-center justify-center mb-3 sm:mb-4 shadow-md">
                   3
                 </div>
-                <h3 className="font-label-lg text-label-lg font-bold text-on-surface mb-2">
+                <h3 className="font-label-lg text-sm sm:text-label-lg font-bold text-on-surface mb-1.5 sm:mb-2">
                   Nghiệm thu &amp; Thanh toán
                 </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant leading-relaxed">
                   Thợ đến tận nhà thực hiện. Bạn chỉ thanh toán khi đã hoàn toàn hài lòng với chất lượng công việc.
                 </p>
               </div>
@@ -494,21 +494,21 @@ export default function Services({ onNavigate }) {
         </section>
 
         {/* BOTTOM CALL TO ACTION */}
-        <section className="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-14">
-          <div className="max-w-[1240px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+        <section className="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-10 sm:py-14">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 text-center md:text-left">
             <div>
-              <h2 className="font-headline-lg text-headline-lg font-extrabold text-white">
+              <h2 className="text-xl sm:text-2xl lg:text-headline-lg font-extrabold text-white">
                 Sẵn sàng giải quyết danh sách việc cần làm?
               </h2>
-              <p className="font-body-md text-white/90 mt-2 max-w-xl">
+              <p className="font-body-md text-xs sm:text-sm lg:text-body-md text-white/90 mt-1.5 sm:mt-2 max-w-xl">
                 Đăng việc ngay bây giờ để nhận phản hồi nhanh chóng từ các chuyên gia khu vực của bạn.
               </p>
             </div>
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto">
               <Button
                 variant="primary"
                 size="lg"
-                className="bg-white text-primary hover:bg-white/90 font-bold rounded-full shadow-lg"
+                className="w-full sm:w-auto bg-white text-primary hover:bg-white/90 font-bold rounded-full shadow-lg justify-center py-3 sm:py-3.5"
                 onClick={() => onNavigate && onNavigate('task-detail')}
               >
                 Đăng việc mới ngay

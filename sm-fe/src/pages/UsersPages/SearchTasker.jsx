@@ -74,7 +74,7 @@ export default function SearchTasker({ onNavigate }) {
       {/* Global Header */}
       <Header activePath="search" onNavigate={onNavigate} />
 
-      <main className="w-full pt-20 bg-surface flex-1">
+      <main className="w-full pt-16 sm:pt-20 bg-surface flex-1">
         {/* Stepper Navigation */}
         <StepNavigation currentStep={2} totalFound={SEARCH_TASKERS.length} />
 
@@ -85,38 +85,38 @@ export default function SearchTasker({ onNavigate }) {
         />
 
         {/* Filter & Sorting Toolbelt */}
-        <section className="max-w-[1240px] mx-auto px-6 py-3 w-full">
+        <section className="max-w-[1240px] mx-auto px-4 sm:px-6 py-3 w-full">
           <div className="flex flex-col gap-4">
             {/* Sort & Stats line */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-lowest px-5 py-3.5 rounded-xl shadow-sm border border-surface-variant/30">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-lowest px-4 sm:px-5 py-3 sm:py-3.5 rounded-xl shadow-sm border border-surface-variant/30">
               <div className="flex items-center gap-2">
-                <span className="font-headline-sm text-headline-sm text-primary font-bold">
+                <span className="font-headline-sm text-sm sm:text-headline-sm text-primary font-bold">
                   {SEARCH_TASKERS.length} Thợ phù hợp nhất gần bạn
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-outline-variant" />
-                <span className="font-body-sm text-body-sm text-on-surface-variant">
+                <span className="w-1.5 h-1.5 rounded-full bg-outline-variant hidden sm:inline-block" />
+                <span className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant hidden sm:inline-block">
                   Sắp xếp theo thuật toán tối ưu nhất
                 </span>
               </div>
 
               <div className="flex items-center gap-2.5">
                 <label
-                  className="font-label-sm text-label-sm text-on-surface-variant shrink-0"
+                  className="font-label-sm text-xs sm:text-label-sm text-on-surface-variant shrink-0"
                   htmlFor="sort-proposals"
                 >
-                  Sắp xếp theo:
+                  Sắp xếp:
                 </label>
                 <div className="relative">
                   <select
                     id="sort-proposals"
                     value={selectedSort}
                     onChange={(e) => setSelectedSort(e.target.value)}
-                    className="appearance-none bg-surface-container-low text-on-surface font-label-md text-label-md pl-3 pr-8 py-2 rounded-lg focus:outline-none cursor-pointer border border-transparent focus:border-primary/20"
+                    className="appearance-none bg-surface-container-low text-on-surface font-label-md text-xs sm:text-label-md pl-3 pr-8 py-1.5 sm:py-2 rounded-lg focus:outline-none cursor-pointer border border-transparent focus:border-primary/20"
                   >
                     <option value="match">
-                      Điểm tương thích TaskMate AI (Cao nhất trước)
+                      Điểm tương thích AI (Cao nhất)
                     </option>
-                    <option value="price">Mức giá thù lao (Thấp đến cao)</option>
+                    <option value="price">Mức giá thù lao (Thấp - cao)</option>
                     <option value="rating">Đánh giá thợ (Nhiều sao nhất)</option>
                     <option value="distance">Gần vị trí bạn nhất (&lt; 5km)</option>
                   </select>
@@ -138,7 +138,7 @@ export default function SearchTasker({ onNavigate }) {
                     key={chip.id}
                     type="button"
                     onClick={() => setActiveFilterChip(chip.id)}
-                    className={`px-3.5 py-1.5 rounded-full font-label-sm text-label-sm shadow-sm whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-3 sm:px-3.5 py-1.5 rounded-full font-label-sm text-xs sm:text-label-sm shadow-sm whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                       isActive
                         ? 'bg-primary text-on-primary'
                         : 'bg-surface-container-lowest hover:bg-surface-container-high text-on-surface-variant'
@@ -154,7 +154,7 @@ export default function SearchTasker({ onNavigate }) {
                     )}
                     <span>{chip.label}</span>
                     {chip.count && (
-                      <span className="w-5 h-5 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold flex items-center justify-center">
+                      <span className="w-4.5 h-4.5 rounded-full bg-primary-fixed text-on-primary-fixed text-[10px] font-bold flex items-center justify-center">
                         {chip.count}
                       </span>
                     )}
@@ -166,7 +166,7 @@ export default function SearchTasker({ onNavigate }) {
         </section>
 
         {/* Main Content Layout (Proposals Feed + Trust Sidebar) */}
-        <div className="max-w-[1240px] mx-auto px-6 py-4 w-full">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 py-4 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Proposals Feed (8 Cols) */}
             <div className="lg:col-span-8 flex flex-col gap-5">

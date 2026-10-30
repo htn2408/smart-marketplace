@@ -737,15 +737,15 @@ export default function AddressSelector({
         {headerTitle ? (
           <div>
             {stepLabel && (
-              <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary">
+              <span className="font-label-sm text-xs sm:text-label-sm font-semibold uppercase tracking-wider text-primary">
                 {stepLabel}
               </span>
             )}
-            <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+            <h2 className="text-base sm:text-lg lg:text-headline-sm font-bold text-on-surface">
               {headerTitle}
             </h2>
             {headerSubtitle && (
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
+              <p className="font-body-sm text-xs sm:text-body-sm text-on-surface-variant mt-0.5">
                 {headerSubtitle}
               </p>
             )}

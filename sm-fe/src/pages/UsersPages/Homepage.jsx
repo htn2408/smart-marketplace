@@ -137,7 +137,7 @@ export default function Homepage({ onNavigate }) {
           <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary-fixed/20 blur-3xl pointer-events-none" />
           <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-secondary-fixed/25 blur-3xl pointer-events-none" />
 
-          <div className="max-w-[1240px] mx-auto px-6 pt-6 lg:pt-12">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-6 lg:pt-12">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
               {/* Left Column: Copy & Interactive Search */}
               <div className="lg:col-span-7 flex flex-col gap-6 z-10">
@@ -145,7 +145,7 @@ export default function Homepage({ onNavigate }) {
                   Nền tảng đăng việc vặt &amp; tự đề xuất giá #1 Việt Nam
                 </Badge>
 
-                <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight leading-tight">
+                <h1 className="font-headline-xl text-2xl sm:text-3xl lg:text-headline-xl text-on-surface tracking-tight leading-tight">
                   Bạn cần việc gì?{' '}
                   <br className="hidden sm:inline" />
                   <span className="text-primary font-extrabold">
@@ -153,7 +153,7 @@ export default function Homepage({ onNavigate }) {
                   </span>
                 </h1>
 
-                <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl leading-relaxed">
+                <p className="font-body-lg text-sm sm:text-base lg:text-body-lg text-on-surface-variant max-w-xl leading-relaxed">
                   Đăng việc kèm ngân sách mong muốn. Nhận báo giá hoặc xác nhận từ
                   các Tasker uy tín chỉ sau vài phút. Minh bạch, không lo bị đội
                   giá.
@@ -165,18 +165,18 @@ export default function Homepage({ onNavigate }) {
 
               {/* Right Column: Visual Collage with verified badges */}
               <div className="lg:col-span-5 relative flex justify-center items-center">
-                <div className="relative w-full max-w-[440px] aspect-[4/5] rounded-xl overflow-hidden shadow-xl bg-surface-container-high">
+                <div className="relative w-full max-w-[320px] sm:max-w-[400px] lg:max-w-[440px] aspect-[4/5] rounded-xl overflow-hidden shadow-xl bg-surface-container-high mx-auto">
                   <img
                     className="w-full h-full object-cover"
-                    alt="Homepage Banner"
-                    src="/images/banners/matt-adams-7PiboaUAB_0-unsplash.jpg"
+                    alt="Homepage Banner" width="440" height="550" fetchPriority="high" decoding="async"
+                    src="/images/banners/matt-adams-optimized.jpg"
                   />
                 </div>
               </div>
             </div>
 
             {/* Trust Proof Micro-Bar */}
-            <div className="mt-12 pt-8 grid grid-cols-1 md:grid-cols-3 gap-6 bg-surface-container-lowest/60 backdrop-blur-sm rounded-xl p-5 shadow-sm border border-surface-variant/30">
+            <div className="mt-8 lg:mt-12 pt-6 lg:pt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 bg-surface-container-lowest/60 backdrop-blur-sm rounded-xl p-4 sm:p-5 shadow-sm border border-surface-variant/30">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary-fixed/40 flex items-center justify-center text-primary shrink-0">
                   <Icon name="tune" size={22} />
@@ -224,13 +224,13 @@ export default function Homepage({ onNavigate }) {
 
         {/* POPULAR SERVICES SECTION */}
         <section className="w-full py-16 bg-surface">
-          <div className="max-w-[1240px] mx-auto px-6">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
               <div>
                 <span className="font-label-sm text-label-sm font-bold text-primary tracking-wide uppercase">
                   Lựa chọn hàng đầu
                 </span>
-                <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface mt-1">
+                <h2 className="font-headline-lg text-xl sm:text-2xl lg:text-headline-lg font-bold text-on-surface mt-1">
                   Tham khảo mức giá cộng đồng đề xuất hôm nay
                 </h2>
               </div>
@@ -272,12 +272,12 @@ export default function Homepage({ onNavigate }) {
 
         {/* HOW IT WORKS SECTION */}
         <section className="w-full py-16 lg:py-24 bg-surface">
-          <div className="max-w-[1240px] mx-auto px-6">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
             <div className="text-center max-w-2xl mx-auto mb-14">
               <span className="font-label-sm text-label-sm font-bold text-primary uppercase tracking-wider">
                 Trải nghiệm thuận tiện
               </span>
-              <h2 className="font-headline-xl text-headline-xl font-bold text-on-surface mt-1">
+              <h2 className="font-headline-xl text-2xl sm:text-3xl lg:text-headline-xl font-bold text-on-surface mt-1">
                 Cách TaskMate hoạt động
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant mt-3">
@@ -368,7 +368,7 @@ export default function Homepage({ onNavigate }) {
 
         {/* TRUST, SAFETY & HAPPINESS PLEDGE SECTION */}
         <section className="w-full py-16 bg-surface-container-lowest border-y border-surface-variant/30">
-          <div className="max-w-[1240px] mx-auto px-6">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
               {/* Left: Badge story block */}
               <div className="lg:col-span-5 bg-gradient-to-br from-primary-fixed/20 via-surface-container to-surface p-8 rounded-xl shadow-sm flex flex-col justify-between border border-surface-variant/40">
@@ -465,7 +465,7 @@ export default function Homepage({ onNavigate }) {
 
         {/* BECOME A TASKER RECRUITMENT BANNER */}
         <section className="w-full py-16 bg-surface">
-          <div className="max-w-[1240px] mx-auto px-6">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
             <div className="relative rounded-2xl overflow-hidden bg-primary-container text-on-primary shadow-xl">
               <div className="absolute -right-20 -bottom-20 w-96 h-96 rounded-full bg-primary/40 blur-2xl pointer-events-none" />
 
@@ -475,7 +475,7 @@ export default function Homepage({ onNavigate }) {
                     Gia tăng thu nhập vững chắc
                   </Badge>
 
-                  <h2 className="font-headline-xl text-headline-xl font-bold tracking-tight leading-tight">
+                  <h2 className="font-headline-xl text-2xl sm:text-3xl lg:text-headline-xl font-bold tracking-tight leading-tight">
                     Tự làm chủ thời gian. <br />
                     Kiếm tới 25.000.000₫/tháng cùng TaskMate.
                   </h2>
@@ -551,12 +551,12 @@ export default function Homepage({ onNavigate }) {
 
         {/* CUSTOMER TESTIMONIALS & FAQ SECTION */}
         <section className="w-full py-16 bg-surface-container-low">
-          <div className="max-w-[1240px] mx-auto px-6">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
             <div className="text-center max-w-2xl mx-auto mb-12">
               <span className="font-label-sm text-label-sm font-bold text-primary uppercase tracking-wider">
                 Cộng đồng tin chọn
               </span>
-              <h2 className="font-headline-xl text-headline-xl font-bold text-on-surface mt-1">
+              <h2 className="font-headline-xl text-2xl sm:text-3xl lg:text-headline-xl font-bold text-on-surface mt-1">
                 Khách hàng nói gì về TaskMate?
               </h2>
             </div>
@@ -610,9 +610,9 @@ export default function Homepage({ onNavigate }) {
 
         {/* BOTTOM CALL TO ACTION STRIP */}
         <section className="w-full py-12 bg-primary text-on-primary">
-          <div className="max-w-[1240px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-              <h2 className="font-headline-lg text-headline-lg font-bold">
+              <h2 className="font-headline-lg text-xl sm:text-2xl lg:text-headline-lg font-bold">
                 Có việc cần làm? Đăng ngay với mức giá của bạn
               </h2>
               <p className="font-body-md text-body-md text-on-primary-container mt-1">
@@ -639,3 +639,7 @@ export default function Homepage({ onNavigate }) {
     </div>
   )
 }
+
+
+
+

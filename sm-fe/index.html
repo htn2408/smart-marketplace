@@ -4,124 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google" content="notranslate" />
     <title>TaskMate - Nền tảng Dịch vụ Gia đình & Sửa chữa Tiện ích</title>
 
-    <!-- Google Fonts & Material Symbols -->
+    <!-- Performance Preloads -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=optional"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=optional"
       rel="stylesheet"
     />
 
-    <!-- Tailwind CDN for Rapid Design System Compatibility -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "primary": "#00563f",
-              "on-primary": "#ffffff",
-              "primary-container": "#0d7054",
-              "on-primary-container": "#9bf0cd",
-              "primary-fixed": "#9ef4d0",
-              "primary-fixed-dim": "#82d7b5",
-              "on-primary-fixed": "#002116",
-              "on-primary-fixed-variant": "#00513b",
-              "inverse-primary": "#82d7b5",
-
-              "secondary": "#7c5800",
-              "on-secondary": "#ffffff",
-              "secondary-container": "#feb700",
-              "on-secondary-container": "#6b4b00",
-              "secondary-fixed": "#ffdea8",
-              "secondary-fixed-dim": "#ffba20",
-              "on-secondary-fixed": "#271900",
-              "on-secondary-fixed-variant": "#5e4200",
-
-              "tertiary": "#414e47",
-              "on-tertiary": "#ffffff",
-              "tertiary-container": "#59665e",
-              "on-tertiary-container": "#d5e3d9",
-              "tertiary-fixed": "#d8e6dc",
-              "tertiary-fixed-dim": "#bccac0",
-              "on-tertiary-fixed": "#121e18",
-              "on-tertiary-fixed-variant": "#3d4a43",
-
-              "surface": "#f9f9ff",
-              "on-surface": "#141b2b",
-              "surface-dim": "#d3daef",
-              "surface-bright": "#f9f9ff",
-              "surface-variant": "#dce2f7",
-              "on-surface-variant": "#3f4944",
-              "surface-container-lowest": "#ffffff",
-              "surface-container-low": "#f1f3ff",
-              "surface-container": "#e9edff",
-              "surface-container-high": "#e1e8fd",
-              "surface-container-highest": "#dce2f7",
-              "inverse-surface": "#293040",
-              "inverse-on-surface": "#edf0ff",
-              "surface-tint": "#026c50",
-
-              "background": "#f9f9ff",
-              "on-background": "#141b2b",
-              "outline": "#6f7a73",
-              "outline-variant": "#bec9c2",
-              "error": "#ba1a1a",
-              "on-error": "#ffffff",
-              "error-container": "#ffdad6",
-              "on-error-container": "#93000a"
-            },
-            borderRadius: {
-              DEFAULT: "0.25rem",
-              lg: "0.5rem",
-              xl: "0.75rem",
-              full: "9999px"
-            },
-            spacing: {
-              "margin": "2rem",
-              "gutter-mobile": "1rem",
-              "gutter": "1.5rem",
-              "space-xs": "0.25rem",
-              "space-sm": "0.5rem",
-              "space-md": "1rem",
-              "space-lg": "1.5rem",
-              "space-xl": "2.5rem"
-            },
-            fontFamily: {
-              "headline-xl": ["'Plus Jakarta Sans'", "sans-serif"],
-              "headline-lg": ["'Plus Jakarta Sans'", "sans-serif"],
-              "headline-md": ["'Plus Jakarta Sans'", "sans-serif"],
-              "headline-sm": ["'Plus Jakarta Sans'", "sans-serif"],
-              "display-hero": ["'Plus Jakarta Sans'", "sans-serif"],
-              "body-lg": ["'Inter'", "sans-serif"],
-              "body-md": ["'Inter'", "sans-serif"],
-              "body-sm": ["'Inter'", "sans-serif"],
-              "label-lg": ["'Plus Jakarta Sans'", "sans-serif"],
-              "label-md": ["'Plus Jakarta Sans'", "sans-serif"],
-              "label-sm": ["'Plus Jakarta Sans'", "sans-serif"],
-              "caption": ["'Inter'", "sans-serif"]
-            },
-            fontSize: {
-              "display-hero": ["56px", { lineHeight: "64px", letterSpacing: "-0.02em", fontWeight: "800" }],
-              "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "700" }],
-              "headline-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.015em", fontWeight: "700" }],
-              "headline-md": ["22px", { lineHeight: "30px", letterSpacing: "-0.01em", fontWeight: "600" }],
-              "headline-sm": ["18px", { lineHeight: "26px", letterSpacing: "-0.005em", fontWeight: "600" }],
-              "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
-              "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
-              "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
-              "label-lg": ["16px", { lineHeight: "24px", letterSpacing: "0.01em", fontWeight: "600" }],
-              "label-md": ["14px", { lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "600" }],
-              "label-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "600" }],
-              "caption": ["12px", { lineHeight: "16px", fontWeight: "400" }]
-            }
-          }
-        }
-      };
-    </script>
   </head>
   <body class="bg-surface font-body-md text-on-surface antialiased m-0 p-0">
     <div id="root"></div>

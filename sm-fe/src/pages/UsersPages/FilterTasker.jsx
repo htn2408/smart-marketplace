@@ -189,27 +189,27 @@ export default function FilterTasker({ onNavigate }) {
       <Header activePath="task-detail" onNavigate={onNavigate} />
 
       <main className="w-full pt-20 bg-surface flex-1">
-        {/* Progress & Page Header Bar (Đồng bộ với TaskDetail, in đậm xanh bước 2: Xem đề xuất từ thợ) */}
+        {/* Progress & Page Header Bar */}
         <section className="w-full bg-surface-container-lowest shadow-[0_1px_4px_rgba(13,112,84,0.04)] border-b border-surface-variant/30">
-          <div className="max-w-[1240px] mx-auto px-6 py-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                   <Badge variant="primary" icon="add_task">
                     Tạo yêu cầu dịch vụ
                   </Badge>
-                  <span className="text-outline-variant font-body-sm text-body-sm">•</span>
-                  <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  <span className="hidden sm:inline text-outline-variant font-body-sm text-body-sm">•</span>
+                  <span className="hidden sm:inline font-body-sm text-body-sm text-on-surface-variant">
                     Không mất phí đăng tin • Đảm bảo giá minh bạch
                   </span>
                 </div>
-                <h1 className="font-headline-lg text-headline-lg text-on-surface font-extrabold tracking-tight">
+                <h1 className="text-xl sm:text-2xl lg:text-headline-lg text-on-surface font-extrabold tracking-tight">
                   Đăng việc &amp; Đề xuất thù lao
                 </h1>
               </div>
 
-              {/* Steps Breadcrumb */}
-              <div className="flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-xl">
+              {/* Steps Breadcrumb - Desktop & Tablet */}
+              <div className="hidden md:flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-xl">
                 <button
                   type="button"
                   onClick={handleEditRequest}
@@ -239,34 +239,50 @@ export default function FilterTasker({ onNavigate }) {
                   <span className="font-label-md text-label-md">Xác nhận &amp; Nghiệm thu</span>
                 </div>
               </div>
+
+              {/* Steps Indicator - Mobile Phone */}
+              <div className="md:hidden flex items-center justify-between bg-surface-container-low px-3.5 py-2 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold">
+                    2
+                  </span>
+                  <span className="text-xs font-bold text-primary">
+                    Bước 2 / 3: Chọn thợ phù hợp
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleEditRequest}
+                  className="text-[11px] font-semibold text-primary underline"
+                >
+                  Sửa bước 1
+                </button>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Section 1: Order Summary Bar (Pinned overview of customer request) */}
         <section className="w-full bg-surface-container-lowest shadow-sm border-b border-surface-variant/20">
-          <div className="max-w-[1240px] mx-auto px-6 py-5">
-            <div className="rounded-xl bg-surface-container p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6 py-4 sm:py-5">
+            <div className="rounded-xl bg-surface-container p-4 sm:p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-6">
               {/* Job Title and Location */}
               <div className="flex flex-col gap-2 min-w-0">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed/40 text-on-primary-fixed-variant font-label-sm text-label-sm font-semibold">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed/40 text-on-primary-fixed-variant font-label-sm text-xs sm:text-label-sm font-semibold">
                     <Icon name="electric_bolt" size={15} />
                     <span>{categoryName}</span>
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-highest text-on-surface-variant font-caption text-caption">
-                    Mã yêu cầu:{' '}
-                    <span className="font-mono font-semibold text-on-surface">
-                      {requestCode}
-                    </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-highest text-on-surface-variant font-caption text-[11px] sm:text-caption">
+                    Mã: <span className="font-mono font-semibold text-on-surface">{requestCode}</span>
                   </span>
-                  <span className="inline-flex items-center gap-1 text-primary font-caption text-caption font-medium">
+                  <span className="inline-flex items-center gap-1 text-primary font-caption text-[11px] sm:text-caption font-medium">
                     <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
                     <span>Đang nhận đề xuất trực tiếp</span>
                   </span>
                 </div>
 
-                <h2 className="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">
+                <h2 className="text-lg sm:text-xl lg:text-headline-lg text-on-surface font-bold tracking-tight">
                   {title}
                 </h2>
 
@@ -340,12 +356,12 @@ export default function FilterTasker({ onNavigate }) {
         </section>
 
         {/* Section 2: Main Workspace (Filters + Matching Cards + Algorithm Sidebar) */}
-        <div className="w-full max-w-[1240px] mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 py-4 sm:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start">
             {/* Left / Primary Column: Filtering controls & List of Taskers (8 cols) */}
-            <section className="lg:col-span-8 flex flex-col gap-6">
+            <section className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
               {/* Controls Toolbar (Search Count & Sort) */}
-              <div className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-4 border border-surface-variant/30">
+              <div className="rounded-xl bg-surface-container-lowest p-4 sm:p-5 shadow-sm flex flex-col gap-3 sm:gap-4 border border-surface-variant/30">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <Icon name="radar" size={22} className="text-primary" />
@@ -440,7 +456,7 @@ export default function FilterTasker({ onNavigate }) {
                   return (
                     <article
                       key={tasker.id}
-                      className="relative rounded-xl bg-surface-container-lowest p-6 shadow-sm hover:shadow-md transition-shadow border border-surface-variant/30"
+                      className="relative rounded-xl bg-surface-container-lowest p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow border border-surface-variant/30"
                     >
                       {/* Best Match Ribbon Tag */}
                       {showBestRibbon && (

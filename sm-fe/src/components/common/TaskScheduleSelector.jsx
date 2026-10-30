@@ -68,7 +68,7 @@ export default function TaskScheduleSelector({
     onChangeEndTime?.(formatted)
   }
 
-  const containerPadding = compact ? 'p-4 sm:p-5' : 'p-6 sm:p-8'
+  const containerPadding = compact ? 'p-4 sm:p-5' : 'p-4 sm:p-6 lg:p-8'
   const hasScheduleError = errors.customDate || errors.startTime || errors.scheduleTime
 
   return (
@@ -82,14 +82,14 @@ export default function TaskScheduleSelector({
     >
       {/* Header section */}
       {(stepTitle || title) && (
-        <div className={compact ? 'mb-3' : 'mb-4'}>
+        <div className={compact ? 'mb-3' : 'mb-3 sm:mb-4'}>
           {stepTitle && (
             <span className="font-label-sm text-xs sm:text-label-sm font-semibold uppercase tracking-wider text-primary">
               {stepTitle}
             </span>
           )}
           {title && (
-            <h2 className={`font-headline-sm font-bold text-on-surface ${compact ? 'text-base sm:text-lg' : 'text-headline-sm'}`}>
+            <h2 className={`font-bold text-on-surface ${compact ? 'text-base sm:text-lg' : 'text-base sm:text-lg lg:text-headline-sm'}`}>
               {title}
             </h2>
           )}
@@ -274,7 +274,7 @@ export default function TaskScheduleSelector({
             onClick={() => applyDurationPreset(2)}
             className="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 hover:text-primary transition-colors font-label-sm text-[11px] font-semibold cursor-pointer"
           >
-            + 2h (Lắp tủ)
+            + 2h
           </button>
           <button
             type="button"
@@ -288,7 +288,7 @@ export default function TaskScheduleSelector({
             onClick={() => applyDurationPreset(4)}
             className="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 hover:text-primary transition-colors font-label-sm text-[11px] font-semibold cursor-pointer"
           >
-            + 4h (Nửa ngày)
+            + 4h
           </button>
         </div>
       </div>

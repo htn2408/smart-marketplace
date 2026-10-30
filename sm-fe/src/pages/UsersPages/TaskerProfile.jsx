@@ -384,11 +384,11 @@ export default function TaskerProfile({ onNavigate }) {
       {/* Global Header */}
       <Header activePath="profile" onNavigate={onNavigate} />
 
-      <main className="w-full pt-20 bg-surface flex-1">
+      <main className="w-full pt-16 sm:pt-20 bg-surface flex-1">
         {/* Top Ambient Trust Banner */}
-        <div className="w-full bg-surface-container-high py-2.5 px-6 border-b border-surface-variant/30">
-          <div className="max-w-[1240px] mx-auto flex flex-wrap items-center justify-between gap-4">
-            <nav className="flex items-center gap-2 font-caption text-caption text-on-surface-variant">
+        <div className="w-full bg-surface-container-high py-2.5 px-4 sm:px-6 border-b border-surface-variant/30">
+          <div className="max-w-[1240px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+            <nav className="flex items-center gap-1.5 sm:gap-2 font-caption text-caption text-on-surface-variant flex-wrap">
               <a
                 className="hover:text-primary transition-colors cursor-pointer"
                 href="#home"
@@ -408,28 +408,28 @@ export default function TaskerProfile({ onNavigate }) {
                   if (onNavigate) onNavigate('search')
                 }}
               >
-                Thợ sửa chữa vặt gia đình
+                Thợ sửa chữa vặt
               </a>
               <Icon name="chevron_right" size={14} />
               <span className="font-medium text-on-surface">{displayName}</span>
             </nav>
 
-            <div className="flex items-center gap-4 text-on-surface-variant font-label-sm text-label-sm">
+            <div className="flex items-center gap-4 text-on-surface-variant font-label-sm text-xs sm:text-label-sm">
               <div className="flex items-center gap-1.5 text-primary">
-                <Icon name="verified_user" size={18} />
-                <span>Bảo hiểm trách nhiệm thi công 20.000.000₫</span>
+                <Icon name="verified_user" size={16} />
+                <span>Bảo hiểm 20.000.000₫</span>
               </div>
               <span className="hidden sm:inline text-outline-variant">•</span>
               <div className="hidden sm:flex items-center gap-1">
                 <Icon name="bolt" size={16} />
-                <span>Phản hồi trung bình: 5 phút</span>
+                <span>Phản hồi: ~5 phút</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Main Content Layout Section */}
-        <div className="max-w-[1240px] mx-auto w-full px-6 py-8">
+        <div className="max-w-[1240px] mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-8 flex flex-col gap-8">
               {cvSections}

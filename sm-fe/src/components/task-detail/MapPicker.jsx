@@ -213,8 +213,8 @@ export default function MapPicker({
       </div>
 
       {/* Bottom info floating badge */}
-      <div className="absolute bottom-3 left-3 right-14 z-10 pointer-events-none">
-        <div className="bg-surface-container-lowest/95 backdrop-blur-md p-2.5 rounded-xl shadow-lg border border-surface-variant/40 flex items-center gap-3 max-w-md pointer-events-auto">
+      <div className="absolute bottom-3 left-3 right-3 sm:right-14 z-10 pointer-events-none">
+        <div className="bg-surface-container-lowest/95 backdrop-blur-md p-2 sm:p-2.5 rounded-xl shadow-lg border border-surface-variant/40 flex items-center gap-2.5 sm:gap-3 max-w-md pointer-events-auto">
           <span className="w-3 h-3 rounded-full bg-primary animate-ping flex-shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="font-label-sm text-xs font-bold text-on-surface truncate">
