@@ -9,6 +9,8 @@ node_modules/
 dist/
 bin/
 obj/
+**/bin/
+**/obj/
 TestResults/
 .vs/
 .idea/
